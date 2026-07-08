@@ -1,0 +1,11 @@
+/.quasar
+/node_modules
+/.vscode
+/dist
+*.log
+*.lock
+/.idea
+HBuilderConfigTemp.json
+.history
+unpackage
+/.history/

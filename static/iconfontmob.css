@@ -1,0 +1,33 @@
+@font-face {
+  font-family: "iconfont"; /* Project id 2754020 */
+  src: url("~@/static/iconfont.ttf?t=1654149681142") format("truetype");
+}
+
+.iconfont {
+  font-family: "iconfont" !important;
+  font-size: 16px;
+  font-style: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.icon-diaobo:before {
+  content: "\e670";
+}
+
+.icon-other:before {
+  content: "\e89d";
+}
+
+.icon-chuku:before {
+  content: "\e6cb";
+}
+
+.icon-ruku:before {
+  content: "\e6cc";
+}
+
+.icon-pandian:before {
+  content: "\e649";
+}
+

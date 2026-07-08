@@ -1,0 +1,857 @@
+================================================================================
+docCommand 及相关组件 样式优化方案
+目标：统一使用 settingsMixin（适配 my.vue 设置）、深色模式、主题色响应、
+      生产行业风格、更简约流畅
+================================================================================
+
+═══════════════════════════════════════════════════════════════════════════════
+一、pages/wms/docOpt/docCommand.vue —— 核心改动
+═══════════════════════════════════════════════════════════════════════════════
+
+【1】模板根元素：增加 darkClass / themeClass
+--------------------------------------------------------
+<view class="page" :class="[sizeClass]">
+改为：
+<view class="page" :class="[sizeClass, darkClass, themeClass]">
+
+同样 popup 根元素也要加上：
+<view class="sn-select-popup" :class="[sizeClass]">
+改为：
+<view class="sn-select-popup" :class="[sizeClass, darkClass]">
+
+<view class="unit-select-popup" :class="[sizeClass]">
+改为：
+<view class="unit-select-popup" :class="[sizeClass, darkClass]">
+
+
+【2】script：替换 mixin 和 import
+--------------------------------------------------------
+删除：
+import styleManager from '@/common/styleManager.js';
+
+新增：
+import settingsMixin from '@/common/settingsMixin.js';
+
+mixins: [styleManager.styleMixin],
+改为：
+mixins: [settingsMixin],
+
+删除 data 中的 iconSize / starSize / clearIconSize（这些由 settingsMixin 的 themePrimary 等 computed 替代）
+
+删除 methods 中的 updateIconSizes() 和 onStyleSizeChanged()（settingsMixin 自动处理）
+
+删除 watch 中的 currentSize（不再需要）
+
+
+【3】模板中的硬编码颜色 → 动态主题色
+--------------------------------------------------------
+所有 color="#1677ff" 改为 :color="themePrimary"
+所有 color="#ffa940" 保留（固定色用于星标）
+所有 color="#9c9c9c" 保留（灰色图标）
+所有 background: #1677ff 改为 :style="{ background: themePrimary }"
+所有 border-color / box-shadow 中用到 #1677ff 的改为动态绑定
+
+示例：
+.scan-btn 的 background: rgba(22,119,255,0.1) → :style="{ background: themeAccent }"
+.submit-btn background-color: #1677ff → :style="{ background: themePrimary }"
+.cmd-button-item background: #1677ff → :style="{ background: themePrimary }"
+
+
+【4】SCSS 全部重写（生产行业风格 + 深色响应）
+--------------------------------------------------------
+<style lang="scss" scoped>
+@import '@/common/page-theme-mixins.scss';
+
+// ═══════════════════════════════════════
+// 生产行业配色变量（工业风：沉稳蓝灰调）
+// ═══════════════════════════════════════
+$bg:       #f0f2f5;
+$card:     #ffffff;
+$text:     #1a1a2e;
+$sub:      #6b7280;
+$hint:     #9ca3af;
+$line:     #e5e7eb;
+$radius:   12rpx;
+
+.page {
+  @include p-page;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: $bg;
+  /* #ifdef APP */
+  padding-bottom: 0 !important;
+  /* #endif */
+  /* #ifndef APP */
+  padding-bottom: 10% !important;
+  /* #endif */
+}
+
+// ── 顶部区域 ────
+.top-section {
+  flex-shrink: 0;
+  background: $card;
+  padding: 16rpx 20rpx 0;
+  transition: background .25s, padding .25s;
+}
+.top-placeholder {
+  flex-shrink: 0;
+  height: 16rpx;
+}
+
+// ── 表单卡片 ────
+.form-container {
+  @include p-card;
+  padding: 20rpx;
+  margin-bottom: 12rpx;
+}
+
+// ── 第一行：指令选择 + 条码类型 ────
+.first-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 12rpx;
+
+  .cmd-selector { flex: 1; min-width: 0; }
+
+  .code-type-compact {
+    display: flex;
+    background: #f4f5f7;
+    border-radius: 8rpx;
+    padding: 4rpx;
+    flex-shrink: 0;
+
+    .code-type-btn {
+      padding: 10rpx 16rpx;
+      border-radius: 6rpx;
+      font-size: 24rpx;
+      color: $sub;
+      white-space: nowrap;
+      transition: all .2s;
+
+      &.active {
+        background: $card;
+        color: #1677ff;
+        box-shadow: 0 1rpx 4rpx rgba(0,0,0,.06);
+      }
+    }
+  }
+}
+
+// ── 扫描输入行 ────
+.fourth-row {
+  .scan-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+
+    .scan-input {
+      flex: 1;
+      height: 80rpx;
+      padding: 0 80rpx 0 20rpx;
+      background: #f4f5f7;
+      border-radius: 10rpx;
+      border: 1rpx solid $line;
+      font-size: 26rpx;
+      color: $text;
+      box-sizing: border-box;
+      transition: border-color .2s, background .25s;
+
+      &:focus { border-color: #1677ff; }
+      &[disabled] { background: #e8e8e8; color: $hint; }
+    }
+
+    .scan-btn {
+      position: absolute;
+      right: 12rpx;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 56rpx;
+      height: 56rpx;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8rpx;
+    }
+  }
+}
+
+// ── 消息提示 ────
+.message-box {
+  padding: 10rpx 16rpx;
+  margin-bottom: 12rpx;
+  border-radius: 8rpx;
+  font-size: 22rpx;
+  text-align: center;
+  opacity: 0;
+  transition: opacity .25s, background .25s;
+
+  &.show { opacity: 1; }
+  &.success { background: rgba(82,196,26,.08); color: #52c41a; }
+  &.error   { background: rgba(255,77,79,.08); color: #ff4d4f; }
+  &.info    { background: rgba(22,119,255,.08); color: #1677ff; }
+  &.warning { background: rgba(250,140,22,.08); color: #fa8c16; }
+}
+
+// ── 中间区域 ────
+.middle-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0 20rpx;
+}
+.middle-spacer { flex: 0.6; }
+
+// ── 指令按钮列表（未选指令时） ────
+.cmd-buttons-container {
+  width: 100%;
+  padding-bottom: 40rpx;
+}
+.cmd-buttons-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+.cmd-button-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 26rpx 0;
+  border-radius: 10rpx;
+  box-shadow: 0 2rpx 10rpx rgba(22,119,255,.18);
+  transition: transform .15s, box-shadow .15s;
+
+  &:active {
+    transform: scale(.98);
+    box-shadow: 0 1rpx 4rpx rgba(22,119,255,.25);
+  }
+}
+.cmd-name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 1rpx;
+}
+.cmd-empty-tip {
+  display: flex;
+  justify-content: center;
+  padding: 40rpx 0;
+  font-size: 26rpx;
+  color: $hint;
+}
+
+// ── 参数列表容器 ────
+.params-container {
+  @include p-card;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.params-scroll { flex: 1; min-height: 0; }
+
+// ── 参数项 ────
+.param-item {
+  padding: 18rpx 20rpx;
+  border-bottom: 1rpx solid $line;
+  transition: background .15s, border-color .25s;
+
+  &:last-child { border-bottom: none; }
+
+  &.current { background: rgba(22,119,255,.06); }
+  &.filled  { background: rgba(82,196,26,.03); }
+  &.clickable:not(.filled):active { background: rgba(22,119,255,.04); }
+}
+
+// ── 参数行通用布局 ────
+.param-content,
+.num-param-simple {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.param-left {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+.fixed-btn {
+  padding: 6rpx;
+  margin-right: 8rpx;
+  border-radius: 6rpx;
+  flex-shrink: 0;
+  transition: background .15s;
+  &:active { background: rgba(0,0,0,.04); }
+}
+.param-info {
+  flex: 1;
+  min-width: 0;
+}
+.param-name {
+  font-size: 26rpx;
+  font-weight: 500;
+  color: $text;
+  transition: color .25s;
+
+  .required-star { color: #ff4d4f; margin-right: 4rpx; }
+}
+.param-value-wrapper {
+  display: flex;
+  align-items: center;
+  margin-left: 12rpx;
+  flex-shrink: 0;
+}
+.param-value {
+  font-size: 26rpx;
+  color: $text;
+  text-align: right;
+  max-width: 260rpx;
+  word-break: break-all;
+  transition: color .25s;
+
+  &.empty { color: $hint; }
+}
+.cancel-btn {
+  padding: 6rpx;
+  margin-left: 8rpx;
+  border-radius: 6rpx;
+  flex-shrink: 0;
+  background: rgba(156,156,156,.08);
+  &:active { background: rgba(156,156,156,.16); }
+}
+
+// ── isPushErp 特殊行 ────
+.isPushErp-param-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  .isPushErp-value-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8rpx;
+    padding: 8rpx 16rpx;
+    border-radius: 8rpx;
+    background: #f4f5f7;
+    transition: background .25s;
+    &:active { background: $line; }
+  }
+  .isPushErp-text { font-size: 26rpx; color: $text; }
+}
+
+// ── unit 特殊行 ────
+.unit-param-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  .param-left { display: flex; align-items: center; flex: 1; }
+  .param-value-wrapper {
+    .unit-select-wrapper {
+      display: flex;
+      align-items: center;
+      background: #f4f5f7;
+      border-radius: 8rpx;
+      padding: 6rpx 12rpx;
+      gap: 8rpx;
+      transition: background .25s;
+
+      .param-value { max-width: 180rpx; }
+      .unit-select-btn {
+        padding: 4rpx;
+        border-radius: 6rpx;
+        display: flex;
+        &:active { background: rgba(22,119,255,.1); }
+      }
+    }
+  }
+}
+
+// ── 底部按钮栏 ────
+.bottom-section {
+  flex-shrink: 0;
+  background: $card;
+  padding: 16rpx 20rpx;
+  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
+  border-top: 1rpx solid $line;
+  transition: background .25s, border-color .25s;
+}
+.action-buttons {
+  display: flex;
+  gap: 12rpx;
+
+  button {
+    font-size: 28rpx;
+    border-radius: 10rpx;
+    padding: 16rpx 0;
+    transition: all .15s;
+  }
+  button::after { border: none; }
+
+  .detail-btn {
+    flex: .8;
+    background: #f4f5f7;
+    color: $sub;
+    &:active { background: $line; }
+  }
+  .reset-btn {
+    flex: 1;
+    background: #f4f5f7;
+    color: $sub;
+    &:active { background: $line; }
+  }
+  .submit-btn {
+    flex: 1.2;
+    color: #fff;
+    border: none;
+    &:active { opacity: .85; transform: scale(.98); }
+    &[disabled] { background: #d9d9d9 !important; color: #999; transform: none; opacity: 1; }
+  }
+}
+
+// ── 初始提示 ────
+.initial-tip {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: $hint;
+  font-size: 28rpx;
+  @include p-card;
+}
+
+// ── 弹窗通用 ────
+.popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 20rpx;
+  border-bottom: 1rpx solid $line;
+  margin-bottom: 20rpx;
+
+  .popup-title {
+    font-size: 30rpx;
+    font-weight: 600;
+    color: $text;
+    transition: color .25s;
+  }
+}
+.popup-footer {
+  padding-top: 20rpx;
+  border-top: 1rpx solid $line;
+  margin-top: 20rpx;
+
+  .cancel-btn {
+    width: 100%;
+    height: 80rpx;
+    line-height: 80rpx;
+    background: #f4f5f7;
+    color: $sub;
+    border: none;
+    border-radius: 10rpx;
+    font-size: 28rpx;
+    &:active { background: $line; }
+  }
+}
+
+// ── SN选择弹窗 ────
+.sn-select-popup {
+  background: $card;
+  border-radius: 20rpx 20rpx 0 0;
+  padding: 24rpx;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  transition: background .25s;
+}
+.sn-list { flex: 1; max-height: 55vh; }
+.sn-item {
+  background: #f4f5f7;
+  border-radius: 10rpx;
+  padding: 20rpx;
+  margin-bottom: 14rpx;
+  border: 1rpx solid transparent;
+  transition: all .15s;
+
+  &:active { background: $line; border-color: #1677ff; }
+
+  .sn-header {
+    padding-bottom: 10rpx;
+    margin-bottom: 10rpx;
+    border-bottom: 1rpx dashed #ddd;
+    .sn-value { display: flex; align-items: center; gap: 8rpx; }
+    .sn-label { font-size: 24rpx; color: $sub; }
+    .sn-text  { font-size: 24rpx; color: $text; font-weight: 600; }
+  }
+  .sn-fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10rpx;
+    .field-item {
+      background: $card;
+      padding: 6rpx 12rpx;
+      border-radius: 6rpx;
+      font-size: 22rpx;
+      .field-label { color: $sub; }
+      .field-value { color: $text; font-weight: 500; }
+    }
+  }
+}
+
+// ── 单位选择弹窗 ────
+.unit-select-popup {
+  background: $card;
+  border-radius: 20rpx 20rpx 0 0;
+  padding: 24rpx;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  transition: background .25s;
+}
+.unit-list { flex: 1; max-height: 55vh; }
+.unit-item {
+  background: #f4f5f7;
+  border-radius: 10rpx;
+  padding: 20rpx;
+  margin-bottom: 14rpx;
+  border: 1rpx solid transparent;
+  transition: all .15s;
+
+  &:active { background: $line; border-color: #1677ff; }
+
+  .unit-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    .unit-name { font-size: 28rpx; font-weight: 500; color: $text; }
+    .unit-code { font-size: 22rpx; color: $hint; background: $card; padding: 4rpx 12rpx; border-radius: 20rpx; }
+  }
+}
+
+// ── 第三行（明细选择） ────
+.third-row {
+  margin-bottom: 12rpx;
+  .detail-selector-wrapper {
+    .detail-status {
+      margin-top: 8rpx;
+      font-size: 22rpx;
+
+      .loading-status { color: #1677ff; }
+      .error-status {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        .error-text { color: #ff4d4f; }
+        .retry-btn {
+          background: #1677ff;
+          color: #fff;
+          border: none;
+          border-radius: 6rpx;
+          padding: 6rpx 16rpx;
+          font-size: 22rpx;
+        }
+      }
+      .empty-status { color: $hint; }
+    }
+  }
+}
+
+// ═══════════════════════════════════════
+// 尺寸响应
+// ═══════════════════════════════════════
+
+.size-small {
+  .top-section { padding: 10rpx 14rpx 0; }
+  .form-container { padding: 14rpx; border-radius: 10rpx; }
+  .first-row .code-type-compact .code-type-btn { padding: 6rpx 10rpx; font-size: 20rpx; }
+  .scan-input-wrapper .scan-input { height: 64rpx; font-size: 22rpx; padding: 0 64rpx 0 14rpx; }
+  .message-box { padding: 8rpx 12rpx; font-size: 20rpx; }
+  .param-item { padding: 12rpx 14rpx; }
+  .param-name { font-size: 22rpx; }
+  .param-value { font-size: 22rpx; max-width: 200rpx; }
+  .cmd-button-item { padding: 18rpx 0; }
+  .cmd-name { font-size: 24rpx; }
+  .action-buttons button { font-size: 24rpx; padding: 12rpx 0; }
+  .popup-header .popup-title { font-size: 26rpx; }
+  .sn-item .sn-header .sn-label,
+  .sn-item .sn-header .sn-text { font-size: 20rpx; }
+  .unit-item .unit-name { font-size: 24rpx; }
+  .bottom-section { padding: 12rpx 14rpx; }
+}
+
+.size-large {
+  .top-section { padding: 22rpx 28rpx 0; }
+  .form-container { padding: 28rpx; border-radius: 16rpx; }
+  .first-row .code-type-compact .code-type-btn { padding: 14rpx 20rpx; font-size: 28rpx; }
+  .scan-input-wrapper .scan-input { height: 96rpx; font-size: 30rpx; padding: 0 96rpx 0 24rpx; }
+  .message-box { padding: 14rpx 20rpx; font-size: 26rpx; }
+  .param-item { padding: 24rpx 28rpx; }
+  .param-name { font-size: 30rpx; }
+  .param-value { font-size: 30rpx; max-width: 320rpx; }
+  .cmd-button-item { padding: 34rpx 0; }
+  .cmd-name { font-size: 32rpx; }
+  .action-buttons button { font-size: 32rpx; padding: 20rpx 0; }
+  .popup-header .popup-title { font-size: 36rpx; }
+  .sn-item .sn-header .sn-label,
+  .sn-item .sn-header .sn-text { font-size: 26rpx; }
+  .unit-item .unit-name { font-size: 32rpx; }
+  .bottom-section { padding: 20rpx 28rpx; }
+}
+
+
+// ═══════════════════════════════════════
+// 深色模式（适配 my.vue 配置）
+// ═══════════════════════════════════════
+
+.theme-dark {
+  &.page { background: #0f0f1a; }
+
+  .top-section,
+  .bottom-section { background: #1a1a2e; }
+  .bottom-section { border-top-color: #2a2a45; }
+
+  .form-container,
+  .params-container,
+  .initial-tip { background: #1a1a2e; box-shadow: 0 2rpx 16rpx rgba(0,0,0,.25); }
+
+  .scan-input-wrapper .scan-input {
+    background: #1e1e36;
+    border-color: #2a2a45;
+    color: #e0e0e0;
+  }
+
+  .first-row .code-type-compact {
+    background: #1e1e36;
+    .code-type-btn {
+      color: #888;
+      &.active { background: #2a2a45; color: #7cadff; }
+    }
+  }
+
+  .param-item {
+    border-bottom-color: #2a2a2a;
+    &.current { background: rgba(22,119,255,.08); }
+    &.filled  { background: rgba(82,196,26,.06); }
+  }
+
+  .param-name { color: #e0e0e0; }
+  .param-value { color: #e0e0e0; &.empty { color: #666; } }
+
+  .sn-select-popup,
+  .unit-select-popup { background: #1a1a2e; }
+
+  .sn-item,
+  .unit-item { background: #1e1e36; }
+
+  .sn-item .sn-header { border-bottom-color: #2a2a45; }
+  .sn-item .sn-fields .field-item { background: #252540; }
+  .sn-item .sn-header .sn-text,
+  .unit-item .unit-info .unit-name { color: #e0e0e0; }
+
+  .unit-item .unit-info .unit-code { background: #252540; }
+
+  .popup-header,
+  .popup-footer { border-color: #2a2a45; }
+  .popup-header .popup-title { color: #e0e0e0; }
+  .popup-footer .cancel-btn { background: #1e1e36; color: #888; }
+
+  .isPushErp-param-content .isPushErp-value-wrapper {
+    background: #1e1e36;
+  }
+  .isPushErp-text { color: #e0e0e0; }
+
+  .unit-param-content .param-value-wrapper .unit-select-wrapper {
+    background: #1e1e36;
+  }
+
+  .action-buttons {
+    .detail-btn,
+    .reset-btn { background: #1e1e36; color: #888; }
+  }
+
+  .fixed-btn:active { background: rgba(255,255,255,.04); }
+  .cancel-btn { background: rgba(255,255,255,.04); }
+  .message-box {
+    &.success { background: rgba(82,196,26,.1); }
+    &.error   { background: rgba(255,77,79,.1); }
+    &.info    { background: rgba(22,119,255,.1); }
+  }
+
+  .third-row .detail-status {
+    .loading-status { color: #7cadff; }
+    .error-status .retry-btn { background: #7cadff; }
+    .empty-status { color: #555; }
+  }
+}
+
+
+═══════════════════════════════════════════════════════════════════════════════
+二、components/doc-detail-popup.vue —— 详情弹窗组件
+═══════════════════════════════════════════════════════════════════════════════
+
+【1】模板根元素：增加 darkClass
+--------------------------------------------------------
+<view class="detail-container" :class="[sizeClass]">
+改为：
+<view class="detail-container" :class="[sizeClass, darkClass]">
+
+同样 edit-modal：
+<view class="edit-modal" :class="[sizeClass]">
+改为：
+<view class="edit-modal" :class="[sizeClass, darkClass]">
+
+【2】script：替换 mixin
+--------------------------------------------------------
+删除：
+import styleManager from '@/common/styleManager.js';
+
+新增：
+import settingsMixin from '@/common/settingsMixin.js';
+
+mixins: [styleManager.styleMixin],
+改为：
+mixins: [settingsMixin],
+
+删除 data 中的 iconSize（由 settingsMixin 管理）
+删除 methods 中的 updateIconSizes()
+删除 watch 中的 currentSize
+
+模板中所有 :size="iconSize" 改为固定值或使用 CSS
+
+【3】SCSS 增加深色模式
+--------------------------------------------------------
+在 </style> 之前追加以下深色样式：
+
+.theme-dark {
+  .detail-container { background: #1a1a2e; }
+
+  .tabs-container { border-bottom-color: #2a2a45; }
+  .tab-item { color: #888;
+    &.active { color: #7cadff; }
+  }
+
+  .info-card { background: #1e1e36; }
+  .info-list .info-item {
+    border-bottom-color: #2a2a45;
+    .info-label { color: #888; }
+    .info-value { color: #e0e0e0; }
+  }
+
+  .pagination-bar { background: #1a1a2e; border-bottom-color: #2a2a45; }
+
+  .table-container {
+    .table-header .table-cell { background: #1e1e36; color: #e0e0e0; }
+    .table-body .table-row { border-bottom-color: #2a2a45; }
+    .table-body .table-cell { color: #888; }
+  }
+
+  .sub-table-item { background: #1e1e36; }
+  .sub-table-item .item-header { border-bottom-color: #2a2a45; }
+
+  .edit-modal {
+    background: #1a1a2e;
+    .modal-header { border-bottom-color: #2a2a45; }
+    .modal-title { color: #e0e0e0; }
+    .modal-footer { border-top-color: #2a2a45; }
+    .form-label { color: #888; }
+    .form-value { color: #e0e0e0; border-bottom-color: #2a2a45; }
+    .form-input { color: #e0e0e0; border-bottom-color: #2a2a45; }
+  }
+}
+
+
+═══════════════════════════════════════════════════════════════════════════════
+三、components/SearchSelector.vue —— 搜索选择器组件
+═══════════════════════════════════════════════════════════════════════════════
+
+这个组件没有使用 mixin，需要增加 props 接收主题信息或使用 CSS 变量。
+推荐方案：通过 props 接收 theme-primary 颜色，保持组件独立性。
+
+【1】新增 props
+--------------------------------------------------------
+themeColor: { type: String, default: '#1677ff' },
+themeBg:    { type: String, default: 'rgba(22,119,255,0.05)' },
+darkMode:   { type: Boolean, default: false }
+
+【2】模板绑定动态色
+--------------------------------------------------------
+所有 color="#1677ff" → :color="themeColor"
+选中背景 rgba(22,119,255,0.02) → :style="isSelected(item) ? { background: themeBg } : {}"
+
+【3】根元素加 class
+--------------------------------------------------------
+<view class="search-selector" :class="{ 'theme-dark': darkMode }">
+
+【4】SCSS 增加深色
+--------------------------------------------------------
+.theme-dark {
+  .selector-trigger {
+    background: #1e1e36;
+    border-color: #2a2a45;
+    &.disabled { background: #252540; border-color: #2a2a45; }
+  }
+  .trigger-text { color: #e0e0e0; &.placeholder { color: #555; } }
+
+  .popup-container { background: #1a1a2e; }
+  .popup-header {
+    border-bottom-color: #2a2a45;
+    .popup-title { color: #e0e0e0; }
+    .search-box { background: #1e1e36; }
+    .search-input { color: #e0e0e0; }
+  }
+
+  .option-item {
+    border-bottom-color: #2a2a2a;
+    &:active:not(.disabled) { background: #1e1e36; }
+    &.disabled { background: #1a1a2e; }
+  }
+  .option-name { color: #e0e0e0; }
+  .option-desc { color: #666; }
+}
+
+【5】在 docCommand.vue 中使用时传参
+--------------------------------------------------------
+<search-selector
+  ...
+  :themeColor="themePrimary"
+  :themeBg="themeAccent"
+  :darkMode="appSettings.darkMode === 'dark'"
+/>
+
+
+═══════════════════════════════════════════════════════════════════════════════
+四、docOpt.vue —— 列表页（已使用 settingsMixin，样式较完善，微调）
+═══════════════════════════════════════════════════════════════════════════════
+
+已在用 settingsMixin + page-theme-mixins.scss，状态较好。
+可选微调：将 go-top 按钮的 background 改为动态主题色。
+当前：:style="{ background: themePrimary }"（已正确）
+
+传递 themeColor 给 CommonSelector：
+<CommonSelector ... :themeColor="themePrimary" :themeBg="themeAccent" />
+
+
+═══════════════════════════════════════════════════════════════════════════════
+五、CommonSelector.vue —— 通用选择器（同样需要加主题支持）
+═══════════════════════════════════════════════════════════════════════════════
+
+同 SearchSelector 方案，加 props themeColor / darkMode
+在 docOpt.vue 中传参即可。
+
+
+═══════════════════════════════════════════════════════════════════════════════
+总结：改动文件清单
+═══════════════════════════════════════════════════════════════════════════════
+
+1. pages/wms/docOpt/docCommand.vue  —— 主要改动（mixin替换 + SCSS重写 + 深色模式）
+2. components/doc-detail-popup.vue   —— mixin替换 + 深色模式样式
+3. components/SearchSelector.vue     —— 加 theme props + 深色样式
+4. components/CommonSelector.vue     —— 加 theme props + 深色样式（需读文件确认细节）
+5. pages/wms/docOpt/docOpt.vue       —— 传 themeColor / themeBg 给子组件

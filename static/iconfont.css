@@ -1,0 +1,91 @@
+@font-face {
+  font-family: "iconfont"; /* Project id 2754020 */
+  src: url("~@/static/iconfont.ttf?t=1654149681142") format("truetype");
+}
+
+.iconfont {
+  font-family: "iconfont" !important;
+  font-size: 16px;
+  font-style: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+
+
+/* 图标字体库 - 合并版本 */
+
+/* 按content值排序的图标 */
+
+/* content: "\e639" - 您缺少的图标 */
+.icon-shishikucuntongji:before {
+  content: "\e639";
+}
+
+/* content: "\e641" - 批量报工 */
+.icon-baogong1:before,
+.icon-batchReport:before {
+  content: "\e641";
+}
+
+/* content: "\e647" - 单个报工 */
+.icon-baogong:before,
+.icon-indivReport:before {
+  content: "\e647";
+}
+
+/* content: "\e648" - 库存作业 */
+.icon-kcgl-kucunzuoye:before {
+  content: "\e648";
+}
+
+/* content: "\e649" - 盘点记录 */
+.icon-pandianjilu:before,
+.icon-pandian:before {
+  content: "\e649";
+}
+
+/* content: "\e670" - 调拨单 */
+.icon-tiaobodan:before,
+.icon-diaobo:before {
+  content: "\e670";
+}
+
+/* content: "\e6cb" - 出库 */
+.icon-chuku:before {
+  content: "\e6cb";
+}
+
+/* content: "\e6cc" - 入库 */
+.icon-ruku:before {
+  content: "\e6cc";
+}
+
+/* content: "\e751" - 扫码/扫描 */
+.icon-saoyisaosaoma:before,
+.icon-saoma:before {
+  content: "\e751";
+}
+
+/* content: "\e7b9" - 指令管理 */
+.icon-zhilingguanli:before,
+.icon-zhiling:before {
+  content: "\e7b9";
+}
+
+/* content: "\e89a" - 单据线性 */
+.icon-danju-xianxing:before {
+  content: "\e89a";
+}
+
+/* content: "\e89d" - 其他订单 */
+.icon-qitadingdan:before,
+.icon-other:before {
+  content: "\e89d";
+}
+
+/* content: "\e8dd" - PDA手持工作设备 */
+.icon-PDAshouchigongzuoshebei:before {
+  content: "\e8dd";
+}
+

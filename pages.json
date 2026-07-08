@@ -1,0 +1,177 @@
+{
+	"pages": [{
+			"path": "pages/login/login",
+			"style": {
+				"navigationStyle": "custom",
+				"app-plus": {
+					"titleNView": false
+				}
+			}
+		},
+		{
+			"path": "pages/index/index",
+			"style": {
+				"navigationBarTitleText": "工作台",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black",
+				"app-plus": {
+					"titleNView": {
+						"buttons": [{
+							"text": "\ue751",
+							"fontSrc": "/static/iconfont.ttf",
+							"fontSize": "30px",
+							"fontWeight": "bold",
+							"color": "#333333",
+							"width": "44px"
+						}],
+						"backgroundColor": "#ffffff",
+						"titleColor": "#333333"
+					}
+				}
+			}
+		},
+		{
+			"path": "pages/index/allTasks",
+			"style": {
+				"navigationBarTitleText": "全部任务",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black",
+				"enablePullDownRefresh": false,
+				"backgroundTextStyle": "dark"
+			}
+		},
+		{
+			"path": "pages/my/my",
+			"style": {
+				"navigationBarTitleText": "个人中心",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black",
+				"enablePullDownRefresh": false,
+				"backgroundTextStyle": "dark"
+			}
+		},
+		{
+			"path": "pages/mes/index/index",
+			"style": {
+				"navigationBarTitleText": "MES作业中心",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black",
+				"enablePullDownRefresh": false
+			}
+		},
+		{
+			"path": "pages/mes/report/indivReport",
+			"style": {
+				"navigationBarTitleText": "个体报工",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black",
+				"enablePullDownRefresh": false
+			}
+		},
+		{
+			"path": "pages/mes/report/batchReport",
+			"style": {
+				"navigationBarTitleText": "批次报工",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black",
+				"enablePullDownRefresh": false
+			}
+		},
+		{
+			"path": "pages/wms/index/index",
+			"style": {
+				"navigationBarTitleText": "WMS作业中心",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black",
+				"enablePullDownRefresh": false
+			}
+		},
+		{
+			"path": "pages/wms/docOpt/docOpt",
+			"style": {
+				"navigationBarTitleText": "单据作业",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black",
+				"enablePullDownRefresh": false
+			}
+		},
+		{
+			"path": "pages/wms/docOpt/docCommand",
+			"style": {
+				"navigationBarTitleText": "指令操作",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black",
+				"enablePullDownRefresh": false
+			}
+		},
+		{
+			"path": "pages/wms/commandOpt/commandOpt",
+			"style": {
+				"navigationBarTitleText": "指令作业",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black",
+				"enablePullDownRefresh": false
+			}
+		},
+		{
+			"path": "pages/wms/realTimeInventory/realTimeInventory",
+			"style": {
+				"navigationBarTitleText": "实时库存",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black",
+				"enablePullDownRefresh": false
+			}
+		},
+		{
+			"path": "pages/wms/scanOpt/scanOpt",
+			"style": {
+				"navigationBarTitleText": "扫码信息",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black",
+				"enablePullDownRefresh": false
+			}
+		}
+	],
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "条码系统",
+		"navigationBarBackgroundColor": "#ffffff",
+		"backgroundColor": "#f8f9fa",
+		"backgroundTextStyle": "dark",
+		"app-plus": {
+			"background": "#f8f9fa"
+		}
+	},
+	"tabBar": {
+		"color": "#999999",
+		"selectedColor": "#2979ff",
+		"borderStyle": "white",
+		"backgroundColor": "#ffffff",
+		"boxShadow": "0 -1px 6px rgba(0,0,0,0.03)",
+		"list": [{
+				"pagePath": "pages/index/index",
+				"iconPath": "static/index.png",
+				"selectedIconPath": "static/index_s.png",
+				"text": "工作台",
+				"iconWidth": "22px",
+				"fontSize": "10px"
+			},
+			{
+				"pagePath": "pages/my/my",
+				"iconPath": "static/my.png",
+				"selectedIconPath": "static/my_s.png",
+				"text": "我的",
+				"iconWidth": "22px",
+				"fontSize": "10px"
+			}
+		]
+	},
+	"condition": {
+		"current": 0,
+		"list": [{
+			"name": "",
+			"path": "",
+			"query": ""
+		}]
+	}
+}

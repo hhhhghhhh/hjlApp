@@ -1,0 +1,104 @@
+// common/page-theme-mixins.scss
+// 页面主题响应 Mixin 库
+// 各页面 @import 后 @include 即可获得完整的尺寸/深色响应
+//
+// 用法：
+//   <style lang="scss" scoped>
+//   @import '@/common/page-theme-mixins.scss';
+//   .page { @include p-page; }
+//   .card { @include p-card; }
+//   @include pt-size-small;   // .size-small 级联
+//   @include pt-size-large;   // .size-large 级联
+//   @include pt-dark;         // .theme-dark 级联
+//   </style>
+
+// ═══════════════════════════════════════════
+// 通用组件预设（各页面包一层即可）
+// ═══════════════════════════════════════════
+
+@mixin p-page {
+  min-height: 100vh;
+  background: #f0f2f5;
+  box-sizing: border-box;
+  transition: background .25s ease;
+}
+
+@mixin p-card {
+  background: #ffffff;
+  border-radius: 16rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0,0,0,.04);
+  transition: background .25s, box-shadow .25s;
+}
+
+@mixin p-sep {
+  height: 1rpx;
+  background: #e5e7eb;
+  transition: background .25s;
+}
+
+// ═══════════════════════════════════════════
+// 尺寸小号 —— 缩小 20~25%
+// ═══════════════════════════════════════════
+
+@mixin pt-size-small {
+  .size-small & {
+    // 这些规则被子选择器继承
+  }
+}
+
+// ═══════════════════════════════════════════
+// 尺寸大号 —— 放大 20~25%
+// ═══════════════════════════════════════════
+
+@mixin pt-size-large {
+  .size-large & {
+  }
+}
+
+// ═══════════════════════════════════════════
+// 深色模式 —— 全局色值覆写
+// ═══════════════════════════════════════════
+
+@mixin pt-dark-base {
+  .theme-dark & {
+    background: #0f0f1a;
+  }
+}
+
+@mixin pt-dark-card {
+  .theme-dark & {
+    background: #1a1a2e;
+    box-shadow: 0 2rpx 16rpx rgba(0,0,0,.25);
+  }
+}
+
+@mixin pt-dark-text {
+  .theme-dark & {
+    color: #e0e0e0;
+  }
+}
+
+@mixin pt-dark-sub {
+  .theme-dark & {
+    color: #888;
+  }
+}
+
+@mixin pt-dark-hint {
+  .theme-dark & {
+    color: #666;
+  }
+}
+
+@mixin pt-dark-sep {
+  .theme-dark & {
+    background: #2a2a45;
+  }
+}
+
+@mixin pt-dark-field {
+  .theme-dark & {
+    background: #1e1e36;
+    border-color: #2a2a45;
+  }
+}
