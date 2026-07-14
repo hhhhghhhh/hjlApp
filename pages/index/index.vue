@@ -1,222 +1,370 @@
 <template>
 	<view class="page" :class="[sizeClass, darkClass, themeClass]">
-		<!-- ════ 最近任务 ════ -->
-		<view class="card tasks">
-			<view class="tasks-head">
-				<text class="tasks-title">最近任务</text>
-				<text class="tasks-all" @click="viewAllTasks">查看全部 ›</text>
+		<!-- ════ 出入库 ════ -->
+		<view class="card">
+			<view class="card-header">
+				<text class="card-title">出入库</text>
 			</view>
-
-			<view v-if="loading" class="tasks-loading"><text>加载中…</text></view>
-
-			<view v-else-if="recentTasks.length > 0" class="tasks-list">
-				<view v-for="task in recentTasks" :key="task.id" class="t-item" @click="viewTaskDetail(task)">
-					<view class="t-body">
-						<text class="t-type">{{ task.docType_dictText || getTaskTypeText(task.docTypeFlag) }}</text>
-						<text class="t-no">{{ task.docNo }}</text>
-						<text class="t-time">{{ formatTime(task.createTime) }}</text>
+			<view class="func-grid">
+				<!-- 采购入库 - 直接跳转 docOpt -->
+				<view class="func-item" @click="goToDocOpt('purchaseReceipt')">
+					<view class="func-icon" style="background: #4A90D9;">
+						<uni-icons type="download" size="32" color="#fff"></uni-icons>
 					</view>
-					<view class="t-tag" :class="'tag-' + getDisplayStatus(task)">
-						<text>{{ getStatusText(task) }}</text>
+					<text class="func-name">采购入库</text>
+				</view>
+				<!-- 销售出货 - 直接跳转 docOpt -->
+				<view class="func-item" @click="goToDocOpt('salesShipment')">
+					<view class="func-icon" style="background: #7B6CD9;">
+						<uni-icons type="shop" size="32" color="#fff"></uni-icons>
 					</view>
+					<text class="func-name">销售出货</text>
+				</view>
+				<!-- 生产领料 - 直接跳转 docOpt -->
+				<view class="func-item" @click="goToDocOpt('prodMaterial')">
+					<view class="func-icon" style="background: #E8833A;">
+						<uni-icons type="compose" size="32" color="#fff"></uni-icons>
+					</view>
+					<text class="func-name">生产领料</text>
+				</view>
+				<!-- 完工入库 - 直接跳转 docOpt -->
+				<view class="func-item" @click="goToDocOpt('prodComplete')">
+					<view class="func-icon" style="background: #3BA37F;">
+						<uni-icons type="upload" size="32" color="#fff"></uni-icons>
+					</view>
+					<text class="func-name">完工入库</text>
 				</view>
 			</view>
-
-			<view v-else class="tasks-empty"><text>暂无任务</text></view>
 		</view>
 
-		<!-- ════ 快捷入口 ════ -->
-		<view class="entries">
-			<view class="card entry" @click="goToWMS">
-				<view class="entry-icon" :style="{ background: themeAccent }">
-					<uni-icons type="home" size="28" :color="themePrimary"></uni-icons>
-				</view>
-				<view class="entry-body">
-					<text class="entry-title">WMS 作业中心</text>
-					<!-- <text class="entry-desc">入库 · 出库 · 调拨 · 盘点</text> -->
-				</view>
-				<text class="entry-arrow">›</text>
+		<!-- ════ 绑定管理 ════ -->
+		<view class="card">
+			<view class="card-header">
+				<text class="card-title">绑定管理</text>
 			</view>
+			<view class="func-grid">
+				<view class="func-item" @click="goToOptModule('packageBind')">
+					<view class="func-icon" style="background: #3BA37F;">
+						<uni-icons type="checkbox" size="32" color="#fff"></uni-icons>
+					</view>
+					<text class="func-name">包装绑定</text>
+				</view>
+				<view class="func-item" @click="goToOptModule('packageUnbind')">
+					<view class="func-icon" style="background: #D9726A;">
+						<uni-icons type="closeempty" size="32" color="#fff"></uni-icons>
+					</view>
+					<text class="func-name">包装解绑</text>
+				</view>
+				<view class="func-item" @click="goToOptModule('keyPartUnbind')">
+					<view class="func-icon" style="background: #E8833A;">
+						<uni-icons type="closeempty" size="32" color="#fff"></uni-icons>
+					</view>
+					<text class="func-name">关键件解绑</text>
+				</view>
+			</view>
+		</view>
 
-			<!-- <view class="card entry" @click="goToMES">
-				<view class="entry-icon" :style="{ background: themeAccent }">
-					<uni-icons type="compose" size="28" :color="themePrimary"></uni-icons>
+		<!-- ════ 查询管理 ════ -->
+		<view class="card">
+			<view class="card-header">
+				<text class="card-title">查询管理</text>
+			</view>
+			<view class="func-grid">
+				<view class="func-item" @click="goToOptModule('snQuery')">
+					<view class="func-icon" style="background: #50B7E0;">
+						<uni-icons type="search" size="32" color="#fff"></uni-icons>
+					</view>
+					<text class="func-name">产品SN查询</text>
 				</view>
-				<view class="entry-body">
-					<text class="entry-title">MES 作业中心</text>
-					<text class="entry-desc">个体报工 · 批次报工</text>
+				<view class="func-item" @click="goToOptModule('keyPartQuery')">
+					<view class="func-icon" style="background: #4A90D9;">
+						<uni-icons type="search" size="32" color="#fff"></uni-icons>
+					</view>
+					<text class="func-name">关键件查询</text>
 				</view>
-				<text class="entry-arrow">›</text>
-			</view> -->
+			</view>
+		</view>
+
+		<!-- ════ 维修管理 ════ -->
+		<view class="card">
+			<view class="card-header">
+				<text class="card-title">维修管理</text>
+			</view>
+			<view class="func-grid">
+				<view class="func-item" @click="goToOptModule('productRepair')">
+					<view class="func-icon" style="background: #D9726A;">
+						<uni-icons type="gear" size="32" color="#fff"></uni-icons>
+					</view>
+					<text class="func-name">产品维修</text>
+				</view>
+				<view class="func-item" @click="goToOptModule('partReplace')">
+					<view class="func-icon" style="background: #7B6CD9;">
+						<uni-icons type="refresh" size="32" color="#fff"></uni-icons>
+					</view>
+					<text class="func-name">配件更换</text>
+				</view>
+			</view>
 		</view>
 	</view>
 </template>
 
 <script>
-import { getAllDocList } from '@/api/wmsApi.js';
-import settingsMixin from '@/common/settingsMixin.js';
+	import settingsMixin from '@/common/settingsMixin.js';
 
-export default {
-	mixins: [settingsMixin],
+	export default {
+		mixins: [settingsMixin],
 
-	data() {
-		return {
-			recentTasks: [],
-			allTasks: [],
-			loading: false
-		};
-	},
+		data() {
+			return {
+				docTypeMap: {
+					purchaseReceipt: {
+						typeSn: 'DJ02',
+						operateType: '1',
+						typeName: '采购入库单'
+					},
+					salesShipment: {
+						typeSn: 'DJ12',
+						operateType: '2',
+						typeName: '销售出货单'
+					},
+					prodMaterial: {
+						typeSn: 'DJ11',
+						operateType: '2',
+						typeName: '生产领料单'
+					},
+					prodComplete: {
+						typeSn: 'DJ05',
+						operateType: '1',
+						typeName: '完工入库单'
+					}
+				}
+			};
+		},
+		onNavigationBarButtonTap() {
+			uni.$toPath('/pages/wms/scanOpt/scanOpt');
+		},
+		methods: {
+			// 四个核心模块：直接跳转 docOpt
+			goToDocOpt(module) {
+				const config = this.docTypeMap[module];
+				if (config) {
+					uni.navigateTo({
+						url: `/pages/wms/docOpt/docOpt?docType=${config.typeSn}&operateType=${config.operateType}&typeName=${encodeURIComponent(config.typeName)}`
+					});
+				}
+			},
 
-	onLoad() { this.loadData(); },
-	onShow() { this.loadData(); },
-	onPullDownRefresh() { this.loadData().then(() => uni.stopPullDownRefresh()); },
-	onNavigationBarButtonTap() { uni.$toPath('/pages/wms/scanOpt/scanOpt'); },
-
-	methods: {
-		async loadData() {
-			this.loading = true;
-			try {
-				const allowed = (uni.getStorageSync('pdaPermissions') || []).map(p => p.component);
-				const res = await getAllDocList();
-				if (!res?.data?.success) return;
-
-				let docs = [];
-				Object.entries(res.data.result).forEach(([key, list]) => {
-					if (list?.length) docs.push(...list.map(doc => ({ ...doc, docTypeFlag: this.docFlag(key), snType: key })));
+			// 其他模块：跳转 optMdule 页面通过组件展示
+			goToOptModule(module) {
+				const titles = {
+					packageBind: '包装绑定',
+					packageUnbind: '包装解绑',
+					keyPartUnbind: '关键件解绑',
+					snQuery: '产品 SN 查询',
+					keyPartQuery: '关键件查询',
+					productRepair: '产品维修',
+					partReplace: '配件更换'
+				};
+				uni.navigateTo({
+					url: `/pages/optMdule/index/index?module=${module}&title=${encodeURIComponent(titles[module] || module)}`
 				});
-				docs.sort((a, b) => new Date(b.createTime) - new Date(a.createTime));
-				if (allowed.length) docs = docs.filter(d => allowed.includes(d.docType));
-				this.allTasks = docs;
-				this.recentTasks = docs.slice(0, 3);
-			} catch (e) { /* skip */ } finally { this.loading = false; }
-		},
-
-		docFlag(key) { return { '2': 'receive', '3': 'outstock', '4': 'allot', '5': 'inventory' }[key] || 'unknown'; },
-
-		getDisplayStatus(task) {
-			const s = task.docStatus || task.invDocStatus;
-			if (task.docTypeFlag !== 'inventory') return s;
-			return { '1': '1', '2': '2', '3': '3', '6': '3', '7': '2', '8': '3', '9': '3' }[s] || '1';
-		},
-
-		getStatusText(task) { return { '1': '待处理', '2': '处理中', '3': '已完成' }[this.getDisplayStatus(task)] || '--'; },
-		getTaskTypeText(f) { return { receive: '入库', outstock: '出库', allot: '调拨', inventory: '盘点' }[f] || '未知'; },
-
-		formatTime(time) {
-			if (!time) return '';
-			try {
-				const d = new Date(time);
-				if (isNaN(d.getTime())) return String(time).substring(0, 10);
-				const now = new Date(), diff = now - d;
-				if (diff < 0) return `${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-				const hm = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-				if (d.toDateString() === now.toDateString()) return `今天 ${hm}`;
-				const y = new Date(now); y.setDate(y.getDate()-1);
-				if (d.toDateString() === y.toDateString()) return `昨天 ${hm}`;
-				const days = Math.floor(diff/86400000);
-				if (days < 7) return `${days}天前`;
-				return `${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-			} catch (e) { return String(time).substring(0, 10); }
-		},
-
-		viewTaskDetail(task) {
-			const m = { receive: '入库单', outstock: '出库单', allot: '调拨单', inventory: '盘点单' };
-			const tn = m[task.docTypeFlag];
-			if (!tn) { uni.showToast({ title: '未知单据类型', icon: 'none' }); return; }
-			uni.navigateTo({ url: `/pages/wms/docOpt/docCommand?docData=${encodeURIComponent(JSON.stringify(task))}&typeName=${encodeURIComponent(tn)}` });
-		},
-
-		viewAllTasks() { if (this.allTasks.length) uni.navigateTo({ url: '/pages/index/allTasks?tasks=' + encodeURIComponent(JSON.stringify(this.allTasks)) }); },
-		goToWMS() { uni.navigateTo({ url: '/pages/wms/index/index' }); },
-		goToMES() { uni.navigateTo({ url: '/pages/mes/index/index' }); }
-	}
-};
+			}
+		}
+	};
 </script>
 
 <style lang="scss" scoped>
-@import '@/common/page-theme-mixins.scss';
+	@import '@/common/page-theme-mixins.scss';
 
-$bg: #f0f2f5; $text: #1a1a2e; $sub: #6b7280; $hint: #9ca3af; $line: #e5e7eb;
+	$bg: #f0f2f5;
+	$text: #1a1a2e;
+	$line: #e5e7eb;
 
-.page { @include p-page; background: $bg; padding: 20rpx 24rpx; display: flex; flex-direction: column; gap: 20rpx; }
+	.page {
+		@include p-page;
+		background: $bg;
+		padding: 20rpx 24rpx;
+		display: flex;
+		flex-direction: column;
+		gap: 20rpx;
+	}
 
-.card { @include p-card; overflow: hidden; }
-.tasks { padding: 28rpx; }
-.tasks-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20rpx; }
-.tasks-title { font-size: 30rpx; font-weight: 700; color: $text; transition: color .25s; }
-.tasks-all { font-size: 24rpx; color: $hint; transition: color .25s; }
-.tasks-loading, .tasks-empty { text-align: center; padding: 48rpx 0; font-size: 24rpx; color: $hint; }
-.tasks-list { display: flex; flex-direction: column; gap: 12rpx; }
-.t-item { display: flex; align-items: center; padding: 20rpx; border-radius: 12rpx; background: #f7f8fa; border: 1rpx solid $line; transition: background .15s; &:active { background: #eef1f6; } }
-.t-body { flex: 1; min-width: 0; }
-.t-type { display: block; font-size: 26rpx; font-weight: 600; color: $text; margin-bottom: 4rpx; }
-.t-no { display: block; font-size: 22rpx; color: $sub; margin-bottom: 2rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.t-time { display: block; font-size: 20rpx; color: $hint; }
-.t-tag { padding: 6rpx 16rpx; border-radius: 16rpx; font-size: 20rpx; flex-shrink: 0; margin-left: 16rpx;
-	&.tag-1 { background: #fff3e0; color: #e65100; }
-	&.tag-2 { background: #e3f2fd; color: #1565c0; }
-	&.tag-3 { background: #e8f5e9; color: #2e7d32; }
-}
+	.card {
+		@include p-card;
+		overflow: hidden;
+		padding: 28rpx 24rpx;
+	}
 
-/* ── 入口区 ──── */
-.entries { display: flex; flex-direction: column; gap: 16rpx; }
-.entry { display: flex; align-items: center; padding: 32rpx 28rpx; &:active { opacity: .85; } }
-.entry-icon { width: 72rpx; height: 72rpx; border-radius: 18rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.entry-body { flex: 1; margin-left: 24rpx; min-width: 0; }
-.entry-title { display: block; font-size: 28rpx; font-weight: 600; color: $text; margin-bottom: 4rpx; }
-.entry-desc { display: block; font-size: 22rpx; color: $hint; }
-.entry-arrow { font-size: 36rpx; color: $hint; font-weight: 300; flex-shrink: 0; }
+	.card-header {
+		display: flex;
+		align-items: center;
+		margin-bottom: 18rpx;
+	}
 
-/* ═════════════════ 尺寸 / 深色 ═════════════════ */
-.size-small {
-	&.page { padding: 14rpx 16rpx; gap: 14rpx; }
-	.tasks { padding: 20rpx; }
-	.tasks-head { margin-bottom: 14rpx; }
-	.tasks-title { font-size: 26rpx; }
-	.tasks-all { font-size: 20rpx; }
-	.t-item { padding: 14rpx; border-radius: 10rpx; }
-	.t-type { font-size: 22rpx; }
-	.t-no { font-size: 18rpx; }
-	.t-time { font-size: 18rpx; }
-	.t-tag { padding: 4rpx 12rpx; font-size: 18rpx; }
-	.entry { padding: 24rpx 20rpx; }
-	.entry-icon { width: 56rpx; height: 56rpx; border-radius: 14rpx; }
-	.entry-body { margin-left: 18rpx; }
-	.entry-title { font-size: 24rpx; }
-	.entry-desc { font-size: 18rpx; }
-	.entry-arrow { font-size: 28rpx; }
-	.entries { gap: 12rpx; }
-}
+	.card-title {
+		font-size: 28rpx;
+		font-weight: 600;
+		color: $text;
+		padding-left: 16rpx;
+		border-left: 5rpx solid #4A90D9;
+		letter-spacing: 0.5rpx;
+	}
 
-.size-large {
-	&.page { padding: 28rpx 32rpx; gap: 28rpx; }
-	.tasks { padding: 36rpx; }
-	.tasks-head { margin-bottom: 28rpx; }
-	.tasks-title { font-size: 34rpx; }
-	.tasks-all { font-size: 28rpx; }
-	.t-item { padding: 28rpx; border-radius: 14rpx; }
-	.t-type { font-size: 30rpx; }
-	.t-no { font-size: 26rpx; }
-	.t-time { font-size: 24rpx; }
-	.t-tag { padding: 8rpx 20rpx; font-size: 24rpx; }
-	.entry { padding: 44rpx 36rpx; }
-	.entry-icon { width: 88rpx; height: 88rpx; border-radius: 22rpx; }
-	.entry-body { margin-left: 32rpx; }
-	.entry-title { font-size: 32rpx; }
-	.entry-desc { font-size: 26rpx; }
-	.entry-arrow { font-size: 44rpx; }
-	.entries { gap: 22rpx; }
-}
+	.func-grid {
+		display: grid;
+		grid-template-columns: repeat(4, 1fr);
+		gap: 16rpx;
+	}
 
-.theme-dark {
-	&.page { background: #0f0f1a; }
-	.tasks, .card { background: #1a1a2e; box-shadow: 0 2rpx 16rpx rgba(0,0,0,.25); }
-	.tasks-title, .t-type, .entry-title { color: #e0e0e0; }
-	.t-no { color: #888; }
-	.t-item { background: #1e1e36; border-color: #2a2a45; &:active { background: #252540; } }
-	.t-tag.tag-1 { background: rgba(230,81,0,.15); color: #ffa76e; }
-	.t-tag.tag-2 { background: rgba(21,101,192,.15); color: #7cadff; }
-	.t-tag.tag-3 { background: rgba(46,125,50,.15); color: #81c784; }
-	.entry-desc, .entry-arrow, .tasks-all { color: #666; }
-}
+	.func-item {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		padding: 22rpx 8rpx;
+		border-radius: 14rpx;
+		background: #f7f8fa;
+		border: 1rpx solid $line;
+		transition: all .2s;
+		min-height: 130rpx;
+
+		&:active {
+			transform: scale(.96);
+			background: #eef1f6;
+		}
+	}
+
+	.func-icon {
+		width: 70rpx;
+		height: 70rpx;
+		border-radius: 15rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+		margin-bottom: 8rpx;
+		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, .08);
+	}
+
+	.func-name {
+		font-size: 24rpx;
+		font-weight: 500;
+		color: $text;
+		text-align: center;
+		line-height: 1.2;
+	}
+
+	/* ═════════════════ 尺寸 / 深色 ═════════════════ */
+	.size-small {
+		&.page {
+			padding: 14rpx 16rpx;
+			gap: 14rpx;
+		}
+
+		.card {
+			padding: 18rpx 16rpx;
+		}
+
+		.card-header {
+			margin-bottom: 12rpx;
+		}
+
+		.card-title {
+			font-size: 22rpx;
+			padding-left: 12rpx;
+			border-left-width: 3rpx;
+		}
+
+		.func-grid {
+			gap: 10rpx;
+		}
+
+		.func-item {
+			padding: 14rpx 4rpx;
+			min-height: 90rpx;
+			border-radius: 10rpx;
+		}
+
+		.func-icon {
+			width: 60rpx;
+			height: 60rpx;
+			border-radius: 10rpx;
+			margin-bottom: 4rpx;
+		}
+
+		.func-name {
+			font-size: 18rpx;
+		}
+	}
+
+	.size-large {
+		&.page {
+			padding: 28rpx 32rpx;
+			gap: 28rpx;
+		}
+
+		.card {
+			padding: 36rpx 32rpx;
+		}
+
+		.card-header {
+			margin-bottom: 24rpx;
+		}
+
+		.card-title {
+			font-size: 34rpx;
+			padding-left: 20rpx;
+			border-left-width: 6rpx;
+		}
+
+		.func-grid {
+			gap: 20rpx;
+		}
+
+		.func-item {
+			padding: 28rpx 12rpx;
+			min-height: 160rpx;
+			border-radius: 16rpx;
+		}
+
+		.func-icon {
+			width: 72rpx;
+			height: 72rpx;
+			border-radius: 18rpx;
+			margin-bottom: 10rpx;
+		}
+
+		.func-name {
+			font-size: 28rpx;
+		}
+	}
+
+	.theme-dark {
+		&.page {
+			background: #0f0f1a;
+		}
+
+		.card {
+			background: #1a1a2e;
+			box-shadow: 0 2rpx 16rpx rgba(0, 0, 0, .25);
+		}
+
+		.card-title {
+			color: #e0e0e0;
+			border-left-color: #4A90D9;
+		}
+
+		.func-item {
+			background: #1e1e36;
+			border-color: #2a2a45;
+
+			&:active {
+				background: #252540;
+			}
+		}
+
+		.func-name {
+			color: #e0e0e0;
+		}
+	}
 </style>

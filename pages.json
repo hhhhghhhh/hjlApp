@@ -130,6 +130,15 @@
 				"navigationBarTextStyle": "black",
 				"enablePullDownRefresh": false
 			}
+		},
+		{
+			"path": "pages/optMdule/index/index",
+			"style": {
+				"navigationBarTitleText": "作业模块",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black",
+				"enablePullDownRefresh": false
+			}
 		}
 	],
 	"globalStyle": {
