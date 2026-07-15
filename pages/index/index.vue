@@ -103,6 +103,12 @@
 					</view>
 					<text class="func-name">配件更换</text>
 				</view>
+				<view class="func-item" @click="goToOptModule('partSend')">
+					<view class="func-icon" style="background: #50B7E0;">
+						<uni-icons type="paperplane" size="32" color="#fff"></uni-icons>
+					</view>
+					<text class="func-name">配件寄出</text>
+				</view>
 			</view>
 		</view>
 	</view>
@@ -116,6 +122,8 @@
 
 		data() {
 			return {
+				// 单据类型配置：区分哪些是载具条码模式
+				containerDocTypes: ['DJ02', 'DJ05'], // 采购入库、完工入库
 				docTypeMap: {
 					purchaseReceipt: {
 						typeSn: 'DJ02',
@@ -148,8 +156,13 @@
 			goToDocOpt(module) {
 				const config = this.docTypeMap[module];
 				if (config) {
+					// 判断是否为载具条码模式
+					const isContainer = this.containerDocTypes.includes(config.typeSn);
+					// 载具条码模式传 container，普通模式传 normal
+					const codeType = isContainer ? 'container' : 'normal';
+
 					uni.navigateTo({
-						url: `/pages/wms/docOpt/docOpt?docType=${config.typeSn}&operateType=${config.operateType}&typeName=${encodeURIComponent(config.typeName)}`
+						url: `/pages/wms/docOpt/docOpt?docType=${config.typeSn}&operateType=${config.operateType}&typeName=${encodeURIComponent(config.typeName)}&codeType=${codeType}`
 					});
 				}
 			},
@@ -163,7 +176,8 @@
 					snQuery: '产品 SN 查询',
 					keyPartQuery: '关键件查询',
 					productRepair: '产品维修',
-					partReplace: '配件更换'
+					partReplace: '配件更换',
+					partSend: '配件寄出'
 				};
 				uni.navigateTo({
 					url: `/pages/optMdule/index/index?module=${module}&title=${encodeURIComponent(titles[module] || module)}`

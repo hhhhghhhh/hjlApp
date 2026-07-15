@@ -14,7 +14,7 @@
 							}" :clearable="false" @change="onCmdChange" @clear="onCmdClear" />
 					</view>
 
-					<view class="code-type-compact" v-if="isInboundCommand">
+					<!-- <view class="code-type-compact" v-if="isInboundCommand">
 						<view class="code-type-btn" :class="{ active: codeType === 'normal' }"
 							@click="switchCodeType('normal')">
 							<text>普通条码</text>
@@ -23,7 +23,7 @@
 							@click="switchCodeType('container')">
 							<text>载具条码</text>
 						</view>
-					</view>
+					</view> -->
 				</view>
 
 				<!-- 第三行：明细选择框（载具条码模式） -->
@@ -64,14 +64,6 @@
 							:placeholder="getPlaceholderData()" :focus="inventoryCodeFocus" confirm-type="完成"
 							@confirm="onInputConfirm" class="scan-input" @focus="onInputFocus" @blur="onInputBlur"
 							:disabled="!canInput" />
-						<!-- <input v-if="isAPP()" ref="scanInput" v-model="formData.inventoryCode"
-							:placeholder="getPlaceholderData()" :focus="inventoryCodeFocus" confirm-type="完成"
-							@confirm="onInputConfirm" class="scan-input" @focus="onInputFocus" @blur="onInputBlur"
-							:disabled="!canInput" :type="getInputType()" />
-						<input v-else ref="scanInput" v-model="formData.inventoryCode"
-							:placeholder="getPlaceholderData()" :focus="inventoryCodeFocus" confirm-type="完成"
-							@confirm="onInputConfirm" class="scan-input" @focus="onInputFocus" @blur="onInputBlur"
-							:disabled="!canInput" /> -->
 						<view class="scan-btn" @click="handleScan" v-if="canInput">
 							<uni-icons type="scan" :size="iconSize" :color="themePrimary"></uni-icons>
 						</view>
@@ -354,7 +346,7 @@
 				autoFillItemLot: false,
 				currentSnValue: null,
 
-				codeType: "normal",
+				codeType: "normal", // 默认普通条码模式
 				selectedDetailId: null,
 				selectedDetailItem: null,
 				detailList: [],
@@ -492,6 +484,11 @@
 			}
 		},
 		onLoad(options) {
+			// 接收从主页面传递的 codeType 参数
+			if (options.codeType) {
+				this.codeType = options.codeType;
+			}
+			
 			if (options.docData) {
 				try {
 					this.docData = JSON.parse(decodeURIComponent(options.docData));
@@ -518,7 +515,7 @@
 			// ==================== 通用重置方法 ====================
 			resetParamState(options = {}) {
 				const {
-					keepFixed = true, keepDocInfo = true, clearDetail = false
+					keepFixed = true, keepDocInfo = false, clearDetail = false
 				} = options;
 
 				this.formData.inventoryCode = '';
@@ -1640,6 +1637,7 @@
 		}
 	}
 </script>
+
 <style lang="scss" scoped>
 	@import '@/common/page-theme-mixins.scss';
 

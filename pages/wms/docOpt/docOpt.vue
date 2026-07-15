@@ -110,6 +110,8 @@
 
 	const AREA_SN_TYPES = ['DJ19','DJ03','DJ11','DJ05','DJ10','DJ33'];
 	const DEPT_TYPES = ['DJ06','DJ21','DJ32'];
+	// 载具条码模式对应的单据类型（采购入库、完工入库）
+	const CONTAINER_DOC_TYPES = ['DJ02', 'DJ05'];
 
 	export default {
 		mixins: [settingsMixin],
@@ -136,7 +138,9 @@
 					returnDept: "", deliveryDept: "", pickDept: "", inDept: ""
 				},
 				typeName: "", 
-				operateType: "", 
+				operateType: "",
+				// 从主页面传递的条码类型
+				codeType: "normal",
 				showBackTop: false
 			}
 		},
@@ -160,6 +164,13 @@
 				uni.setNavigationBarTitle({ title: this.typeName }); 
 			}
 			if (options.operateType) this.operateType = options.operateType;
+			// 接收条码类型参数
+			if (options.codeType) {
+				this.codeType = options.codeType;
+			} else {
+				// 如果没有传递，根据单据类型自动判断
+				this.codeType = CONTAINER_DOC_TYPES.includes(this.searchParams.docType) ? 'container' : 'normal';
+			}
 			
 			this.queryDocList();
 		},
@@ -295,8 +306,14 @@
 			},
 
 			showDetail(item) {
+				// 确定条码类型：如果当前页面已有 codeType 则使用，否则根据单据类型判断
+				let codeType = this.codeType;
+				if (!codeType || codeType === '') {
+					codeType = CONTAINER_DOC_TYPES.includes(item.docType) ? 'container' : 'normal';
+				}
+				
 				uni.navigateTo({ 
-					url: `/pages/wms/docOpt/docCommand?docData=${encodeURIComponent(JSON.stringify(item))}&typeName=${encodeURIComponent(this.typeName)}` 
+					url: `/pages/wms/docOpt/docCommand?docData=${encodeURIComponent(JSON.stringify(item))}&typeName=${encodeURIComponent(this.typeName)}&codeType=${codeType}` 
 				});
 			},
 

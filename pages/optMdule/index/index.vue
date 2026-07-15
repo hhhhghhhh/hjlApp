@@ -13,14 +13,14 @@
 				<SnQuery />
 			</template>
 
-			<!-- 关键件解绑 -->
-			<template v-else-if="module === 'keyPartUnbind'">
-				<KeyPartUnbind />
-			</template>
-
 			<!-- 关键件查询 -->
 			<template v-else-if="module === 'keyPartQuery'">
 				<KeyPartQuery />
+			</template>
+
+			<!-- 关键件解绑 -->
+			<template v-else-if="module === 'keyPartUnbind'">
+				<KeyPartUnbind />
 			</template>
 
 			<!-- 产品维修 -->
@@ -28,9 +28,14 @@
 				<ProductRepair />
 			</template>
 
-			<!-- 配件更换 -->
+			<!-- 配件更换（关键件替换） -->
 			<template v-else-if="module === 'partReplace'">
 				<PartReplace />
+			</template>
+
+			<!-- 配件寄出（关键件寄出） -->
+			<template v-else-if="module === 'partSend'">
+				<PartSend />
 			</template>
 
 			<!-- 默认占位 -->
@@ -49,10 +54,11 @@ import settingsMixin from '@/common/settingsMixin.js';
 // 组件
 import PackageManager from './PackageManager.vue';
 import SnQuery from './SnQuery.vue';
-import KeyPartUnbind from './KeyPartUnbind.vue';
 import KeyPartQuery from './KeyPartQuery.vue';
-// import ProductRepair from './components/ProductRepair.vue';
-// import PartReplace from './components/PartReplace.vue';
+import KeyPartUnbind from './KeyPartUnbind.vue';
+import ProductRepair from './ProductRepair.vue';
+import PartReplace from './PartReplace.vue';
+import PartSend from './PartSend.vue';
 
 export default {
 	mixins: [settingsMixin],
@@ -60,10 +66,11 @@ export default {
 	components: {
 		PackageManager,
 		SnQuery,
-		KeyPartUnbind,
 		KeyPartQuery,
-		// ProductRepair,
-		// PartReplace
+		KeyPartUnbind,
+		ProductRepair,
+		PartReplace,
+		PartSend
 	},
 
 	data() {
@@ -79,10 +86,11 @@ export default {
 			packageBind: '包装绑定',
 			packageUnbind: '包装解绑',
 			snQuery: '产品SN查询',
-			keyPartUnbind: '关键件解绑',
 			keyPartQuery: '关键件查询',
+			keyPartUnbind: '关键件解绑',
 			productRepair: '产品维修',
-			partReplace: '配件更换'
+			partReplace: '配件更换',
+			partSend: '配件寄出'
 		};
 		this.pageTitle = decodeURIComponent(options.title || titles[this.module] || '作业模块');
 		uni.setNavigationBarTitle({ title: this.pageTitle });
