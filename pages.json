@@ -16,14 +16,14 @@
 				"navigationBarTextStyle": "black",
 				"app-plus": {
 					"titleNView": {
-						"buttons": [{
-							"text": "\ue751",
-							"fontSrc": "/static/iconfont.ttf",
-							"fontSize": "30px",
-							"fontWeight": "bold",
-							"color": "#333333",
-							"width": "44px"
-						}],
+						// "buttons": [{
+						// 	"text": "\ue751",
+						// 	"fontSrc": "/static/iconfont.ttf",
+						// 	"fontSize": "30px",
+						// 	"fontWeight": "bold",
+						// 	"color": "#333333",
+						// 	"width": "44px"
+						// }],
 						"backgroundColor": "#ffffff",
 						"titleColor": "#333333"
 					}
