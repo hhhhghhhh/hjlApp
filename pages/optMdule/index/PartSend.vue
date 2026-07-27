@@ -31,8 +31,6 @@
 			</view>
 		</view>
 
-		
-
 		<!-- ════ 查询结果 ════ -->
 		<view v-if="keySnInfo" class="result-container">
 			<!-- 关键件信息卡片 -->
@@ -235,6 +233,33 @@
 				}
 			},
 
+			// ==================== 刷新数据（保持界面不清空） ====================
+			async refreshData() {
+				if (!this.currentSn) return;
+
+				this.loading = true;
+
+				try {
+					const res = await this.$request({
+						url: '/api/pda/pdaProductSn/getKeyInfoBySn',
+						method: 'GET',
+						data: {
+							keySn: this.currentSn
+						}
+					});
+
+					this.loading = false;
+
+					if (res.data && res.data.code === 200) {
+						const data = res.data.result;
+						this.keySnInfo = data.keySn || {};
+					}
+				} catch (error) {
+					this.loading = false;
+					console.error('refreshData error:', error);
+				}
+			},
+
 			// ==================== 重置 ====================
 			handleReset() {
 				uni.showModal({
@@ -287,7 +312,6 @@
 				});
 
 				try {
-					// GET 请求拼接参数到 URL
 					const res = await this.$request({
 						url: `/api/pda/pdaProductSn/keySnSend?keySn=${encodeURIComponent(this.keySnInfo.keySn)}&sendReason=${encodeURIComponent(this.sendReason.trim())}`,
 						method: 'GET'
@@ -297,10 +321,14 @@
 					this.isSubmitting = false;
 
 					if (res.data && res.data.code === 200) {
+						// 显示成功提示
 						this.showMessage('寄出成功', 'success');
-						// 刷新数据
-						await this.doQuery(this.currentSn);
+						
+						// 清空寄件原因
 						this.sendReason = '';
+						
+						// 刷新数据更新寄出状态
+						await this.refreshData();
 						return true;
 					} else {
 						this.showMessage(res.data?.message || '寄出失败', 'error');

@@ -61,11 +61,11 @@
 					</view>
 					<view class="info-item">
 						<text class="info-label">销售订单</text>
-						<text class="info-value">{{ productInfo.salesOrderNo || '--' }}</text>
+						<text class="info-value">{{ productInfo.saleDocNo || '--' }}</text>
 					</view>
 					<view class="info-item">
 						<text class="info-label">客户</text>
-						<text class="info-value">{{ productInfo.custName || '--' }}</text>
+						<text class="info-value">{{ productInfo.custId_dictText || '--' }}</text>
 					</view>
 				</view>
 			</view>

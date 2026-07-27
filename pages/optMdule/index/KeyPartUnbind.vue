@@ -61,11 +61,11 @@
 					</view>
 					<view class="info-item">
 						<text class="info-label">销售订单</text>
-						<text class="info-value">{{ productInfo.salesOrderNo || '--' }}</text>
+						<text class="info-value">{{ productInfo.saleDocNo || '--' }}</text>
 					</view>
 					<view class="info-item">
 						<text class="info-label">客户</text>
-						<text class="info-value">{{ productInfo.custName || '--' }}</text>
+						<text class="info-value">{{ productInfo.custId_dictText || '--' }}</text>
 					</view>
 				</view>
 			</view>
@@ -453,28 +453,28 @@
 			// ==================== 提交解绑 ====================
 			async doUnbind() {
 				if (this.isSubmitting) return;
-
+			
 				this.isSubmitting = true;
 				uni.showLoading({
 					title: '解绑中...'
 				});
-
+			
 				try {
 					const keySnList = this.pendingList.map(item => item.keySn);
 					const requestData = {
 						productSn: this.productInfo.productSn,
 						keySnList: keySnList
 					};
-
+			
 					const res = await this.$request({
 						url: '/api/pda/pdaProductSn/unBinding',
-						method: 'GET',
+						method: 'POST',  // 修改为 POST
 						data: requestData
 					});
-
+			
 					uni.hideLoading();
 					this.isSubmitting = false;
-
+			
 					if (res.data && res.data.code === 200) {
 						this.showMessage(`成功解绑 ${this.pendingList.length} 个关键件`, 'success');
 						// 清空待解绑列表

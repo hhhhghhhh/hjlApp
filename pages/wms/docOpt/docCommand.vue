@@ -13,17 +13,6 @@
 								descKey: 'commandDesc'
 							}" :clearable="false" @change="onCmdChange" @clear="onCmdClear" />
 					</view>
-
-					<!-- <view class="code-type-compact" v-if="isInboundCommand">
-						<view class="code-type-btn" :class="{ active: codeType === 'normal' }"
-							@click="switchCodeType('normal')">
-							<text>普通条码</text>
-						</view>
-						<view class="code-type-btn" :class="{ active: codeType === 'container' }"
-							@click="switchCodeType('container')">
-							<text>载具条码</text>
-						</view>
-					</view> -->
 				</view>
 
 				<!-- 第三行：明细选择框（载具条码模式） -->
@@ -116,39 +105,6 @@
 											:color="item.value === 'Y' ? themePrimary : '#ccc'"></uni-icons>
 									</view>
 									<text class="isPushErp-text">{{ item.value === 'Y' ? '是' : '否' }}</text>
-								</view>
-							</view>
-
-							<!-- unit参数 -->
-							<view v-else-if="item.paramName === 'unit'" class="unit-param-content">
-								<view class="param-left">
-									<view v-if="item.isEdit !== 'N'" class="fixed-btn" :class="{active: item.fixed}"
-										@click.stop="toggleFixedParam(item)">
-										<uni-icons :type="item.fixed ? 'star-filled' : 'star'" :size="starSize"
-											:color="item.fixed ? '#ffa940' : '#9c9c9c'">
-										</uni-icons>
-									</view>
-									<view class="param-info">
-										<text class="param-name">
-											<text v-if="item.isRequire === 'Y'" class="required-star">*</text>
-											{{ item.displayName }}
-										</text>
-									</view>
-								</view>
-								<view class="param-value-wrapper">
-									<view class="unit-select-wrapper">
-										<text class="param-value" :class="{empty: !item.value}">
-											{{ getParamDisplayValue(item) }}
-										</text>
-										<view class="unit-select-btn" @click.stop="openUnitSelector(item)">
-											<uni-icons type="more-filled" :size="iconSize"
-												:color="themePrimary"></uni-icons>
-										</view>
-									</view>
-									<view v-if="item.value && item.isEdit !== 'N'" class="cancel-btn"
-										@click.stop="cancelParam(item)">
-										<uni-icons type="clear" :size="clearIconSize" color="#9c9c9c"></uni-icons>
-									</view>
 								</view>
 							</view>
 
@@ -304,7 +260,8 @@
 		getCmdByCmdCode,
 		executeCmd,
 		getUnitListByItemCode,
-		getDocDetailByDocNo,
+		getReceiveDocDetailByDocNo,
+		getOutDocDetailByDocNo,
 		validateNum,
 		validateFifo
 	} from "@/api/wmsApi.js";
@@ -346,7 +303,7 @@
 				autoFillItemLot: false,
 				currentSnValue: null,
 
-				codeType: "normal", // 默认普通条码模式
+				codeType: "normal",
 				selectedDetailId: null,
 				selectedDetailItem: null,
 				detailList: [],
@@ -376,7 +333,17 @@
 		},
 		computed: {
 			isInboundCommand() {
-				return this.currentCmdInfo && this.currentCmdInfo.cmdCategroy === "入库";
+				// 原有入库指令
+				if (this.currentCmdInfo && this.currentCmdInfo.cmdCategroy === "入库") {
+
+					return true;
+				}
+				// 生产领料（DJ11）也显示分录选择框
+				if (this.currentCmdInfo && this.currentCmdInfo.cmdCategroy === "出库" &&
+					this.docData && this.docData.docType === "DJ11") {
+					return true;
+				}
+				return false;
 			},
 
 			detailOptions() {
@@ -484,11 +451,10 @@
 			}
 		},
 		onLoad(options) {
-			// 接收从主页面传递的 codeType 参数
 			if (options.codeType) {
 				this.codeType = options.codeType;
 			}
-			
+
 			if (options.docData) {
 				try {
 					this.docData = JSON.parse(decodeURIComponent(options.docData));
@@ -512,10 +478,11 @@
 			this.initDict();
 		},
 		methods: {
-			// ==================== 通用重置方法 ====================
 			resetParamState(options = {}) {
 				const {
-					keepFixed = true, keepDocInfo = false, clearDetail = false
+					keepFixed = true,
+						keepDocInfo = false,
+						clearDetail = false
 				} = options;
 
 				this.formData.inventoryCode = '';
@@ -713,7 +680,9 @@
 				});
 				this.itemSn = null;
 
-				if (this.codeType === 'normal' && this.formData.cmdOpt) this.cmdOptChange();
+				if (this.codeType === 'normal' && this.formData.cmdOpt) {
+					this.cmdOptChange();
+				}
 				if (this.codeType === 'container' && this.isInboundCommand) {
 					this.loadDocDetail();
 				}
@@ -1315,7 +1284,7 @@
 				this.cmdList.forEach(param => {
 					if (param.paramName === 'docNo' || param.paramName === currentItem.paramName || param
 						.paramName === 'docType' || param.paramName === 'isPushErp') return;
-					if (param.paramName === 'num') return;
+					//if (param.paramName === 'num') return;
 					if (isRescanSn && !param.fixed && param.isEdit !== 'N') param.value = "";
 					if (param.value && param.value.trim() !== '') return;
 					if (param.paramName === 'itemName' && result.itemName) {
@@ -1503,7 +1472,9 @@
 						});
 
 						if (this.codeType === 'container' && this.isInboundCommand) {
-							this.loadDocDetail();
+							setTimeout(() => {
+								this.loadDocDetail();
+							}, 500);
 						}
 						setTimeout(() => this.focusScanInput(), 500);
 					}
@@ -1608,28 +1579,53 @@
 				if (this.isLoadingDetail) return;
 				this.isLoadingDetail = true;
 				this.loadDetailError = false;
+
+				// 根据 cmdCategroy 选择对应的 API 函数
+				let apiMethod = null;
+				let apiName = '';
+
+				if (this.currentCmdInfo && this.currentCmdInfo.cmdCategroy === "入库") {
+						apiMethod = getReceiveDocDetailByDocNo;
+						apiName = '入库';
+					} else if (this.currentCmdInfo && this.currentCmdInfo.cmdCategroy === "出库") {
+						apiMethod = getOutDocDetailByDocNo;
+						apiName = '出库';
+					} else {
+						// 🔥 关键：当 currentCmdInfo 为空或无法判断时，根据 docType 或默认使用入库
+						if (this.docData && this.docData.docType === 'DJ11') {
+							// 生产领料默认调用出库
+							apiMethod = getOutDocDetailByDocNo;
+							apiName = '出库';
+						} else {
+							// 默认调用入库
+							apiMethod = getReceiveDocDetailByDocNo;
+							apiName = '入库';
+						}
+					}
+
 				try {
-					const response = await getDocDetailByDocNo({
+					this.showMessage(`正在加载${apiName}明细...`, 'info');
+					const response = await apiMethod({ // ✅ 调用函数
 						docNo: this.docData.docNo
 					});
 					if (response.data && response.data.code === 200) {
 						const result = response.data.result;
 						if (Array.isArray(result) && result.length > 0) {
 							this.detailList = result;
-							this.showMessage(`加载了${result.length}条明细`, 'success');
+							this.showMessage(`加载了${result.length}条${apiName}明细`, 'success');
 						} else {
 							this.detailList = [];
 							this.showMessage('暂无明细数据', 'warning');
 						}
 					} else {
 						this.detailList = [];
-						this.showMessage('加载明细失败', 'error');
+						this.showMessage(`加载${apiName}明细失败: ${response.data?.message || '未知错误'}`, 'error');
 					}
 				} catch (error) {
-					console.error('加载明细失败:', error);
+					console.error(`加载${apiName}明细失败:`, error);
 					this.loadDetailError = true;
 					this.detailList = [];
-					this.showMessage('加载明细失败', 'error');
+					this.showMessage(`加载${apiName}明细失败，请检查网络连接`, 'error');
 				} finally {
 					this.isLoadingDetail = false;
 				}

@@ -165,9 +165,18 @@ export function queryDetailByDocId(data) {
 }
 
 // 根据单据单据明细
-export function getDocDetailByDocNo(data) {
+export function getReceiveDocDetailByDocNo(data) {
 	return request({
 		url: "/api/pda/pdaReceiveDoc/getDocDetailByDocNo",
+		method: "GET",
+		data
+	});
+}
+
+// 根据单据单据明细
+export function getOutDocDetailByDocNo(data) {
+	return request({
+		url: "/api/pda/pdaOutDoc/getDocDetailByDocNo",
 		method: "GET",
 		data
 	});

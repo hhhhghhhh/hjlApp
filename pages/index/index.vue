@@ -1,61 +1,61 @@
 <template>
 	<view class="page" :class="[sizeClass, darkClass, themeClass]">
 		<!-- ════ 出入库 ════ -->
-		<view class="card">
+		<view class="card" v-if="hasAnyPermission(['DJ02', 'DJ11', 'DJ05', 'DJ12'])">
 			<view class="card-header">
 				<text class="card-title">出入库</text>
 			</view>
 			<view class="func-grid">
-				<!-- 采购入库 - 直接跳转 docOpt -->
-				<view class="func-item" @click="goToDocOpt('purchaseReceipt')">
+				<!-- 采购入库 - DJ02 -->
+				<view class="func-item" v-if="hasPermission('DJ02')" @click="goToDocOpt('purchaseReceipt')">
 					<view class="func-icon" style="background: #4A90D9;">
 						<uni-icons type="download" size="32" color="#fff"></uni-icons>
 					</view>
 					<text class="func-name">采购入库</text>
 				</view>
-				<!-- 销售出货 - 直接跳转 docOpt -->
-				<view class="func-item" @click="goToDocOpt('salesShipment')">
-					<view class="func-icon" style="background: #7B6CD9;">
-						<uni-icons type="shop" size="32" color="#fff"></uni-icons>
-					</view>
-					<text class="func-name">销售出货</text>
-				</view>
-				<!-- 生产领料 - 直接跳转 docOpt -->
-				<view class="func-item" @click="goToDocOpt('prodMaterial')">
+				<!-- 生产领料 - DJ11 -->
+				<view class="func-item" v-if="hasPermission('DJ11')" @click="goToDocOpt('prodMaterial')">
 					<view class="func-icon" style="background: #E8833A;">
 						<uni-icons type="compose" size="32" color="#fff"></uni-icons>
 					</view>
 					<text class="func-name">生产领料</text>
 				</view>
-				<!-- 完工入库 - 直接跳转 docOpt -->
-				<view class="func-item" @click="goToDocOpt('prodComplete')">
+				<!-- 生产入库 - DJ05 -->
+				<view class="func-item" v-if="hasPermission('DJ05')" @click="goToDocOpt('prodComplete')">
 					<view class="func-icon" style="background: #3BA37F;">
 						<uni-icons type="upload" size="32" color="#fff"></uni-icons>
 					</view>
-					<text class="func-name">完工入库</text>
+					<text class="func-name">生产入库</text>
+				</view>
+				<!-- 销售出货 - DJ12 -->
+				<view class="func-item" v-if="hasPermission('DJ12')" @click="goToDocOpt('salesShipment')">
+					<view class="func-icon" style="background: #7B6CD9;">
+						<uni-icons type="shop" size="32" color="#fff"></uni-icons>
+					</view>
+					<text class="func-name">销售出货</text>
 				</view>
 			</view>
 		</view>
 
 		<!-- ════ 绑定管理 ════ -->
-		<view class="card">
+		<view class="card" v-if="hasAnyPermission(['packagBind', 'packagUnBind', 'keyUnBind'])">
 			<view class="card-header">
 				<text class="card-title">绑定管理</text>
 			</view>
 			<view class="func-grid">
-				<view class="func-item" @click="goToOptModule('packageBind')">
+				<view class="func-item" v-if="hasPermission('packagBind')" @click="goToOptModule('packageBind')">
 					<view class="func-icon" style="background: #3BA37F;">
 						<uni-icons type="checkbox" size="32" color="#fff"></uni-icons>
 					</view>
 					<text class="func-name">包装绑定</text>
 				</view>
-				<view class="func-item" @click="goToOptModule('packageUnbind')">
+				<view class="func-item" v-if="hasPermission('packagUnBind')" @click="goToOptModule('packageUnbind')">
 					<view class="func-icon" style="background: #D9726A;">
 						<uni-icons type="closeempty" size="32" color="#fff"></uni-icons>
 					</view>
 					<text class="func-name">包装解绑</text>
 				</view>
-				<view class="func-item" @click="goToOptModule('keyPartUnbind')">
+				<view class="func-item" v-if="hasPermission('keyUnBind')" @click="goToOptModule('keyPartUnbind')">
 					<view class="func-icon" style="background: #E8833A;">
 						<uni-icons type="closeempty" size="32" color="#fff"></uni-icons>
 					</view>
@@ -65,18 +65,18 @@
 		</view>
 
 		<!-- ════ 查询管理 ════ -->
-		<view class="card">
+		<view class="card" v-if="hasAnyPermission(['productSnQuery', 'keySnQuery'])">
 			<view class="card-header">
 				<text class="card-title">查询管理</text>
 			</view>
 			<view class="func-grid">
-				<view class="func-item" @click="goToOptModule('snQuery')">
+				<view class="func-item" v-if="hasPermission('productSnQuery')" @click="goToOptModule('snQuery')">
 					<view class="func-icon" style="background: #50B7E0;">
 						<uni-icons type="search" size="32" color="#fff"></uni-icons>
 					</view>
 					<text class="func-name">产品SN查询</text>
 				</view>
-				<view class="func-item" @click="goToOptModule('keyPartQuery')">
+				<view class="func-item" v-if="hasPermission('keySnQuery')" @click="goToOptModule('keyPartQuery')">
 					<view class="func-icon" style="background: #4A90D9;">
 						<uni-icons type="search" size="32" color="#fff"></uni-icons>
 					</view>
@@ -86,30 +86,36 @@
 		</view>
 
 		<!-- ════ 维修管理 ════ -->
-		<view class="card">
+		<view class="card" v-if="hasAnyPermission(['productRepair', 'partSend', 'partReplace'])">
 			<view class="card-header">
 				<text class="card-title">维修管理</text>
 			</view>
 			<view class="func-grid">
-				<view class="func-item" @click="goToOptModule('productRepair')">
+				<view class="func-item" v-if="hasPermission('productRepair')" @click="goToOptModule('productRepair')">
 					<view class="func-icon" style="background: #D9726A;">
 						<uni-icons type="gear" size="32" color="#fff"></uni-icons>
 					</view>
 					<text class="func-name">产品维修</text>
 				</view>
-				<view class="func-item" @click="goToOptModule('partReplace')">
-					<view class="func-icon" style="background: #7B6CD9;">
-						<uni-icons type="refresh" size="32" color="#fff"></uni-icons>
-					</view>
-					<text class="func-name">配件更换</text>
-				</view>
-				<view class="func-item" @click="goToOptModule('partSend')">
+				<view class="func-item" v-if="hasPermission('partSend')" @click="goToOptModule('partSend')">
 					<view class="func-icon" style="background: #50B7E0;">
 						<uni-icons type="paperplane" size="32" color="#fff"></uni-icons>
 					</view>
 					<text class="func-name">配件寄出</text>
 				</view>
+				<view class="func-item" v-if="hasPermission('partReplace')" @click="goToOptModule('partReplace')">
+					<view class="func-icon" style="background: #7B6CD9;">
+						<uni-icons type="refresh" size="32" color="#fff"></uni-icons>
+					</view>
+					<text class="func-name">配件更换</text>
+				</view>
 			</view>
+		</view>
+		
+		<!-- 无权限提示 -->
+		<view class="no-permission" v-if="!hasAnyPermission(['DJ02', 'DJ11', 'DJ05', 'DJ12', 'packagBind', 'packagUnBind', 'keyUnBind', 'productSnQuery', 'keySnQuery', 'productRepair', 'partSend', 'partReplace'])">
+			<uni-icons type="info" size="48" color="#999"></uni-icons>
+			<text class="no-permission-text">暂无任何功能权限，请联系管理员</text>
 		</view>
 	</view>
 </template>
@@ -122,8 +128,10 @@
 
 		data() {
 			return {
+				// 权限列表（从存储中读取）
+				permissions: [],
 				// 单据类型配置：区分哪些是载具条码模式
-				containerDocTypes: ['DJ02', 'DJ05'], // 采购入库、完工入库
+				containerDocTypes: ['DJ02', 'DJ05', 'DJ11'],
 				docTypeMap: {
 					purchaseReceipt: {
 						typeSn: 'DJ02',
@@ -143,31 +151,67 @@
 					prodComplete: {
 						typeSn: 'DJ05',
 						operateType: '1',
-						typeName: '完工入库单'
+						typeName: '生产入库单'
 					}
 				}
 			};
 		},
+		
+		onLoad() {
+			// 从存储中读取权限
+			this.loadPermissions();
+		},
+		
+		onShow() {
+			// 每次显示时重新加载权限
+			this.loadPermissions();
+		},
+		
 		onNavigationBarButtonTap() {
 			uni.$toPath('/pages/wms/scanOpt/scanOpt');
 		},
+		
 		methods: {
+			// 加载权限
+			loadPermissions() {
+				try {
+					const perms = uni.getStorageSync('pdaPermissions') || [];
+					// 提取权限标识（优先使用 path，去掉开头的 /）
+					this.permissions = perms.map(item => {
+						if (item.path) {
+							return item.path.startsWith('/') ? item.path.substring(1) : item.path;
+						}
+						return item.meta?.title || '';
+					}).filter(Boolean);
+				} catch (e) {
+					this.permissions = [];
+				}
+			},
+			
+			// 检查是否有指定权限
+			hasPermission(perm) {
+				return this.permissions.includes(perm);
+			},
+			
+			// 检查是否有任一权限
+			hasAnyPermission(perms) {
+				if (!perms || perms.length === 0) return false;
+				return perms.some(p => this.hasPermission(p));
+			},
+			
 			// 四个核心模块：直接跳转 docOpt
 			goToDocOpt(module) {
 				const config = this.docTypeMap[module];
 				if (config) {
-					// 判断是否为载具条码模式
 					const isContainer = this.containerDocTypes.includes(config.typeSn);
-					// 载具条码模式传 container，普通模式传 normal
 					const codeType = isContainer ? 'container' : 'normal';
-
 					uni.navigateTo({
 						url: `/pages/wms/docOpt/docOpt?docType=${config.typeSn}&operateType=${config.operateType}&typeName=${encodeURIComponent(config.typeName)}&codeType=${codeType}`
 					});
 				}
 			},
 
-			// 其他模块：跳转 optMdule 页面通过组件展示
+			// 其他模块：跳转 optMdule 页面
 			goToOptModule(module) {
 				const titles = {
 					packageBind: '包装绑定',
@@ -268,6 +312,23 @@
 		line-height: 1.2;
 	}
 
+	/* 无权限提示 */
+	.no-permission {
+		@include p-card;
+		padding: 60rpx 32rpx;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 20rpx;
+		
+		.no-permission-text {
+			font-size: 26rpx;
+			color: #999;
+			text-align: center;
+		}
+	}
+
 	/* ═════════════════ 尺寸 / 深色 ═════════════════ */
 	.size-small {
 		&.page {
@@ -308,6 +369,14 @@
 
 		.func-name {
 			font-size: 18rpx;
+		}
+		
+		.no-permission {
+			padding: 40rpx 24rpx;
+			
+			.no-permission-text {
+				font-size: 22rpx;
+			}
 		}
 	}
 
@@ -351,6 +420,14 @@
 		.func-name {
 			font-size: 28rpx;
 		}
+		
+		.no-permission {
+			padding: 80rpx 40rpx;
+			
+			.no-permission-text {
+				font-size: 30rpx;
+			}
+		}
 	}
 
 	.theme-dark {
@@ -379,6 +456,14 @@
 
 		.func-name {
 			color: #e0e0e0;
+		}
+		
+		.no-permission {
+			background: #1a1a2e;
+			
+			.no-permission-text {
+				color: #666;
+			}
 		}
 	}
 </style>
