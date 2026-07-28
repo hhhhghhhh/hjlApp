@@ -139,6 +139,22 @@
 				"navigationBarTextStyle": "black",
 				"enablePullDownRefresh": false
 			}
+		},
+		{
+		  "path": "pages/print/printSetting",
+		  "style": {
+		    "navigationBarTitleText": "蓝牙打印",
+		    "navigationBarBackgroundColor": "#ffffff",
+		    "navigationBarTextStyle": "black"
+		  }
+		},
+		{
+		  "path": "pages/print/labelTemplate",
+		  "style": {
+		    "navigationBarTitleText": "标签模板",
+		    "navigationBarBackgroundColor": "#ffffff",
+		    "navigationBarTextStyle": "black"
+		  }
 		}
 	],
 	"globalStyle": {

@@ -111,7 +111,22 @@
 				</view>
 			</view>
 		</view>
-		
+
+		<!-- ════ 🖨️ 打印管理（新增） ════ -->
+		<view class="card">
+			<view class="card-header">
+				<text class="card-title">打印管理</text>
+			</view>
+			<view class="func-grid">
+				<view class="func-item" @click="goToBluetoothPrint">
+					<view class="func-icon" style="background: #E8833A;">
+						<uni-icons type="printer" size="32" color="#fff"></uni-icons>
+					</view>
+					<text class="func-name">蓝牙打印</text>
+				</view>
+			</view>
+		</view>
+
 		<!-- 无权限提示 -->
 		<view class="no-permission" v-if="!hasAnyPermission(['DJ02', 'DJ11', 'DJ05', 'DJ12', 'packagBind', 'packagUnBind', 'keyUnBind', 'productSnQuery', 'keySnQuery', 'productRepair', 'partSend', 'partReplace'])">
 			<uni-icons type="info" size="48" color="#999"></uni-icons>
@@ -226,7 +241,15 @@
 				uni.navigateTo({
 					url: `/pages/optMdule/index/index?module=${module}&title=${encodeURIComponent(titles[module] || module)}`
 				});
+			},
+
+			// ========== 🖨️ 蓝牙打印入口 ==========
+			goToBluetoothPrint() {
+				uni.navigateTo({
+					url: '/pages/print/printSetting'
+				});
 			}
+			// =====================================
 		}
 	};
 </script>

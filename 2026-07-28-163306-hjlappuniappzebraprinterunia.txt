@@ -1,0 +1,2087 @@
+╭─── Claude Code v2.1.145 ─────────────────────────────────────────────────────╮
+│                                       │ Tips for getting started             │
+│             Welcome back!             │ Run /init to create a CLAUDE.md fil… │
+│                                       │ ──────────────────────────────────── │
+│                ▐▛███▜▌                │ What's new                           │
+│               ▝▜█████▛▘               │ Added `claude agents --json` to lis… │
+│                 ▘▘ ▝▝                 │ Added `agent_id` and `parent_agent_… │
+│                                       │ Status line JSON input now includes… │
+│   claude-opus-5 · API Usage Billing   │ /release-notes for more              │
+│        ~\Desktop\github\hjlApp        │                                      │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+> hjlApp是我的uniapp项目，我引入了ZebraPrinter功能插件想要使用为我的uniapp项目  
+  加入蓝牙打印功能，但在打自定义基底后，一直提示                                
+  [JS Framework] 当前运行的基座不包含原生插件[ZebraPrinterModule]，请在manifest 
+  中配置该插件，重新制作包括该原生插件的自定义运行基座                          
+  无法使用蓝牙功能，帮助我解决问题完善代码                                      
+  C:\Users\26281\Downloads\zebra-linkos-mpsdk-android-v2.16.5518\Link-OS_SDK\An 
+  droid\v2.16.5518\demos\androidstudio\ZSDK_DemosAndroid下有官方demo代码可以参  
+  考                                                                            
+                                                                                
+
+● I'll start by looking at your project's plugin configuration and the native
+  plugin directory.
+
+  Read 1 file, listed 1 directory (ctrl+o to expand)
+
+● Now let me look at the plugin's package.json and source files.
+
+  Read 4 files (ctrl+o to expand)
+
+● Found the root cause already, but let me confirm the surrounding pieces.
+
+● Bash(ls pages/print/ utils/ 2>/dev/null; echo "--- git status"; git status
+      --short)
+  ⎿  pages/print/:
+     printSetting.vue
+     … +19 lines (ctrl+o to expand)
+
+  Listed 1 directory (ctrl+o to expand)
+
+● Bash(ls "/c/Program Files/Android/Android Studio" 2>/dev/null | head -5; echo
+      "--- ANDROID_HOME: $ANDROID_HOME"; ls "$LOCALAPPDATA/Android/Sdk"
+      2>/dev/null | head; e…)
+  ⎿  --- ANDROID_HOME:
+     --- java
+     java version "1.8.0_261"
+     … +2 lines (ctrl+o to expand)
+
+● No Android SDK or Android Studio installed here — only JDK 8. Let me check the
+   JS side and confirm.
+
+  Read 1 file (ctrl+o to expand)
+
+● Bash(ls "$LOCALAPPDATA/Android" 2>/dev/null; ls "/c/Android" 2>/dev/null; ls
+      "/c/Program Files/Android" 2>/dev/null; where gradle 2>/dev/null; echo
+      "---hbx---"; ls "…)
+  ⎿  ---hbx---
+
+● Diagnosis is clear. Let me confirm the direction with you before writing code.
+
+  Root cause: HBuilderX 本地原生插件（local native plugins）never compile Java 
+  source. Cloud build only packages pre-compiled .aar/.jar files it finds in
+  nativeplugins/ZebraPrinter/android/. Your folder contains
+  src/main/java/.../ZebraPrinterModule.java — that source is silently ignored,
+  so the custom base APK genuinely has no ZebraPrinterModule class. Hence the
+  error. Secondary problems: the jars are nested in android/libs/ (they must sit
+   directly in android/), and there's no .aar at all despite "integrateType": 
+  "aar".
+
+  Also relevant: this machine has no Android SDK, no Android Studio, and only
+  JDK 8 — so compiling the AAR here would require a sizable toolchain install
+  first.
+
+● User answered Claude's questions:
+  ⎿  · 两条路都能实现蓝牙打印，你想走哪条？ → plus.android 
+     反射（推荐，无需编译）
+     · 你的斑马打印机是哪个系列？影响打印指令语言的选择。 → 不确定 / 两种都支持
+
+● Good choice. Let me read the print page to align the API.
+
+  Read 1 file (ctrl+o to expand)
+
+● Bash(git diff pages.json; echo "=== index.vue diff ==="; git diff
+      pages/index/index.vue | head -60)
+  ⎿  diff --git a/pages.json b/pages.json
+     index 5da8820..689c9ff 100644
+     --- a/pages.json
+     … +31 lines (ctrl+o to expand)
+
+● Now I'll rewrite the printer layer as pure JS with plus.android reflection.
+
+● Write(utils\zebraPrinter.js)
+  ⎿  Added 314 lines, removed 145 lines
+        1  // utils/zebraPrinter.js
+        2 -const zebraPrinter = uni.requireNativePlugin('ZebraPrinterModu
+          -le');                                                         
+        2 +// 斑马打印机蓝牙(经典蓝牙 SPP)打印，纯 JS 实现，通过 plus.and
+          +roid 反射调用系统蓝牙 API。                                   
+        3 +// 不依赖任何原生插件，HBuilderX 标准基座即可运行。           
+        4 +//                                                            
+        5 +// 打印机需先在「系统设置 - 蓝牙」中完成配对，本模块读取已配对
+          +设备列表。                                                    
+        6  
+        4 -export default {                                              
+        5 -  /**                                                         
+        6 -   * 请求蓝牙及位置权限                                       
+        7 -   */                                                         
+        8 -  requestPermissions() {                                      
+        9 -    return new Promise((resolve, reject) => {                 
+       10 -      zebraPrinter.requestBluetoothPermissions((res) => {     
+       11 -        if (res.code === 'success') resolve(res);             
+       12 -        else reject(res);                                     
+       13 -      });                                                     
+       14 -    });                                                       
+       15 -  },                                                          
+        7 +const SPP_UUID = '00001101-0000-1000-8000-00805F9B34FB'       
+        8 +const STORAGE_KEY = 'zebra_printer'                           
+        9  
+       17 -  /**                                                         
+       18 -   * 检查蓝牙是否开启                                         
+       19 -   */                                                         
+       20 -  isBluetoothEnabled() {                                      
+       21 -    return zebraPrinter.isBluetoothEnabled();                 
+       22 -  },                                                          
+       10 +let adapter = null                                            
+       11 +let socket = null                                             
+       12 +let outStream = null                                          
+       13 +let inStream = null                                           
+       14 +let current = null                                            
+       15  
+       24 -  /**                                                         
+       25 -   * 跳转系统蓝牙设置                                         
+       26 -   */                                                         
+       27 -  enableBluetooth() {                                         
+       28 -    zebraPrinter.enableBluetooth();                           
+       29 -  },                                                          
+       16 +const inv = (obj, method, ...args) => plus.android.invoke(obj,
+          + method, ...args)                                             
+       17 +const sleep = (ms) => new Promise((r) => setTimeout(r, ms))   
+       18  
+       31 -  /**                                                         
+       32 -   * 开始发现设备，options 可包含 { network: true } 开启网络发
+          -现                                                            
+       33 -   * 返回一个回调函数，发现设备时持续调用 onFound，完成时调用 
+          -onFinish                                                      
+       34 -   */                                                         
+       35 -  startDiscovery(options = {}) {                              
+       36 -    return new Promise((resolve, reject) => {                 
+       37 -      let foundDevices = [];                                  
+       38 -      zebraPrinter.startDiscovery(options, (res) => {         
+       39 -        if (res.code === 'found') {                           
+       40 -          foundDevices.push(res.data);                        
+       41 -          // 可以通过事件通知页面，这里简单 resolve 全部设备？
+       42 -          // 设计为保持监听，通过回调抛出                     
+       43 -          // 暂时返回第一批，实际建议用事件总线               
+       44 -        } else if (res.code === 'success' || res.code === 'err
+          -or') {                                                        
+       45 -          resolve({ devices: foundDevices, message: res.messag
+          -e });                                                         
+       19 +function assertAndroid() {                                    
+       20 +  if (typeof plus === 'undefined') {                          
+       21 +    throw new Error('请在 App 中运行，H5/小程序不支持经典蓝牙 
+          +打印')                                                        
+       22 +  }                                                           
+       23 +  if (plus.os.name.toLowerCase() !== 'android') {             
+       24 +    throw new Error('当前仅支持 Android')                     
+       25 +  }                                                           
+       26 +}                                                             
+       27 +                                                              
+       28 +function getAdapter() {                                       
+       29 +  assertAndroid()                                             
+       30 +  if (adapter) return adapter                                 
+       31 +  const BluetoothAdapter = plus.android.importClass('android.b
+          +luetooth.BluetoothAdapter')                                   
+       32 +  adapter = BluetoothAdapter.getDefaultAdapter()              
+       33 +  if (!adapter) throw new Error('本机不支持蓝牙')             
+       34 +  return adapter                                              
+       35 +}                                                             
+       36 +                                                              
+       37 +// Android 12(API 31) 起连接已配对设备需要运行时授予 BLUETOOTH
+          +_CONNECT                                                      
+       38 +function runtimePermissions() {                               
+       39 +  const major = parseInt(plus.os.version, 10) || 0            
+       40 +  return major >= 12 ? ['android.permission.BLUETOOTH_CONNECT'
+          +] : []                                                        
+       41 +}                                                             
+       42 +                                                              
+       43 +function requestPermissions() {                               
+       44 +  assertAndroid()                                             
+       45 +  const perms = runtimePermissions()                          
+       46 +  if (perms.length === 0) return Promise.resolve()            
+       47 +  return new Promise((resolve, reject) => {                   
+       48 +    plus.android.requestPermissions(                          
+       49 +      perms,                                                  
+       50 +      (res) => {                                              
+       51 +        if (res.deniedAlways && res.deniedAlways.length > 0) {
+       52 +          reject(new Error('蓝牙权限已被永久拒绝，请到系统「应
+          +用权限」中手动开启「附近的设备」'))                           
+       53 +        } else if (res.deniedPresent && res.deniedPresent.leng
+          +th > 0) {                                                     
+       54 +          reject(new Error('未授予蓝牙权限，无法连接打印机')) 
+       55 +        } else {                                              
+       56 +          resolve()                                           
+       57          }
+       47 -      });                                                     
+       48 -    });                                                       
+       49 -  },                                                          
+       58 +      },                                                      
+       59 +      (err) => reject(new Error('权限请求失败: ' + (err && err
+          +.message)))                                                   
+       60 +    )                                                         
+       61 +  })                                                          
+       62 +}                                                             
+       63  
+       51 -  /**                                                         
+       52 -   * 停止发现                                                 
+       53 -   */                                                         
+       54 -  stopDiscovery() {                                           
+       55 -    zebraPrinter.stopDiscovery();                             
+       56 -  },                                                          
+       64 +function isBluetoothEnabled() {                               
+       65 +  try {                                                       
+       66 +    return inv(getAdapter(), 'isEnabled')                     
+       67 +  } catch (e) {                                               
+       68 +    return false                                              
+       69 +  }                                                           
+       70 +}                                                             
+       71  
+       58 -  /**                                                         
+       59 -   * 连接打印机                                               
+       60 -   */                                                         
+       61 -  connect(address, type = 'bluetooth') {                      
+       62 -    return new Promise((resolve, reject) => {                 
+       63 -      zebraPrinter.connect(address, type, (res) => {          
+       64 -        if (res.code === 'success') resolve(res);             
+       65 -        else reject(res);                                     
+       66 -      });                                                     
+       67 -    });                                                       
+       68 -  },                                                          
+       72 +function startActivityByAction(action) {                      
+       73 +  const Intent = plus.android.importClass('android.content.Int
+          +ent')                                                         
+       74 +  const intent = new Intent(action)                           
+       75 +  plus.android.runtimeMainActivity().startActivity(intent)    
+       76 +}                                                             
+       77  
+       70 -  /**                                                         
+       71 -   * 断开连接                                                 
+       72 -   */                                                         
+       73 -  disconnect() {                                              
+       74 -    zebraPrinter.disconnect();                                
+       75 -  },                                                          
+       78 +// 弹出系统「开启蓝牙」授权框                                 
+       79 +function enableBluetooth() {                                  
+       80 +  assertAndroid()                                             
+       81 +  startActivityByAction('android.bluetooth.adapter.action.REQU
+          +EST_ENABLE')                                                  
+       82 +}                                                             
+       83  
+       77 -  /**                                                         
+       78 -   * 发送 ZPL 命令                                            
+       79 -   */                                                         
+       80 -  sendZpl(zpl) {                                              
+       81 -    return new Promise((resolve, reject) => {                 
+       82 -      zebraPrinter.sendZpl(zpl, (res) => {                    
+       83 -        if (res.code === 'success') resolve(res);             
+       84 -        else reject(res);                                     
+       85 -      });                                                     
+       86 -    });                                                       
+       87 -  },                                                          
+       84 +// 打开系统蓝牙设置页，用于配对新打印机                       
+       85 +function openBluetoothSettings() {                            
+       86 +  assertAndroid()                                             
+       87 +  startActivityByAction('android.settings.BLUETOOTH_SETTINGS')
+       88 +}                                                             
+       89  
+       89 -  /**                                                         
+       90 -   * 发送 CPCL 命令                                           
+       91 -   */                                                         
+       92 -  sendCpcl(cpcl) {                                            
+       93 -    return new Promise((resolve, reject) => {                 
+       94 -      zebraPrinter.sendCpcl(cpcl, (res) => {                  
+       95 -        if (res.code === 'success') resolve(res);             
+       96 -        else reject(res);                                     
+       97 -      });                                                     
+       98 -    });                                                       
+       99 -  },                                                          
+       90 +const PRINTER_NAME_HINT = /(zebra|^zq|^zd|^zt|^qln|^imz|^zr|^r
+          +w|^mz|printer)/i                                              
+       91  
+      101 -  /**                                                         
+      102 -   * 打印图片                                                 
+      103 -   * params: { source: 'base64', data: 'base64...', x:0, y:0, 
+          -width:200, height:100 }                                       
+      104 -   * 或 { source: 'file', path: '/sdcard/...', x:0, y:0, width
+          -:200, height:100 }                                            
+      105 -   */                                                         
+      106 -  printImage(params) {                                        
+      107 -    return new Promise((resolve, reject) => {                 
+      108 -      zebraPrinter.printImage(params, (res) => {              
+      109 -        if (res.code === 'success') resolve(res);             
+      110 -        else reject(res);                                     
+      111 -      });                                                     
+      112 -    });                                                       
+      113 -  },                                                          
+       92 +// 读取系统已配对设备，疑似打印机的排在前面                   
+       93 +function getPairedDevices() {                                 
+       94 +  const ad = getAdapter()                                     
+       95 +  if (!inv(ad, 'isEnabled')) throw new Error('蓝牙未开启')    
+       96 +  const bonded = inv(ad, 'getBondedDevices')                  
+       97 +  const iterator = inv(bonded, 'iterator')                    
+       98 +  const list = []                                             
+       99 +  while (inv(iterator, 'hasNext')) {                          
+      100 +    const device = inv(iterator, 'next')                      
+      101 +    const name = inv(device, 'getName') || ''                 
+      102 +    list.push({                                               
+      103 +      name: name || '未命名设备',                             
+      104 +      address: inv(device, 'getAddress'),                     
+      105 +      maybePrinter: PRINTER_NAME_HINT.test(name)              
+      106 +    })                                                        
+      107 +  }                                                           
+      108 +  return list.sort((a, b) => Number(b.maybePrinter) - Number(a
+          +.maybePrinter))                                               
+      109 +}                                                             
+      110  
+      115 -  /**                                                         
+      116 -   * 获取打印机状态                                           
+      117 -   */                                                         
+      118 -  getStatus() {                                               
+      119 -    return new Promise((resolve, reject) => {                 
+      120 -      zebraPrinter.getPrinterStatus((res) => {                
+      121 -        if (res.code === 'status') resolve(res.data);         
+      122 -        else reject(res);                                     
+      123 -      });                                                     
+      124 -    });                                                       
+      125 -  },                                                          
+      111 +function isConnected() {                                      
+      112 +  if (!socket) return false                                   
+      113 +  try {                                                       
+      114 +    return inv(socket, 'isConnected')                         
+      115 +  } catch (e) {                                               
+      116 +    return false                                              
+      117 +  }                                                           
+      118 +}                                                             
+      119  
+      127 -  /**                                                         
+      128 -   * 读取磁卡                                                 
+      129 -   */                                                         
+      130 -  readMagCard() {                                             
+      131 -    return new Promise((resolve, reject) => {                 
+      132 -      zebraPrinter.readMagCard((res) => {                     
+      133 -        if (res.code === 'data') resolve(res.data);           
+      134 -        else reject(res);                                     
+      135 -      });                                                     
+      136 -    });                                                       
+      137 -  },                                                          
+      120 +function getCurrentPrinter() {                                
+      121 +  return isConnected() ? current : null                       
+      122 +}                                                             
+      123  
+      139 -  /**                                                         
+      140 -   * 发送文件（例如固件升级）                                 
+      141 -   */                                                         
+      142 -  sendFile(filePath, templateName) {                          
+      143 -    return new Promise((resolve, reject) => {                 
+      144 -      zebraPrinter.sendFile(filePath, { templateName }, (res) 
+          -=> {                                                          
+      145 -        if (res.code === 'success') resolve(res);             
+      146 -        else reject(res);                                     
+      147 -      });                                                     
+      148 -    });                                                       
+      149 -  },                                                          
+      124 +function closeQuietly(obj) {                                  
+      125 +  if (!obj) return                                            
+      126 +  try {                                                       
+      127 +    inv(obj, 'close')                                         
+      128 +  } catch (e) {}                                              
+      129 +}                                                             
+      130  
+      151 -  /**                                                         
+      152 -   * 存储标签模板                                             
+      153 -   */                                                         
+      154 -  storeFormat(formatName, zplData) {                          
+      155 -    return new Promise((resolve, reject) => {                 
+      156 -      zebraPrinter.storeFormat(formatName, zplData, (res) => {
+      157 -        if (res.code === 'success') resolve(res);             
+      158 -        else reject(res);                                     
+      159 -      });                                                     
+      160 -    });                                                       
+      131 +function disconnect() {                                       
+      132 +  closeQuietly(outStream)                                     
+      133 +  closeQuietly(inStream)                                      
+      134 +  closeQuietly(socket)                                        
+      135 +  outStream = null                                            
+      136 +  inStream = null                                             
+      137 +  socket = null                                               
+      138 +  current = null                                              
+      139 +}                                                             
+      140 +                                                              
+      141 +// 连接打印机。socket.connect() 是阻塞调用，最长可能等待十几秒
+          +。                                                            
+      142 +async function connect(address, name) {                       
+      143 +  await requestPermissions()                                  
+      144 +  disconnect()                                                
+      145 +  const ad = getAdapter()                                     
+      146 +  if (!inv(ad, 'isEnabled')) throw new Error('蓝牙未开启')    
+      147 +                                                              
+      148 +  await sleep(50) // 让调用方的 loading 先渲染出来，再进入阻塞
+          +调用                                                          
+      149 +  try {                                                       
+      150 +    const device = inv(ad, 'getRemoteDevice', address)        
+      151 +    const UUID = plus.android.importClass('java.util.UUID')   
+      152 +    socket = inv(device, 'createRfcommSocketToServiceRecord', 
+          +UUID.fromString(SPP_UUID))                                    
+      153 +    inv(socket, 'connect')                                    
+      154 +    outStream = inv(socket, 'getOutputStream')                
+      155 +    inStream = inv(socket, 'getInputStream')                  
+      156 +    current = { address, name: name || '' }                   
+      157 +  } catch (e) {                                               
+      158 +    disconnect()                                              
+      159 +    throw new Error('连接失败: ' + (e.message || e) + '（请确 
+          +认打印机已开机、已配对且未被其他设备占用）')                  
+      160    }
+      162 -}                                                             
+      161   No newline at end of file
+      162 +  return current                                              
+      163 +}                                                             
+      164 +                                                              
+      165 +function ensureConnected() {                                  
+      166 +  if (!isConnected()) throw new Error('打印机未连接')         
+      167 +}                                                             
+      168 +                                                              
+      169 +// 通过 java.lang.String.getBytes(charset) 拿到真正的 byte[]，
+          +直接传 JS 数组会被识别成 int[]                                
+      170 +function toJavaBytes(text, charset) {                         
+      171 +  const jstr = plus.android.newObject('java.lang.String', text
+          +)                                                             
+      172 +  return inv(jstr, 'getBytes', charset)                       
+      173 +}                                                             
+      174 +                                                              
+      175 +function sendRaw(text, charset) {                             
+      176 +  ensureConnected()                                           
+      177 +  try {                                                       
+      178 +    inv(outStream, 'write', toJavaBytes(text, charset || 'UTF-
+          +8'))                                                          
+      179 +    inv(outStream, 'flush')                                   
+      180 +  } catch (e) {                                               
+      181 +    throw new Error('发送失败: ' + (e.message || e))          
+      182 +  }                                                           
+      183 +}                                                             
+      184 +                                                              
+      185 +// ZPL 用 UTF-8，配合指令里的 ^CI28                           
+      186 +function sendZpl(zpl) {                                       
+      187 +  sendRaw(zpl, 'UTF-8')                                       
+      188 +}                                                             
+      189 +                                                              
+      190 +// CPCL 中文走 GB18030                                        
+      191 +function sendCpcl(cpcl) {                                     
+      192 +  sendRaw(cpcl.replace(/\r?\n/g, '\r\n'), 'GB18030')          
+      193 +}                                                             
+      194 +                                                              
+      195 +function readAvailable() {                                    
+      196 +  let text = ''                                               
+      197 +  while (inv(inStream, 'available') > 0) {                    
+      198 +    const b = inv(inStream, 'read')                           
+      199 +    if (b < 0) break                                          
+      200 +    text += String.fromCharCode(b)                            
+      201 +  }                                                           
+      202 +  return text                                                 
+      203 +}                                                             
+      204 +                                                              
+      205 +async function readResponse(timeout) {                        
+      206 +  const deadline = Date.now() + (timeout || 2000)             
+      207 +  let text = ''                                               
+      208 +  while (Date.now() < deadline) {                             
+      209 +    text += readAvailable()                                   
+      210 +    if (text.indexOf('\x03') !== -1) break // ETX，一段状态回 
+          +复结束                                                        
+      211 +    await sleep(100)                                          
+      212 +  }                                                           
+      213 +  return text                                                 
+      214 +}                                                             
+      215 +                                                              
+      216 +const flag = (v) => v === '1'                                 
+      217 +                                                              
+      218 +// ~HS 主机状态查询，回复 3 行逗号分隔字段                    
+      219 +function parseHostStatus(raw) {                               
+      220 +  const lines = raw                                           
+      221 +    .replace(/[\x00-\x09\x0b\x0c\x0e-\x1f]/g, '')             
+      222 +    .split(/[\r\n]+/)                                         
+      223 +    .map((l) => l.trim())                                     
+      224 +    .filter((l) => l.length > 0)                              
+      225 +  if (lines.length < 2) return { raw, parsed: false }         
+      226 +                                                              
+      227 +  const l1 = lines[0].split(',')                              
+      228 +  const l2 = lines[1].split(',')                              
+      229 +  const status = {                                            
+      230 +    raw,                                                      
+      231 +    parsed: true,                                             
+      232 +    isPaperOut: flag(l1[1]),                                  
+      233 +    isPaused: flag(l1[2]),                                    
+      234 +    labelLengthInDots: parseInt(l1[3], 10) || 0,              
+      235 +    formatsInBuffer: parseInt(l1[4], 10) || 0,                
+      236 +    isReceiveBufferFull: flag(l1[5]),                         
+      237 +    isHeadOpen: flag(l2[2]),                                  
+      238 +    isRibbonOut: flag(l2[3])                                  
+      239 +  }                                                           
+      240 +  status.isReadyToPrint = !status.isPaperOut && !status.isPaus
+          +ed && !status.isHeadOpen                                      
+      241 +  return status                                               
+      242 +}                                                             
+      243 +                                                              
+      244 +// 查询打印机状态。仅 ZPL 打印机支持 ~HS，CPCL 机型会返回 pars
+          +ed:false                                                      
+      245 +async function getStatus() {                                  
+      246 +  ensureConnected()                                           
+      247 +  readAvailable() // 清掉残留数据                             
+      248 +  sendZpl('~HS')                                              
+      249 +  const raw = await readResponse(2000)                        
+      250 +  if (!raw) throw new Error('打印机无响应（可能是 CPCL 机型或 
+          +链路已断开）')                                                
+      251 +  return parseHostStatus(raw)                                 
+      252 +}                                                             
+      253 +                                                              
+      254 +function buildZplTestLabel() {                                
+      255 +  return [                                                    
+      256 +    '^XA',                                                    
+      257 +    '^CI28',                                                  
+      258 +    '^PW576',                                                 
+      259 +    '^LL0400',                                                
+      260 +    '^FO30,30^A0N,36,36^FDZPL Test OK^FS',                    
+      261 +    '^FO30,100^BY2^BCN,90,Y,N,N^FD123456789^FS',              
+      262 +    '^FO30,240^A0N,28,28^FD' + new Date().toLocaleString() + '
+          +^FS',                                                         
+      263 +    '^XZ'                                                     
+      264 +  ].join('\n')                                                
+      265 +}                                                             
+      266 +                                                              
+      267 +function buildCpclTestLabel() {                               
+      268 +  return [                                                    
+      269 +    '! 0 200 200 300 1',                                      
+      270 +    'PAGE-WIDTH 576',                                         
+      271 +    'TEXT 4 0 30 30 CPCL Test OK',                            
+      272 +    'BARCODE 128 1 1 80 30 110 123456789',                    
+      273 +    'TEXT 7 0 30 230 ' + new Date().toLocaleString(),         
+      274 +    'FORM',                                                   
+      275 +    'PRINT'                                                   
+      276 +  ].join('\r\n')                                              
+      277 +}                                                             
+      278 +                                                              
+      279 +function printZplTest() {                                     
+      280 +  sendZpl(buildZplTestLabel())                                
+      281 +}                                                             
+      282 +                                                              
+      283 +function printCpclTest() {                                    
+      284 +  sendCpcl(buildCpclTestLabel())                              
+      285 +}                                                             
+      286 +                                                              
+      287 +// 默认打印机，供其他页面直接调用                             
+      288 +function savePrinter(printer) {                               
+      289 +  uni.setStorageSync(STORAGE_KEY, printer)                    
+      290 +}                                                             
+      291 +                                                              
+      292 +function loadPrinter() {                                      
+      293 +  return uni.getStorageSync(STORAGE_KEY) || null              
+      294 +}                                                             
+      295 +                                                              
+      296 +function clearPrinter() {                                     
+      297 +  uni.removeStorageSync(STORAGE_KEY)                          
+      298 +}                                                             
+      299 +                                                              
+      300 +// 业务页面的入口：自动连上已保存的打印机再发指令             
+      301 +async function printWithSaved(zpl) {                          
+      302 +  const saved = loadPrinter()                                 
+      303 +  if (!saved || !saved.address) throw new Error('未设置默认打 
+          +印机，请先到「蓝牙打印」页面选择')                            
+      304 +  if (!isConnected() || !current || current.address !== saved.
+          +address) {                                                    
+      305 +    await connect(saved.address, saved.name)                  
+      306 +  }                                                           
+      307 +  sendZpl(zpl)                                                
+      308 +}                                                             
+      309 +                                                              
+      310 +export default {                                              
+      311 +  requestPermissions,                                         
+      312 +  isBluetoothEnabled,                                         
+      313 +  enableBluetooth,                                            
+      314 +  openBluetoothSettings,                                      
+      315 +  getPairedDevices,                                           
+      316 +  connect,                                                    
+      317 +  disconnect,                                                 
+      318 +  isConnected,                                                
+      319 +  getCurrentPrinter,                                          
+      320 +  sendRaw,                                                    
+      321 +  sendZpl,                                                    
+      322 +  sendCpcl,                                                   
+      323 +  getStatus,                                                  
+      324 +  buildZplTestLabel,                                          
+      325 +  buildCpclTestLabel,                                         
+      326 +  printZplTest,                                               
+      327 +  printCpclTest,                                              
+      328 +  savePrinter,                                                
+      329 +  loadPrinter,                                                
+      330 +  clearPrinter,                                               
+      331 +  printWithSaved                                              
+      332 +}                                                             
+● Now the print settings page.
+
+● Write(pages\print\printSetting.vue)
+  ⎿  Added 328 lines, removed 43 lines
+        1  <template>
+        2    <view class="container">
+        3 -    <button @click="startScan">开始扫描</button>              
+        4 -    <button @click="stopScan">停止扫描</button>               
+        5 -    <view v-for="(dev, idx) in devices" :key="idx" @click="con
+          -nectDevice(dev)"                                              
+        6 -          class="device-item">                                
+        7 -      <text>{{ dev.name || 'Unnamed' }}</text>                
+        8 -      <text>{{ dev.address }}</text>                          
+        3 +    <view class="card">                                       
+        4 +      <view class="row">                                      
+        5 +        <text class="label">蓝牙状态</text>                   
+        6 +        <text :class="['value', btEnabled ? 'ok' : 'warn']">{{
+          + btEnabled ? '已开启' : '未开启' }}</text>                    
+        7 +      </view>                                                 
+        8 +      <view class="row">                                      
+        9 +        <text class="label">当前打印机</text>                 
+       10 +        <text :class="['value', connected ? 'ok' : 'warn']">{{
+          + connected ? connectedName : '未连接' }}</text>               
+       11 +      </view>                                                 
+       12 +      <view class="btn-row">                                  
+       13 +        <button size="mini" @click="openSettings">系统蓝牙设置
+          +</button>                                                     
+       14 +        <button size="mini" @click="refresh">刷新设备</button>
+       15 +        <button size="mini" v-if="!btEnabled" type="primary" @
+          +click="turnOnBluetooth">开启蓝牙</button>                     
+       16 +      </view>                                                 
+       17      </view>
+       18 +                                                              
+       19 +    <view class="tip">                                        
+       20 +      打印机需先在「系统蓝牙设置」中完成配对，配对后回到本页刷
+          +新即可看到。                                                  
+       21 +    </view>                                                   
+       22 +                                                              
+       23 +    <view class="card">                                       
+       24 +      <text class="card-title">已配对设备</text>              
+       25 +      <view v-if="devices.length === 0" class="empty">暂无已配
+          +对设备</view>                                                 
+       26 +      <view v-for="dev in devices" :key="dev.address"         
+       27 +        :class="['device-item', dev.address === connectedAddre
+          +ss ? 'active' : '']"                                          
+       28 +        @click="connectDevice(dev)">                          
+       29 +        <view class="device-info">                            
+       30 +          <text class="device-name">{{ dev.name }}<text v-if="
+          +dev.maybePrinter" class="badge">打印机</text></text>          
+       31 +          <text class="device-addr">{{ dev.address }}</text>  
+       32 +        </view>                                               
+       33 +        <text class="device-state">{{ dev.address === connecte
+          +dAddress ? '已连接' : '点击连接' }}</text>                    
+       34 +      </view>                                                 
+       35 +    </view>                                                   
+       36 +                                                              
+       37 +    <view class="card" v-if="connected">                      
+       38 +      <text class="card-title">打印测试</text>                
+       39 +      <view class="btn-row">                                  
+       40 +        <button size="mini" type="primary" @click="testZpl">ZP
+          +L 测试</button>                                               
+       41 +        <button size="mini" type="primary" @click="testCpcl">C
+          +PCL 测试</button>                                             
+       42 +        <button size="mini" @click="queryStatus">查询状态</but
+          +ton>                                                          
+       43 +      </view>                                                 
+       44 +      <textarea class="zpl-input" v-model="customZpl" placehol
+          +der="可在此粘贴自定义 ZPL/CPCL 指令" />                       
+       45 +      <view class="btn-row">                                  
+       46 +        <button size="mini" @click="sendCustom('zpl')">发送 ZP
+          +L</button>                                                    
+       47 +        <button size="mini" @click="sendCustom('cpcl')">发送 C
+          +PCL</button>                                                  
+       48 +      </view>                                                 
+       49 +      <view class="btn-row">                                  
+       50 +        <button size="mini" @click="setDefault">设为默认打印机
+          +</button>                                                     
+       51 +        <button size="mini" type="warn" @click="doDisconnect">
+          +断开连接</button>                                             
+       52 +      </view>                                                 
+       53 +    </view>                                                   
+       54 +                                                              
+       55 +    <view class="card" v-if="statusText">                     
+       56 +      <text class="card-title">打印机状态</text>              
+       57 +      <text class="status-text">{{ statusText }}</text>       
+       58 +    </view>                                                   
+       59    </view>
+       60  </template>
+       61  
+       62  <script>
+       14 -import printer from '@/utils/zebraPrinter.js'                 
+       63 +  import printer from '@/utils/zebraPrinter.js'               
+       64  
+       16 -export default {                                              
+       17 -  data() {                                                    
+       18 -    return {                                                  
+       19 -      devices: []                                             
+       20 -    }                                                         
+       21 -  },                                                          
+       22 -  methods: {                                                  
+       23 -    async startScan() {                                       
+       24 -      try {                                                   
+       25 -        // 先请求权限                                         
+       26 -        await printer.requestPermissions();                   
+       27 -        if (!printer.isBluetoothEnabled()) {                  
+       28 -          printer.enableBluetooth();                          
+       29 -          uni.showToast({ title: '请开启蓝牙', icon: 'none' })
+          -;                                                             
+       30 -          return;                                             
+       31 -        }                                                     
+       32 -        this.devices = [];                                    
+       33 -        // 使用事件监听方式（需要在插件侧支持，这里简化）     
+       34 -        // 实际项目中你可以修改 startDiscovery 让其通过 uni.$e
+          -mit 发送设备                                                  
+       35 -        // 这里用定时器模拟，请自行完善                       
+       36 -        const res = await printer.startDiscovery({ network: fa
+          -lse });                                                       
+       37 -        // 由于目前 Promise 只会回调一次结束，所以你需要改进原
+          -生插件部分                                                    
+       38 -        // 更推荐在插件里用 invokeAndKeepAlive 持续回调       
+       39 -      } catch (e) {                                           
+       40 -        uni.showToast({ title: e.message, icon: 'none' });    
+       65 +  export default {                                            
+       66 +    data() {                                                  
+       67 +      return {                                                
+       68 +        btEnabled: false,                                     
+       69 +        devices: [],                                          
+       70 +        connectedAddress: '',                                 
+       71 +        connectedName: '',                                    
+       72 +        customZpl: '',                                        
+       73 +        statusText: ''                                        
+       74        }
+       75      },
+       43 -    stopScan() {                                              
+       44 -      printer.stopDiscovery();                                
+       76 +    computed: {                                               
+       77 +      connected() {                                           
+       78 +        return !!this.connectedAddress                        
+       79 +      }                                                       
+       80      },
+       46 -    async connectDevice(dev) {                                
+       47 -      try {                                                   
+       48 -        await printer.connect(dev.address, dev.type || 'blueto
+          -oth');                                                        
+       49 -        uni.showToast({ title: '连接成功' });                 
+       50 -        uni.navigateTo({ url: '/pages/print/print' });        
+       51 -      } catch (e) {                                           
+       52 -        uni.showToast({ title: '连接失败: ' + e.message, icon:
+          - 'none' });                                                   
+       81 +    onShow() {                                                
+       82 +      this.refresh()                                          
+       83 +    },                                                        
+       84 +    onUnload() {                                              
+       85 +      // 页面退出时保留连接，供业务页面复用；如需释放可调用 pr
+          +inter.disconnect()                                            
+       86 +    },                                                        
+       87 +    methods: {                                                
+       88 +      toast(title) {                                          
+       89 +        uni.showToast({ title, icon: 'none', duration: 2500 })
+       90 +      },                                                      
+       91 +                                                              
+       92 +      syncConnection() {                                      
+       93 +        const cur = printer.getCurrentPrinter()               
+       94 +        this.connectedAddress = cur ? cur.address : ''        
+       95 +        this.connectedName = cur ? cur.name || cur.address : '
+          +'                                                             
+       96 +      },                                                      
+       97 +                                                              
+       98 +      refresh() {                                             
+       99 +        this.btEnabled = printer.isBluetoothEnabled()         
+      100 +        this.syncConnection()                                 
+      101 +        if (!this.btEnabled) {                                
+      102 +          this.devices = []                                   
+      103 +          return                                              
+      104 +        }                                                     
+      105 +        try {                                                 
+      106 +          this.devices = printer.getPairedDevices()           
+      107 +        } catch (e) {                                         
+      108 +          this.devices = []                                   
+      109 +          this.toast(e.message)                               
+      110 +        }                                                     
+      111 +      },                                                      
+      112 +                                                              
+      113 +      turnOnBluetooth() {                                     
+      114 +        try {                                                 
+      115 +          printer.enableBluetooth()                           
+      116 +        } catch (e) {                                         
+      117 +          this.toast(e.message)                               
+      118 +        }                                                     
+      119 +      },                                                      
+      120 +                                                              
+      121 +      openSettings() {                                        
+      122 +        try {                                                 
+      123 +          printer.openBluetoothSettings()                     
+      124 +        } catch (e) {                                         
+      125 +          this.toast(e.message)                               
+      126 +        }                                                     
+      127 +      },                                                      
+      128 +                                                              
+      129 +      async connectDevice(dev) {                              
+      130 +        if (dev.address === this.connectedAddress) return     
+      131 +        uni.showLoading({ title: '连接中...', mask: true })   
+      132 +        try {                                                 
+      133 +          await printer.connect(dev.address, dev.name)        
+      134 +          this.syncConnection()                               
+      135 +          uni.hideLoading()                                   
+      136 +          this.toast('连接成功')                              
+      137 +        } catch (e) {                                         
+      138 +          uni.hideLoading()                                   
+      139 +          this.syncConnection()                               
+      140 +          this.toast(e.message)                               
+      141 +        }                                                     
+      142 +      },                                                      
+      143 +                                                              
+      144 +      doDisconnect() {                                        
+      145 +        printer.disconnect()                                  
+      146 +        this.statusText = ''                                  
+      147 +        this.syncConnection()                                 
+      148 +        this.toast('已断开')                                  
+      149 +      },                                                      
+      150 +                                                              
+      151 +      testZpl() {                                             
+      152 +        try {                                                 
+      153 +          printer.printZplTest()                              
+      154 +          this.toast('ZPL 指令已发送')                        
+      155 +        } catch (e) {                                         
+      156 +          this.toast(e.message)                               
+      157 +        }                                                     
+      158 +      },                                                      
+      159 +                                                              
+      160 +      testCpcl() {                                            
+      161 +        try {                                                 
+      162 +          printer.printCpclTest()                             
+      163 +          this.toast('CPCL 指令已发送')                       
+      164 +        } catch (e) {                                         
+      165 +          this.toast(e.message)                               
+      166 +        }                                                     
+      167 +      },                                                      
+      168 +                                                              
+      169 +      sendCustom(lang) {                                      
+      170 +        const text = this.customZpl.trim()                    
+      171 +        if (!text) return this.toast('请先输入指令')          
+      172 +        try {                                                 
+      173 +          if (lang === 'cpcl') printer.sendCpcl(text)         
+      174 +          else printer.sendZpl(text)                          
+      175 +          this.toast('已发送')                                
+      176 +        } catch (e) {                                         
+      177 +          this.toast(e.message)                               
+      178 +        }                                                     
+      179 +      },                                                      
+      180 +                                                              
+      181 +      async queryStatus() {                                   
+      182 +        uni.showLoading({ title: '查询中...', mask: true })   
+      183 +        try {                                                 
+      184 +          const s = await printer.getStatus()                 
+      185 +          uni.hideLoading()                                   
+      186 +          if (!s.parsed) {                                    
+      187 +            this.statusText = '未能解析 ~HS 回复，原始数据：' 
+          ++ s.raw                                                       
+      188 +            return                                            
+      189 +          }                                                   
+      190 +          this.statusText = [                                 
+      191 +            '可打印: ' + (s.isReadyToPrint ? '是' : '否'),    
+      192 +            '缺纸: ' + (s.isPaperOut ? '是' : '否'),          
+      193 +            '暂停: ' + (s.isPaused ? '是' : '否'),            
+      194 +            '打印头打开: ' + (s.isHeadOpen ? '是' : '否'),    
+      195 +            '碳带用尽: ' + (s.isRibbonOut ? '是' : '否'),     
+      196 +            '缓冲区满: ' + (s.isReceiveBufferFull ? '是' : '否
+          +'),                                                           
+      197 +            '标签长度(点): ' + s.labelLengthInDots            
+      198 +          ].join('\n')                                        
+      199 +        } catch (e) {                                         
+      200 +          uni.hideLoading()                                   
+      201 +          this.statusText = ''                                
+      202 +          this.toast(e.message)                               
+      203 +        }                                                     
+      204 +      },                                                      
+      205 +                                                              
+      206 +      setDefault() {                                          
+      207 +        const cur = printer.getCurrentPrinter()               
+      208 +        if (!cur) return this.toast('请先连接打印机')         
+      209 +        printer.savePrinter(cur)                              
+      210 +        this.toast('已设为默认打印机')                        
+      211        }
+      212      }
+      213    }
+       56 -}                                                             
+       57 -</script>                                                     
+      214   No newline at end of file
+      215 +</script>                                                     
+      216 +                                                              
+      217 +<style scoped>                                                
+      218 +  .container {                                                
+      219 +    padding: 20rpx;                                           
+      220 +    background: #f5f5f5;                                      
+      221 +    min-height: 100vh;                                        
+      222 +  }                                                           
+      223 +                                                              
+      224 +  .card {                                                     
+      225 +    background: #fff;                                         
+      226 +    border-radius: 12rpx;                                     
+      227 +    padding: 24rpx;                                           
+      228 +    margin-bottom: 20rpx;                                     
+      229 +  }                                                           
+      230 +                                                              
+      231 +  .card-title {                                               
+      232 +    font-size: 30rpx;                                         
+      233 +    font-weight: bold;                                        
+      234 +    color: #333;                                              
+      235 +    display: block;                                           
+      236 +    margin-bottom: 16rpx;                                     
+      237 +  }                                                           
+      238 +                                                              
+      239 +  .row {                                                      
+      240 +    display: flex;                                            
+      241 +    justify-content: space-between;                           
+      242 +    align-items: center;                                      
+      243 +    padding: 12rpx 0;                                         
+      244 +  }                                                           
+      245 +                                                              
+      246 +  .label {                                                    
+      247 +    font-size: 28rpx;                                         
+      248 +    color: #666;                                              
+      249 +  }                                                           
+      250 +                                                              
+      251 +  .value {                                                    
+      252 +    font-size: 28rpx;                                         
+      253 +  }                                                           
+      254 +                                                              
+      255 +  .ok {                                                       
+      256 +    color: #07c160;                                           
+      257 +  }                                                           
+      258 +                                                              
+      259 +  .warn {                                                     
+      260 +    color: #fa5151;                                           
+      261 +  }                                                           
+      262 +                                                              
+      263 +  .btn-row {                                                  
+      264 +    display: flex;                                            
+      265 +    flex-wrap: wrap;                                          
+      266 +    gap: 16rpx;                                               
+      267 +    margin-top: 16rpx;                                        
+      268 +  }                                                           
+      269 +                                                              
+      270 +  .tip {                                                      
+      271 +    font-size: 24rpx;                                         
+      272 +    color: #999;                                              
+      273 +    padding: 0 12rpx 20rpx;                                   
+      274 +    line-height: 1.6;                                         
+      275 +  }                                                           
+      276 +                                                              
+      277 +  .empty {                                                    
+      278 +    font-size: 26rpx;                                         
+      279 +    color: #999;                                              
+      280 +    text-align: center;                                       
+      281 +    padding: 30rpx 0;                                         
+      282 +  }                                                           
+      283 +                                                              
+      284 +  .device-item {                                              
+      285 +    display: flex;                                            
+      286 +    justify-content: space-between;                           
+      287 +    align-items: center;                                      
+      288 +    padding: 24rpx 16rpx;                                     
+      289 +    border-bottom: 1rpx solid #eee;                           
+      290 +  }                                                           
+      291 +                                                              
+      292 +  .device-item.active {                                       
+      293 +    background: #f0fff5;                                      
+      294 +  }                                                           
+      295 +                                                              
+      296 +  .device-info {                                              
+      297 +    display: flex;                                            
+      298 +    flex-direction: column;                                   
+      299 +  }                                                           
+      300 +                                                              
+      301 +  .device-name {                                              
+      302 +    font-size: 30rpx;                                         
+      303 +    color: #333;                                              
+      304 +  }                                                           
+      305 +                                                              
+      306 +  .badge {                                                    
+      307 +    font-size: 20rpx;                                         
+      308 +    color: #fff;                                              
+      309 +    background: #E8833A;                                      
+      310 +    border-radius: 6rpx;                                      
+      311 +    padding: 2rpx 10rpx;                                      
+      312 +    margin-left: 12rpx;                                       
+      313 +  }                                                           
+      314 +                                                              
+      315 +  .device-addr {                                              
+      316 +    font-size: 24rpx;                                         
+      317 +    color: #999;                                              
+      318 +    margin-top: 6rpx;                                         
+      319 +  }                                                           
+      320 +                                                              
+      321 +  .device-state {                                             
+      322 +    font-size: 26rpx;                                         
+      323 +    color: #576b95;                                           
+      324 +  }                                                           
+      325 +                                                              
+      326 +  .zpl-input {                                                
+      327 +    width: 100%;                                              
+      328 +    height: 200rpx;                                           
+      329 +    border: 1rpx solid #ddd;                                  
+      330 +    border-radius: 8rpx;                                      
+      331 +    padding: 16rpx;                                           
+      332 +    font-size: 24rpx;                                         
+      333 +    box-sizing: border-box;                                   
+      334 +    margin-top: 16rpx;                                        
+      335 +  }                                                           
+      336 +                                                              
+      337 +  .status-text {                                              
+      338 +    font-size: 26rpx;                                         
+      339 +    color: #333;                                              
+      340 +    line-height: 1.8;                                         
+      341 +    white-space: pre-wrap;                                    
+      342 +  }                                                           
+      343 +</style>                                                      
+
+● Now clean up manifest.json.
+
+● Update(manifest.json)
+  ⎿  Added 4 lines, removed 1 line
+      35                      "<uses-permission android:name=\"android.pe
+          rmission.WAKE_LOCK\"/>",
+      36                      "<uses-permission android:name=\"android.pe
+          rmission.FLASHLIGHT\"/>",
+      37                      "<uses-permission android:name=\"android.pe
+          rmission.WRITE_SETTINGS\"/>",
+      38 -                    "<uses-permission android:name=\"android.pe
+         -rmission.ACCESS_COARSE_LOCATION\"/>"                           
+      38 +                    "<uses-permission android:name=\"android.pe
+         +rmission.ACCESS_COARSE_LOCATION\"/>",                          
+      39 +                    "<uses-permission android:name=\"android.pe
+         +rmission.BLUETOOTH\" android:maxSdkVersion=\"30\"/>",          
+      40 +                    "<uses-permission android:name=\"android.pe
+         +rmission.BLUETOOTH_ADMIN\" android:maxSdkVersion=\"30\"/>",    
+      41 +                    "<uses-permission android:name=\"android.pe
+         +rmission.BLUETOOTH_CONNECT\"/>"                                
+      42                  ]
+      43              },
+      44              "ios" : {
+
+● Update(manifest.json)
+  ⎿  Removed 16 lines
+      56                      "xxxhdpi" : "static/warehouse.png"
+      57                  }
+      58              }
+      59 -        },                                                     
+      60 -        "nativePlugins" : {                                    
+      61 -            "ZebraPrinter" : {                                 
+      62 -                "__plugin_info__" : {                          
+      63 -                    "name" : "ZebraPrinter",                   
+      64 -                    "description" : "Zebra Link-OS Printer Plug
+         -in",                                                           
+      65 -                    "platforms" : "Android",                   
+      66 -                    "url" : "",                                
+      67 -                    "android_package_name" : "",               
+      68 -                    "ios_bundle_id" : "",                      
+      69 -                    "isCloud" : false,                         
+      70 -                    "bought" : -1,                             
+      71 -                    "pid" : "",                                
+      72 -                    "parameters" : {}                          
+      73 -                }                                              
+      74 -            }                                                  
+      59          }
+      60      },
+      61      "quickapp" : {},
+
+● Bash(node -e "const m=require('./manifest.json');
+      console.log('nativePlugins:', m['app-plus'].nativePlugins);
+      console.log('perm count:', m['app-plus'].distribute.and…)
+  ⎿  nativePlugins: undefined
+     perm count: 17
+
+● Update(utils\zebraPrinter.js)
+  ⎿  Added 1 line, removed 1 line
+      72  function startActivityByAction(action) {
+      73    const Intent = plus.android.importClass('android.content.Inte
+          nt')
+      74    const intent = new Intent(action)
+      75 -  plus.android.runtimeMainActivity().startActivity(intent)     
+      75 +  inv(plus.android.runtimeMainActivity(), 'startActivity', inte
+         +nt)                                                            
+      76  }
+      77  
+      78  // 弹出系统「开启蓝牙」授权框
+
+● Bash(cd /tmp && cp
+      "/c/Users/26281/Desktop/github/hjlApp/utils/zebraPrinter.js" zp.mjs &&
+      node --check zp.mjs && echo "zebraPrinter.js OK"
+      node -e "…)
+  ⎿  Error: Exit code 1
+     zebraPrinter.js OK
+     node:fs:440
+         return binding.readFileUtf8(path, stringToFlags(options.flag));
+                        ^
+
+     Error: ENOENT: no such file or directory, open 
+     'C:\c\Users\26281\Desktop\github\hjlApp\pages\print\printSetting.vue'
+         at Object.readFileSync (node:fs:440:20)
+         at [eval]:3:14
+         at runScriptInThisContext (node:internal/vm:209:10)
+
+     … +13 lines (ctrl+o to expand)
+
+● Bash(node -e "
+      const fs=require('fs');…)
+  ⎿  extracted 3186
+     printSetting.vue script OK
+
+● Both files are syntax-clean. Let me check the launch config, since it may
+  still point at the custom base.
+
+  Read 1 file (ctrl+o to expand)
+
+● Write(.hbuilderx\launch.json)
+  ⎿  Added 1 line, removed 2 lines
+      2      "version" : "1.0",
+      3      "configurations" : [
+      4          {
+      5 -            "customPlaygroundType" : "local",                   
+      6 -            "playground" : "custom",                            
+      5 +            "playground" : "standard",                          
+      6              "type" : "uni-app:app-android"
+      7          }
+      8      ]
+
+  Listed 1 directory, wrote 2 memories (ctrl+o to expand)
+
+● Done.改完的内容：
+
+  根因：HBuilderX 本地原生插件不会编译 Java 源码，只打包
+  nativeplugins/ZebraPrinter/android/ 下已编译好的 .aar/.jar。你的
+  src/main/java/ZebraPrinterModule.java
+  被静默忽略，所以自定义基座里确实没有那个类。（顺带两个次要错误：jar 放在了
+  android/libs/ 而不是 android/ 下；声明了 integrateType: "aar" 却没有任何
+  aar。）
+
+  改动：
+  - utils/zebraPrinter.js — 完全重写为纯 JS，用 plus.android 反射调
+  BluetoothAdapter / BluetoothSocket，走 SPP（00001101-...）直接写 ZPL/CPCL
+  字节流。关键点：字节流通过 java.lang.String.getBytes(charset) 拿真正的
+  byte[]（直传 JS 数组会被识别成 int[] 导致 write 找不到方法），ZPL 用
+  UTF-8、CPCL 用 GB18030。含 ~HS
+  状态查询解析、默认打印机存储、printWithSaved(zpl) 供业务页直接调用。
+  - pages/print/printSetting.vue —
+  重写成可用页面：蓝牙状态、已配对设备列表（疑似打印机置顶）、连接/断开、ZPL 与
+  CPCL 测试打印、自定义指令输入框、状态查询、设为默认打印机。
+  - manifest.json — 删除 nativePlugins 声明（否则仍强制要求自定义基座），补
+  BLUETOOTH_CONNECT 等权限。
+  - .hbuilderx/launch.json — 从自定义基座切回标准基座。
+
+  你需要做的：
+  1. 打印机先在系统设置 → 蓝牙里配对一次（经典蓝牙无法在 JS
+  里发现未配对设备，BroadcastReceiver 不能用 plus.android.implements 实现）。
+  2. nativeplugins/ 目录现在已无用，可以自行删掉（我没动它，避免误删你的东西）。
+  3. 用标准基座运行 → 首页「蓝牙打印」→ 选设备 → 点 ZPL/CPCL
+  测试，看哪种能出纸就用哪种。
+
+  我无法在这里连真机验证实际出纸效果，这一步需要你在设备上跑。如果 ZPL
+  测试打印空白而 CPCL 正常，说明是 CPCL 机型；反之则是
+  ZPL。中文打印需要额外的字体指令（ZPL 需 ^CI28 + CJK 字体如
+  ^A@N,,,E:GB18030.FNT），测试标签我特意用了纯 ASCII
+  避开这个变量，等确认链路通了再处理中文。
+
+✻ Churned for 10m 36s
+
+※ recap: Goal is Bluetooth label printing in your uni-app project; I replaced the native plugin with a pure JS plus.android implementation and a working print settings page. Next: pair the printer in system Bluetooth settings, then run the ZPL/CPCL test print on a real device. (disable recaps in /config)
+
+>                                                                               
+  点击zpl测试回出纸                                                             
+  输入框输入内容123，点击发送zpl无反应                                          
+  我要可以自定义标签模板文件可以打印二维码，文本等信息，可以设置标签大小，页大  
+  小等完善的信息                                                                
+  增加可以清除打印机正在打印缓存                                                
+● ZPL 测试出纸说明链路已通。输入 123 没反应是正常的——123 不是 ZPL 指令，打印机直
+  接丢弃了。我来加上模板系统、缓存清除，并让自定义输入框对纯文本也能工作。
+
+● Write(utils\zplTemplate.js)
+  ⎿  Wrote 191 lines to utils\zplTemplate.js
+      1 // utils/zplTemplate.js
+      2 // 标签模板 -> ZPL 指令。坐标与尺寸统一用毫米，内部按 DPI 换算成
+        点(dot)。
+      3 // 字号(fontH/fontW)与二维码放大倍数沿用 ZPL 原生单位。
+      4 
+      5 const TEMPLATE_KEY = 'zebra_templates'
+      6 
+      7 const DOTS_PER_MM = { 203: 8, 300: 11.811, 600: 23.622 }
+      8 
+      9 const CJK_RE = /[　-〿㐀-䶿一-鿿豈-﫿＀-￯]/
+     … +202 lines (ctrl+o to expand)
+
+● Let me make the CJK regex use escape sequences rather than literal characters.
+
+● Update(utils\zplTemplate.js)
+  ⎿  Error editing file
+
+  Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+● Bash(node -e "
+      const fs=require('fs');…)
+  ⎿  line 9 -> const CJK_RE = /[　-〿㐀-䶿一-鿿豈-﫿＀-￯]/
+
+● Bash(node -e "
+      const fs=require('fs');…)
+  ⎿  "const CJK_RE = /[　-〿㐀-䶿一-鿿豈-﫿＀-￯]/"
+     has backslash-u: false
+
+● Bash(node -e "
+      const fs=require('fs');…)
+  ⎿  patched at line 9
+
+● Update(utils\zplTemplate.js)
+  ⎿  Error editing file
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(utils\zplTemplate.js)
+  ⎿  Added 2 lines, removed 2 lines
+      73      const h = num(el.fontH, 30)
+      74      const w = num(el.fontW, h)
+      75      // 中文必须走 ^A@ 指定 CJK 字体文件，内置 ^A0 字体没有汉字
+      76 -    const font = CJK_RE.test(text)                             
+      76 +    const font = hasCjk(text)                                  
+      77        ? `^A@${rot},${h},${w},${tpl.cjkFont || 'E:GB18030.FNT'}`
+      78        : `^A0${rot},${h},${w}`
+      79      return `^FO${x},${y}${font}^FH^FD${escapeText(text)}^FS`
+     ...
+      144  
+      145  // 把一段纯文本包成可打印的标签，用于自定义输入框里直接敲文字
+           的场景
+      146  export function buildTextLabel(text, cjkFont) {
+      147 -  const body = CJK_RE.test(text)                              
+      147 +  const body = hasCjk(text)                                   
+      148      ? `^A@N,40,40,${cjkFont || 'E:GB18030.FNT'}`
+      149      : '^A0N,40,40'
+      150    return ['^XA', '^CI28', `^FO30,30${body}^FH^FD${escapeText(t
+           ext)}^FS`, '^XZ'].join('\n')
+
+● Bash(node -e "
+      const fs=require('fs');…)
+  ⎿  ok
+     zplTemplate.js OK
+
+● Now extend the printer module.
+
+● Update(utils\zebraPrinter.js)
+  ⎿  Added 33 lines
+      250    return parseHostStatus(raw)
+      251  }
+      252  
+      253 +// 清除打印机缓存：取消半截接收的格式 -> 取消全部排队任务 ->  
+          +解除暂停                                                      
+      254 +async function clearBuffer() {                                
+      255 +  ensureConnected()                                           
+      256 +  readAvailable()                                             
+      257 +  sendRaw('~JX', 'UTF-8') // 取消正在接收但未完成的格式       
+      258 +  await sleep(150)                                            
+      259 +  sendRaw('~JA', 'UTF-8') // 取消缓冲区内全部格式及批量打印   
+      260 +  await sleep(300)                                            
+      261 +  sendRaw('~PS', 'UTF-8') // ~JA 后打印机可能停在暂停状态，恢 
+          +复打印                                                        
+      262 +  await sleep(100)                                            
+      263 +  readAvailable()                                             
+      264 +}                                                             
+      265 +                                                              
+      266 +// 介质校准，换标签尺寸后走一次，让打印机重新测量纸长与间隙   
+      267 +function calibrate() {                                        
+      268 +  ensureConnected()                                           
+      269 +  sendRaw('~JC', 'UTF-8')                                     
+      270 +}                                                             
+      271 +                                                              
+      272 +// 列出打印机 E: 盘上的字体文件，用来确认中文字体名（如 GB1803
+          +0.FNT / SIMSUN.FNT）                                          
+      273 +async function listPrinterFonts() {                           
+      274 +  ensureConnected()                                           
+      275 +  readAvailable()                                             
+      276 +  sendZpl('^XA^HWE:*.FNT^XZ')                                 
+      277 +  const raw = await readResponse(3000)                        
+      278 +  if (!raw) throw new Error('打印机无响应')                   
+      279 +  return raw                                                  
+      280 +    .replace(/[\x00-\x09\x0b\x0c\x0e-\x1f]/g, '')             
+      281 +    .split(/[\r\n]+/)                                         
+      282 +    .map((l) => l.trim())                                     
+      283 +    .filter((l) => l.length > 0)                              
+      284 +}                                                             
+      285 +                                                              
+      286  function buildZplTestLabel() {
+      287    return [
+      288      '^XA',
+● Update(utils\zebraPrinter.js)
+  ⎿  Added 3 lines
+      353    sendZpl,
+      354    sendCpcl,
+      355    getStatus,
+      356 +  clearBuffer,                                                
+      357 +  calibrate,                                                  
+      358 +  listPrinterFonts,                                           
+      359    buildZplTestLabel,
+      360    buildCpclTestLabel,
+      361    printZplTest,
+
+● Update(utils\zplTemplate.js)
+  ⎿  Added 8 lines
+      195  export function findTemplate(id) {
+      196    return loadTemplates().find((t) => t.id === id) || null
+      197  }
+      198 +                                                              
+      199 +// 业务页面入口：按模板 id 填充数据并打印，自动连接默认打印机 
+      200 +// 例: printTemplate('tpl_1730000000000', { name: '前门总成', 
+          +sn: 'HJL20260728001' })                                       
+      201 +export async function printTemplate(templateId, data = {}) {  
+      202 +  const tpl = findTemplate(templateId)                        
+      203 +  if (!tpl) throw new Error('模板不存在: ' + templateId)      
+      204 +  await printer.printWithSaved(buildZpl(tpl, data))           
+      205 +}                                                             
+
+● Update(utils\zplTemplate.js)
+  ⎿  Added 2 lines
+      2  // 标签模板 -> ZPL 指令。坐标与尺寸统一用毫米，内部按 DPI 换算成
+         点(dot)。
+      3  // 字号(fontH/fontW)与二维码放大倍数沿用 ZPL 原生单位。
+      4  
+      5 +import printer from './zebraPrinter.js'                         
+      6 +                                                                
+      7  const TEMPLATE_KEY = 'zebra_templates'
+      8  
+      9  const DOTS_PER_MM = { 203: 8, 300: 11.811, 600: 23.622 }
+
+● Now the template editor page and pages.json registration.
+
+● Write(pages\print\labelTemplate.vue)
+  ⎿  Wrote 529 lines to pages\print\labelTemplate.vue
+       2        <view class="container">
+       3                <view class="card">
+       4                        <view class="row">
+       6                                <picker :range="templateNames" :value="t
+     @change="o
+         nTemplateChange">
+       7                                        <text class="picker">{{ tpl.name
+       8                                </picker>
+       9                        </view>
+      10                        <view class="row">
+     … +540 lines (ctrl+o to expand)
+
+● Two Vue-template pitfalls to fix: mustaches inside attributes and a nested {{ 
+  }} literal.
+
+● Update(pages\print\labelTemplate.vue)
+  ⎿  Added 3 lines, removed 3 lines
+       98          <template v-if="el.type === 'text'">
+       99            <view class="row">
+      100              <text class="label">内容</text>
+      101 -            <input class="ipt wide" v-model="el.text" placehol
+          -der="支持 {{变量名}}" />                                      
+      101 +            <input class="ipt wide" v-model="el.text" :placeho
+          +lder="varHint" />                                             
+      102            </view>
+      103            <view class="row">
+      104              <text class="label">字高 (点)</text>
+     ...
+      113          <template v-if="el.type === 'qrcode'">
+      114            <view class="row">
+      115              <text class="label">内容</text>
+      116 -            <input class="ipt wide" v-model="el.data" placehol
+          -der="支持 {{变量名}}" />                                      
+      116 +            <input class="ipt wide" v-model="el.data" :placeho
+          +lder="varHint" />                                             
+      117            </view>
+      118            <view class="row">
+      119              <text class="label">放大倍数 (1-10)</text>
+     ...
+      130          <template v-if="el.type === 'barcode'">
+      131            <view class="row">
+      132              <text class="label">内容</text>
+      133 -            <input class="ipt wide" v-model="el.data" placehol
+          -der="支持 {{变量名}}" />                                      
+      133 +            <input class="ipt wide" v-model="el.data" :placeho
+          +lder="varHint" />                                             
+      134            </view>
+      135            <view class="row">
+      136              <text class="label">码制</text>
+
+● Update(pages\print\labelTemplate.vue)
+  ⎿  Error editing file
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Bash(node -e "
+      const fs=require('fs');…)
+  ⎿                     <view class="hint">元素内容里写 {{ varExample }}
+     这样的占位符，打印时由
+     业务数据填入。下面填的值只用于本页预览和试打。</view>
+
+● Now add the varHint / varExample data fields.
+
+● Update(pages\print\labelTemplate.vue)
+  ⎿  Added 2 lines
+      216    export default {
+      217      data() {
+      218        return {
+      219 +        varHint: '固定文字或 {{变量名}} 占位符',              
+      220 +        varExample: '{{sn}}',                                 
+      221          templates: [],
+      222          templateIndex: 0,
+      223          tpl: defaultTemplate(),
+
+● Now register the page and update the print settings page.
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(pages.json)
+  ⎿  Added 8 lines
+      147          "navigationBarBackgroundColor": "#ffffff",
+      148          "navigationBarTextStyle": "black"
+      149        }
+      150 +    },                                                        
+      151 +    {                                                         
+      152 +      "path": "pages/print/labelTemplate",                    
+      153 +      "style": {                                              
+      154 +        "navigationBarTitleText": "标签模板",                 
+      155 +        "navigationBarBackgroundColor": "#ffffff",            
+      156 +        "navigationBarTextStyle": "black"                     
+      157 +      }                                                       
+      158      }
+      159    ],
+      160    "globalStyle": {
+
+● Now update printSetting.vue: cache clearing, calibration, font query, and the
+  plain-text send fix.
+
+● Update(pages\print\printSetting.vue)
+  ⎿  Added 21 lines, removed 1 line
+      41          <button size="mini" type="primary" @click="testCpcl">CP
+          CL 测试</button>
+      42          <button size="mini" @click="queryStatus">查询状态</butt
+          on>
+      43        </view>
+      44 -      <textarea class="zpl-input" v-model="customZpl" placehold
+         -er="可在此粘贴自定义 ZPL/CPCL 指令" />                         
+      44 +      <textarea class="zpl-input" v-model="customZpl" placehold
+         +er="可粘贴 ZPL/CPCL 指令；若只填纯文字会自动包装成一张标签" /> 
+      45        <view class="btn-row">
+      46          <button size="mini" @click="sendCustom('zpl')">发送 ZPL
+          </button>
+      47          <button size="mini" @click="sendCustom('cpcl')">发送 CP
+          CL</button>
+     ...
+      52        </view>
+      53      </view>
+      54  
+      55 +    <view class="card" v-if="connected">                       
+      56 +      <text class="card-title">打印机维护</text>               
+      57 +      <view class="btn-row">                                   
+      58 +        <button size="mini" type="warn" @click="clearBuffer">清
+         +除打印缓存</button>                                            
+      59 +        <button size="mini" @click="calibrate">介质校准</button
+         +>                                                              
+      60 +        <button size="mini" @click="queryFonts">查询打印机字体<
+         +/button>                                                       
+      61 +      </view>                                                  
+      62 +      <view class="tip-inline">                                
+      63 +        清除打印缓存会取消打印机里所有排队和正在打印的任务（ZPL
+         + ~JX / ~JA），卡纸或误发大批量任务时用。                       
+      64 +      </view>                                                  
+      65 +    </view>                                                    
+      66 +                                                               
+      67 +    <view class="card">                                        
+      68 +      <text class="card-title">标签模板</text>                 
+      69 +      <view class="btn-row">                                   
+      70 +        <button size="mini" type="primary" @click="goTemplate">
+         +编辑标签模板</button>                                          
+      71 +      </view>                                                  
+      72 +      <view class="tip-inline">在模板页可设置标签尺寸、页面参数
+         +，并添加文本、二维码、一维条码等元素。</view>                  
+      73 +    </view>                                                    
+      74 +                                                               
+      75      <view class="card" v-if="statusText">
+      76        <text class="card-title">打印机状态</text>
+      77        <text class="status-text">{{ statusText }}</text>
+
+● Update(pages\print\printSetting.vue)
+  ⎿  Added 45 lines, removed 3 lines
+      190          const text = this.customZpl.trim()
+      191          if (!text) return this.toast('请先输入指令')
+      192          try {
+      193 -          if (lang === 'cpcl') printer.sendCpcl(text)         
+      194 -          else printer.sendZpl(text)                          
+      195 -          this.toast('已发送')                                
+      193 +          if (lang === 'cpcl') {                              
+      194 +            printer.sendCpcl(text)                            
+      195 +            return this.toast('已发送')                       
+      196 +          }                                                   
+      197 +          // 纯文字不是合法 ZPL，打印机会直接丢弃，这里自动包 
+          +成一张标签                                                    
+      198 +          const isZpl = text.indexOf('^XA') !== -1 || text.cha
+          +rAt(0) === '~'                                                
+      199 +          printer.sendZpl(isZpl ? text : buildTextLabel(text))
+      200 +          this.toast(isZpl ? '已发送' : '输入不是 ZPL 指令，已
+          +自动包装成标签打印')                                          
+      201          } catch (e) {
+      202            this.toast(e.message)
+      203          }
+      204        },
+      205  
+      206 +      async clearBuffer() {                                   
+      207 +        uni.showLoading({ title: '清除中...', mask: true })   
+      208 +        try {                                                 
+      209 +          await printer.clearBuffer()                         
+      210 +          uni.hideLoading()                                   
+      211 +          this.toast('已清除打印机缓存')                      
+      212 +        } catch (e) {                                         
+      213 +          uni.hideLoading()                                   
+      214 +          this.toast(e.message)                               
+      215 +        }                                                     
+      216 +      },                                                      
+      217 +                                                              
+      218 +      calibrate() {                                           
+      219 +        try {                                                 
+      220 +          printer.calibrate()                                 
+      221 +          this.toast('已发送校准指令，打印机会走纸测量')      
+      222 +        } catch (e) {                                         
+      223 +          this.toast(e.message)                               
+      224 +        }                                                     
+      225 +      },                                                      
+      226 +                                                              
+      227 +      async queryFonts() {                                    
+      228 +        uni.showLoading({ title: '查询中...', mask: true })   
+      229 +        try {                                                 
+      230 +          const fonts = await printer.listPrinterFonts()      
+      231 +          uni.hideLoading()                                   
+      232 +          this.statusText = '打印机字体文件:\n' + fonts.join('
+          +\n')                                                          
+      233 +        } catch (e) {                                         
+      234 +          uni.hideLoading()                                   
+      235 +          this.toast(e.message)                               
+      236 +        }                                                     
+      237 +      },                                                      
+      238 +                                                              
+      239 +      goTemplate() {                                          
+      240 +        uni.navigateTo({ url: '/pages/print/labelTemplate' }) 
+      241 +      },                                                      
+      242 +                                                              
+      243        async queryStatus() {
+      244          uni.showLoading({ title: '查询中...', mask: true })
+      245          try {
+
+● Update(pages\print\printSetting.vue)
+  ⎿  Added 1 line
+      81  
+      82  <script>
+      83    import printer from '@/utils/zebraPrinter.js'
+      84 +  import { buildTextLabel } from '@/utils/zplTemplate.js'      
+      85  
+      86    export default {
+      87      data() {
+
+● Update(pages\print\printSetting.vue)
+  ⎿  Added 7 lines
+      336      line-height: 1.6;
+      337    }
+      338  
+      339 +  .tip-inline {                                               
+      340 +    font-size: 23rpx;                                         
+      341 +    color: #999;                                              
+      342 +    line-height: 1.6;                                         
+      343 +    margin-top: 14rpx;                                        
+      344 +  }                                                           
+      345 +                                                              
+      346    .empty {
+      347      font-size: 26rpx;
+      348      color: #999;
+● Now let me validate everything parses and the pieces line up.
+
+● Bash(node -e "
+      const fs=require('fs');…)
+  ⎿  Error: Exit code 1
+     <anonymous_script>:19
+                                                // "buttons": [{
+                                                ^
+
+     SyntaxError: Expected property name or '}' in JSON at position 389 (line 19
+      column 7)
+         at JSON.parse (<anonymous>)
+         at [eval]:5:6
+         at runScriptInThisContext (node:internal/vm:209:10)
+         at node:internal/process/execution:446:12
+
+     … +7 lines (ctrl+o to expand)
+
+● pages.json has comments (normal for uni-app) — let me strip them before
+  validating.
+
+● Bash(node -e "
+      const fs=require('fs');…)
+  ⎿  pages.json OK (comments stripped)
+     manifest.json OK
+     pages/print/printSetting.vue -> script OK, attr-interpolation: none
+     … +3 lines (ctrl+o to expand)
+
+● Let me actually run the builder to inspect the generated ZPL.
+
+● Bash(cd "C:/Users/26281/AppData/Local/Temp" && node -e "
+      const fs=require('fs');…)
+  ⎿  --- 默认模板 70x40mm 203dpi ---
+     ~SD15
+     ^XA
+     … +24 lines (ctrl+o to expand)
+  ⎿  Shell cwd was reset to C:\Users\26281\Desktop\github\hjlApp
+
+● The generated ZPL is correct (70mm→560 dots, 40mm→320). One usability fix:
+  printing should use the live connection, not require setting a default first.
+
+● Update(utils\zebraPrinter.js)
+  ⎿  Added 4 lines, removed 4 lines
+      329    uni.removeStorageSync(STORAGE_KEY)
+      330  }
+      331  
+      332 -// 业务页面的入口：自动连上已保存的打印机再发指令             
+      332 +// 业务页面的入口：优先用当前连接，否则自动连上默认打印机     
+      333  async function printWithSaved(zpl) {
+      334 -  const saved = loadPrinter()                                 
+      335 -  if (!saved || !saved.address) throw new Error('未设置默认打 
+          -印机，请先到「蓝牙打印」页面选择')                            
+      336 -  if (!isConnected() || !current || current.address !== saved.
+          -address) {                                                    
+      334 +  if (!isConnected()) {                                       
+      335 +    const saved = loadPrinter()                               
+      336 +    if (!saved || !saved.address) throw new Error('未设置默认 
+          +打印机，请先到「蓝牙打印」页面连接并设为默认')                
+      337      await connect(saved.address, saved.name)
+      338    }
+      339    sendZpl(zpl)
+
+● Bash(node -e "
+      const fs=require('fs');const T='C:/Users/26281/AppData/Local/Temp/';…)
+  ⎿  zebraPrinter.js OK
+
+  Wrote 1 memory (ctrl+o to expand)
+
+● 完成。
+
+  为什么输入 123 没反应：123 不是 ZPL 指令，打印机把它当垃圾数据丢了。ZPL
+  标签必须包在 ^XA ... ^XZ 里。现在自定义输入框会检测这一点——只填纯文字时自动包
+  装成一张标签打印，并提示你它做了包装。
+
+  新增文件 utils/zplTemplate.js — 模板转 ZPL：
+  - 坐标/尺寸统一用毫米，按 DPI（203/300/600）自动换算成点
+  - 页面参数：标签宽高、间隙（间隙>0 走 ^MNY 间隙探测，=0 按 ^MNN
+  定长走纸）、浓度 ~SD、速度 ^PR、份数 ^PQ、整体旋转 180° ^POI
+  - 元素：文本、二维码（^BQ，可设放大倍数和纠错等级）、一维条码（Code128/Code39/
+  EAN-13，可设高度、窄条宽度、是否显示可读字符）、横线、矩形框，每个都能独立设
+  X/Y 和旋转角
+  - 中文走 ^A@ + 可配置字体文件（默认 E:GB18030.FNT），英文数字走内置 ^A0
+  - 内容支持 {{变量名}} 占位符，打印时用业务数据填充
+  - 文本内容里的 ^ ~ 用 ^FH 十六进制转义，不会被误当成指令
+
+  新增页面 pages/print/labelTemplate.vue — 模板编辑器：多模板管理（新建/复制/删
+  除/切换）、全部参数表单、元素增删和上下移、变量测试值、实时 ZPL
+  预览、直接打印测试。入口在「蓝牙打印」页的「编辑标签模板」按钮。
+
+  清除打印缓存（在「蓝牙打印」页的打印机维护卡片）：依次发
+  ~JX（取消半截接收的格式）→ ~JA（取消缓冲区全部格式和批量任务）→
+  ~PS（解除暂停，因为 ~JA
+  后打印机可能停在暂停态）。同一区域还加了介质校准（~JC，改标签尺寸后走一次）和
+  查询打印机字体（^HWE:*.FNT，中文打不出来时用它看打印机上实际有哪些字体文件）。
+
+  业务页面打印一张标签：
+  import { printTemplate } from '@/utils/zplTemplate.js'
+  await printTemplate('tpl_xxx', { name: '前门总成', sn: 'HJL20260728001' })
+  模板 id 在模板页点「保存模板」时会提示。没连接时会自动连默认打印机。
+
+  我用 node
+  跑了一遍生成器验证输出（70mm→^PW560、40mm→^LL320、转义正常），但实际出纸效果和
+  中文字体需要你在打印机上验证。建议顺序：先用默认模板打一张看排版和尺寸对不对 →
+   如果中文是空白或乱码，点「查询打印机字体」看返回哪些
+  .FNT，把文件名填进模板的「中文字体文件」再试。
+
+✻ Cooked for 11m 7s
+
+※ recap: Goal is Bluetooth label printing in your uniapp project, now working via plus.android with a full ZPL template editor and cache-clear added. Next: print the default template on the device and check Chinese text renders. (disable recaps in /config)
+
+> 设置标签大小65，45，可还是打印很长，是不是打印页没有设置                      
+
+● 这是媒体检测/标签长度的问题，不是 ^PW/^LL 没设。关键点：^LL 只在连续纸（^MNN）
+  下生效；用间隙纸时打印机是靠传感器测长度的，没校准过就会一直走纸找间隙，表现就
+  是"打印很长"。我把纸张类型做成显式选项，并加上写入长度/校准的入口。
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(utils\zplTemplate.js)
+  ⎿  Added 15 lines
+      30  ]
+      31  export const QR_ECC = ['L', 'M', 'Q', 'H']
+      32  
+      33 +// 纸张类型决定打印机怎么判断一张标签的长度                    
+      34 +// gap/mark: 靠传感器测量，^LL 被忽略，换纸或换尺寸后必须校准  
+      35 +// continuous: 没有间隙，完全按 ^LL 定长走纸                   
+      36 +export const MEDIA_TYPES = [                                   
+      37 +  { value: 'gap', label: '间隙纸（标签之间有空隙）', zpl: '^MNY
+         +' },                                                           
+      38 +  { value: 'mark', label: '黑标纸（背面有黑色定位条）', zpl: '^
+         +MNM' },                                                        
+      39 +  { value: 'continuous', label: '连续纸（无间隙，按长度走纸）',
+         + zpl: '^MNN' }                                                 
+      40 +]                                                              
+      41 +                                                               
+      42 +export const PRINT_MODES = [                                   
+      43 +  { value: 'T', label: '撕纸' },                               
+      44 +  { value: 'P', label: '剥离' },                               
+      45 +  { value: 'C', label: '切刀' }                                
+      46 +]                                                              
+      47 +                                                               
+      48  export const ELEMENT_TYPES = [
+      49    { value: 'text', label: '文本' },
+      50    { value: 'qrcode', label: '二维码' },
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(utils\zplTemplate.js)
+  ⎿  Added 24 lines, removed 1 line
+      58    return isNaN(n) ? fallback : n
+      59  }
+      60  
+      61 -function mmToDots(mm, dpi) {                                   
+      61 +export function mmToDots(mm, dpi) {                            
+      62    return Math.round(num(mm, 0) * (DOTS_PER_MM[dpi] || DOTS_PER_
+          MM[203]))
+      63  }
+      64  
+      65 +function templateDpi(tpl) {                                    
+      66 +  const dpi = num((tpl.page || {}).dpi, 203)                   
+      67 +  return DPI_OPTIONS.indexOf(dpi) === -1 ? 203 : dpi           
+      68 +}                                                              
+      69 +                                                               
+      70 +// 标签的点数尺寸，写入打印机长度或排版核对时用                
+      71 +export function labelDots(tpl) {                               
+      72 +  const dpi = templateDpi(tpl)                                 
+      73 +  const page = tpl.page || {}                                  
+      74 +  return {                                                     
+      75 +    dpi,                                                       
+      76 +    widthDots: mmToDots(page.widthMm, dpi),                    
+      77 +    heightDots: mmToDots(page.heightMm, dpi)                   
+      78 +  }                                                            
+      79 +}                                                              
+      80 +                                                               
+      81 +function mediaTypeOf(tpl) {                                    
+      82 +  const page = tpl.page || {}                                  
+      83 +  if (page.mediaType) return page.mediaType                    
+      84 +  // 早期模板只有 gapMm 字段，按它推断                         
+      85 +  return num(page.gapMm, 0) > 0 ? 'gap' : 'continuous'         
+      86 +}                                                              
+      87 +                                                               
+      88  function fillVars(text, data) {
+      89    return String(text == null ? '' : text).replace(/\{\{\s*(\w+)
+          \s*\}\}/g, (_, key) => {
+      90      const v = data[key]
+
+● Now update buildZpl to emit the media/print-mode commands.
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(utils\zplTemplate.js)
+  ⎿  Added 5 lines, removed 4 lines
+      152  export function buildZpl(tpl, data = {}) {
+      153    const page = tpl.page || {}
+      154    const print = tpl.print || {}
+      155 -  const dpi = DPI_OPTIONS.indexOf(num(page.dpi, 203)) === -1 ?
+          - 203 : num(page.dpi, 203)                                     
+      155 +  const dpi = templateDpi(tpl)                                
+      156    const toDots = (mm) => mmToDots(mm, dpi)
+      157 +  const media = MEDIA_TYPES.find((m) => m.value === mediaTypeO
+          +f(tpl)) || MEDIA_TYPES[0]                                     
+      158  
+      159    const lines = []
+      160    const darkness = num(print.darkness, NaN)
+     ...
+      163    }
+      164    lines.push('^XA')
+      165    lines.push('^CI28') // UTF-8
+      166 +  lines.push(media.zpl) // 纸张类型必须在 ^LL 之前，^LL 只对 ^
+          +MNN 连续纸生效                                                
+      167    lines.push('^PW' + toDots(page.widthMm))
+      168    lines.push('^LL' + toDots(page.heightMm))
+      169    lines.push('^LH0,0')
+      168 -  // 有间隙走间隙探测，连续纸按 ^LL 定长走纸                  
+      169 -  lines.push(num(page.gapMm, 0) > 0 ? '^MNY' : '^MNN')        
+      170 -  lines.push('^MMT') // 撕纸模式                              
+      170 +  lines.push('^LT0')                                          
+      171 +  lines.push('^MM' + (PRINT_MODES.some((m) => m.value === prin
+          +t.mode) ? print.mode : 'T'))                                  
+      172    const speed = num(print.speed, NaN)
+      173    if (!isNaN(speed)) lines.push('^PR' + Math.min(14, Math.max(
+           1, Math.round(speed))))
+      174    lines.push(print.invert180 ? '^POI' : '^PON')
+
+● Update(utils\zplTemplate.js)
+  ⎿  Added 2 lines, removed 2 lines
+      209    return {
+      210      id: 'tpl_' + Date.now(),
+      211      name: '默认标签',
+      212 -    page: { widthMm: 70, heightMm: 40, gapMm: 2, dpi: 203 },  
+      213 -    print: { darkness: 15, speed: 4, copies: 1, invert180: fal
+          -se },                                                         
+      212 +    page: { widthMm: 70, heightMm: 40, dpi: 203, mediaType: 'g
+          +ap' },                                                        
+      213 +    print: { darkness: 15, speed: 4, copies: 1, invert180: fal
+          +se, mode: 'T' },                                              
+      214      cjkFont: 'E:GB18030.FNT',
+      215      elements: [
+      216        { type: 'text', x: 3, y: 3, fontH: 32, fontW: 32, rotati
+           on: 'N', text: '{{name}}' },
+
+● Update(utils\zplTemplate.js)  ⎿  Added 12 lines
+      183    return lines.join('\n')
+      184  }
+      185  
+      186 +// 把标签长度写进打印机并用 ^JUS 存到非易失内存。             
+      187 +// 连续纸走定长(^MNN + ^LL)；间隙纸/黑标纸改用 ~JC 校准让传感 
+          +器重新量。                                                    
+      188 +export function buildApplyMediaCommand(tpl) {                 
+      189 +  const { heightDots } = labelDots(tpl)                       
+      190 +  const mediaType = mediaTypeOf(tpl)                          
+      191 +  if (mediaType === 'continuous') {                           
+      192 +    return '^XA^MNN^LL' + heightDots + '^JUS^XZ'              
+      193 +  }                                                           
+      194 +  const media = MEDIA_TYPES.find((m) => m.value === mediaType)
+          + || MEDIA_TYPES[0]                                            
+      195 +  return '^XA' + media.zpl + '^JUS^XZ\n~JC'                   
+      196 +}                                                             
+      197 +                                                              
+      198  // 把一段纯文本包成可打印的标签，用于自定义输入框里直接敲文字
+           的场景
+      199  export function buildTextLabel(text, cjkFont) {
+      200    const body = hasCjk(text)
+
+● Now update the template editor UI: replace the gap field with a media-type
+  picker, add print mode, and an apply button.
+
+● Update(pages\print\labelTemplate.vue)
+  ⎿  Added 14 lines, removed 3 lines
+      29          <input class="ipt" type="digit" v-model="tpl.page.heigh
+          tMm" />
+      30        </view>
+      31        <view class="row">
+      32 -        <text class="label">标签间隙 (mm)</text>               
+      33 -        <input class="ipt" type="digit" v-model="tpl.page.gapMm
+         -" />                                                           
+      32 +        <text class="label">纸张类型</text>                    
+      33 +        <picker :range="mediaLabels" :value="mediaIndex" @chang
+         +e="onMediaChange">                                             
+      34 +          <text class="picker">{{ mediaLabel }} ▾</text>       
+      35 +        </picker>                                              
+      36        </view>
+      37        <view class="row">
+      38          <text class="label">打印机 DPI</text>
+     ...
+      40            <text class="picker">{{ tpl.page.dpi }} dpi ▾</text>
+      41          </picker>
+      42        </view>
+      41 -      <view class="hint">间隙为 0 时按连续纸定长走纸；改过尺寸 
+         -后建议在「蓝牙打印」页点一次介质校准。</view>                  
+      43 +      <view class="row">                                       
+      44 +        <text class="label">换算结果</text>                    
+      45 +        <text class="value">{{ dotsInfo }}</text>              
+      46 +      </view>                                                  
+      47 +      <view class="btn-row">                                   
+      48 +        <button size="mini" type="primary" @click="applyMedia">
+         +写入打印机并校准</button>                                      
+      49 +      </view>                                                  
+      50 +      <view class="hint">                                      
+      51 +        打印出来比标签长，几乎都是纸张类型/长度没生效：间隙纸和
+         +黑标纸的长度是打印机用传感器量出来的，ZPL 的 ^LL 会被忽略，换纸
+         +或改尺寸后必须点上面的按钮校准一次；只有连续纸才按 ^LL 定长走纸
+         +。另外 DPI 填错也会让实际尺寸成比例放大，203dpi 的机器填成 300 
+         +会长约 1.5 倍。                                                
+      52 +      </view>                                                  
+      53      </view>
+      54  
+      55      <view class="card">
+
+● Update(pages\print\labelTemplate.vue)
+  ⎿  Added 6 lines
+      67          <input class="ipt" type="number" v-model="tpl.print.cop
+          ies" />
+      68        </view>
+      69        <view class="row">
+      70 +        <text class="label">出纸方式</text>                    
+      71 +        <picker :range="printModeLabels" :value="printModeIndex
+         +" @change="onPrintModeChange">                                 
+      72 +          <text class="picker">{{ printModeLabel }} ▾</text>   
+      73 +        </picker>                                              
+      74 +      </view>                                                  
+      75 +      <view class="row">                                       
+      76          <text class="label">整体旋转 180°</text>
+      77          <switch :checked="tpl.print.invert180" @change="e => tp
+          l.print.invert180 = e.detail.value" />
+      78        </view>
+
+● Now the corresponding script additions.
+
+● Update(pages\print\labelTemplate.vue)
+  ⎿  Added 5 lines, removed 1 line
+      223      loadTemplates,
+      224      saveTemplates,
+      225      newElement,
+      226 +    labelDots,                                                
+      227 +    buildApplyMediaCommand,                                   
+      228      DPI_OPTIONS,
+      229      ROTATIONS,
+      230      BARCODE_TYPES,
+      231      QR_ECC,
+      230 -    ELEMENT_TYPES                                             
+      232 +    ELEMENT_TYPES,                                            
+      233 +    MEDIA_TYPES,                                              
+      234 +    PRINT_MODES                                               
+      235    } from '@/utils/zplTemplate.js'
+      236  
+      237    export default {
+
+● Update(pages\print\labelTemplate.vue)
+  ⎿  Added 24 lines
+      258          const i = DPI_OPTIONS.indexOf(Number(this.tpl.page.dpi
+           ))
+      259          return i === -1 ? 0 : i
+      260        },
+      261 +      mediaLabels() {                                         
+      262 +        return MEDIA_TYPES.map((m) => m.label)                
+      263 +      },                                                      
+      264 +      mediaIndex() {                                          
+      265 +        const i = MEDIA_TYPES.findIndex((m) => m.value === thi
+          +s.tpl.page.mediaType)                                         
+      266 +        return i === -1 ? 0 : i                               
+      267 +      },                                                      
+      268 +      mediaLabel() {                                          
+      269 +        return MEDIA_TYPES[this.mediaIndex].label             
+      270 +      },                                                      
+      271 +      printModeLabels() {                                     
+      272 +        return PRINT_MODES.map((m) => m.label)                
+      273 +      },                                                      
+      274 +      printModeIndex() {                                      
+      275 +        const i = PRINT_MODES.findIndex((m) => m.value === thi
+          +s.tpl.print.mode)                                             
+      276 +        return i === -1 ? 0 : i                               
+      277 +      },                                                      
+      278 +      printModeLabel() {                                      
+      279 +        return PRINT_MODES[this.printModeIndex].label         
+      280 +      },                                                      
+      281 +      dotsInfo() {                                            
+      282 +        const d = labelDots(this.tpl)                         
+      283 +        return d.widthDots + ' × ' + d.heightDots + ' 点'     
+      284 +      },                                                      
+      285        rotationLabels() {
+      286          return ROTATIONS.map((r) => r.label)
+      287        },
+
+● Update(pages\print\labelTemplate.vue)
+  ⎿  Added 21 lines
+      347          this.tpl.page.dpi = DPI_OPTIONS[Number(e.detail.value)
+           ]
+      348        },
+      349  
+      350 +      onMediaChange(e) {                                      
+      351 +        this.$set(this.tpl.page, 'mediaType', MEDIA_TYPES[Numb
+          +er(e.detail.value)].value)                                    
+      352 +      },                                                      
+      353 +                                                              
+      354 +      onPrintModeChange(e) {                                  
+      355 +        this.$set(this.tpl.print, 'mode', PRINT_MODES[Number(e
+          +.detail.value)].value)                                        
+      356 +      },                                                      
+      357 +                                                              
+      358 +      async applyMedia() {                                    
+      359 +        uni.showLoading({ title: '写入中...', mask: true })   
+      360 +        try {                                                 
+      361 +          await printer.printWithSaved(buildApplyMediaCommand(
+          +this.tpl))                                                    
+      362 +          uni.hideLoading()                                   
+      363 +          const continuous = this.tpl.page.mediaType === 'cont
+          +inuous'                                                       
+      364 +          this.toast(continuous ? '定长已写入打印机' : '已发送
+          +校准，打印机会走 2-3 张标签测量长度')                         
+      365 +        } catch (e) {                                         
+      366 +          uni.hideLoading()                                   
+      367 +          this.toast(e.message)                               
+      368 +        }                                                     
+      369 +      },                                                      
+      370 +                                                              
+      371        typeLabel(type) {
+      372          const found = ELEMENT_TYPES.find((t) => t.value === ty
+           pe)
+      373          return found ? found.label : type
+
+● Update(pages\print\labelTemplate.vue)
+  ⎿  Added 5 lines
+      333        selectTemplate(index) {
+      334          this.templateIndex = index
+      335          this.tpl = this.clone(this.templates[index])
+      336 +        // 补齐旧模板缺的字段，避免界面显示和生成的 ZPL 不一致
+      337 +        if (!this.tpl.page.mediaType) {                       
+      338 +          this.$set(this.tpl.page, 'mediaType', Number(this.tp
+          +l.page.gapMm || 0) > 0 ? 'gap' : 'continuous')                
+      339 +        }                                                     
+      340 +        if (!this.tpl.print.mode) this.$set(this.tpl.print, 'm
+          +ode', 'T')                                                    
+      341          this.previewData = {}
+      342          this.variableKeys.forEach((key) => {
+      343            this.$set(this.previewData, key, 'TEST' + key.toUppe
+           rCase())
+
+● Update(pages\print\labelTemplate.vue)
+  ⎿  Added 5 lines
+      518      color: #576b95;
+      519    }
+      520  
+      521 +  .value {                                                    
+      522 +    font-size: 27rpx;                                         
+      523 +    color: #333;                                              
+      524 +  }                                                           
+      525 +                                                              
+      526    .hint {
+      527      font-size: 23rpx;
+      528      color: #999;
+
+● Let me validate and inspect the new ZPL output for a 65×45 label.
+
+● Bash(node -e "
+      const fs=require('fs');const cp=require('child_process');…)
+  ⎿  pages/print/labelTemplate.vue script OK; attr-interp: none
+     pages/print/printSetting.vue script OK; attr-interp: none
+     zplTemplate.js OK
+
+● Bash(cd "C:/Users/26281/AppData/Local/Temp" && node -e "
+      const fs=require('fs');const R='C:/Users/26281/Desktop/github/hjlApp/';…)
+  ⎿  ===== gap 65x45mm 203dpi =====
+     ~SD15
+     ^XA
+     … +42 lines (ctrl+o to expand)
+  ⎿  Shell cwd was reset to C:\Users\26281\Desktop\github\hjlApp
+
+  Wrote 1 memory (ctrl+o to expand)
+
+● 不是页面没设置——^PW 和 ^LL 一直都在发。问题在于 ^LL 
+  只对连续纸（^MNN）生效。你用的如果是间隙纸（标签之间有空隙的那种），打印机的标
+  签长度是靠传感器自己量出来的，^LL
+  会被直接忽略；没校准过它就沿用上一次记住的长度（往往是最大值），于是一张 45mm
+  的标签走出十几厘米。
+
+  改动：
+
+  utils/zplTemplate.js
+  - 原来的「标签间隙 (mm)」换成显式的纸张类型：间隙纸 ^MNY / 黑标纸 ^MNM /
+  连续纸 ^MNN。之前是靠"间隙>0"隐式推断的，太容易搞错。
+  - 纸张类型指令现在排在 ^LL 之前（顺序有影响）。
+  - 新增 ^LT0（标签顶部偏移归零）和出纸方式
+  ^MM（撕纸/剥离/切刀）。撕纸模式打完会把标签送到撕纸位，本身就会多走一点纸。
+  - 新增 buildApplyMediaCommand()：连续纸发 ^XA^MNN^LL360^JUS^XZ
+  把定长写进打印机非易失内存；间隙/黑标纸发 ^JUS + ~JC 让传感器重新量。
+
+  模板页
+  - 加了「写入打印机并校准」按钮——改完尺寸点一次。间隙纸会走 2-3
+  张标签测量长度，这是正常的。
+  - 加了「换算结果」实时显示点数，65×45mm @203dpi = 520 × 360 
+  点，可以直接和你打印机的实际能力核对。
+
+  你现在按这个顺序试：
+  1. 模板页确认「纸张类型」选对了——标签之间有空隙就选间隙纸，整卷没有分隔就选连
+  续纸。
+  2. 确认 DPI 和打印机一致。这是第二个高频原因：203dpi 的机器填成 300，65×45
+  会算成 768×531 点，物理尺寸变成约 95×65mm，正好表现为"打印很长"。
+  3. 点「写入打印机并校准」。
+  4. 再打一张。
+
+  如果校准后还是长，告诉我你的打印机型号和纸张是哪种（有无间隙/黑标），以及校准
+  时打印机走纸的表现——走了几张、有没有停在标签中间。
+
+✻ Cooked for 5m 14s
+
+※ recap: You're adding Bluetooth ZPL label printing to hjlApp; the template system and cache-clear are done, but a 65×45mm label still prints too long. Next: in the template page, check paper type and DPI, then tap 写入打印机并校准 and print again. (disable recaps in /config)
