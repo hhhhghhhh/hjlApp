@@ -31,7 +31,10 @@
 			</view>
 		</view>
 
-
+		<!-- ════ 消息提示 ════ -->
+		<view v-if="!productInfo" class="message-box" :class="[messageInfo.type, messageInfo.show ? 'show' : '']">
+			<text>{{ messageInfo.content }}</text>
+		</view>
 
 		<!-- ════ 查询结果 ════ -->
 		<view v-if="productInfo" class="result-container">
@@ -103,7 +106,7 @@
 								<text class="item-value">{{ item.supplierName || '--' }}</text>
 							</view>
 							<view class="item-row">
-								<text class="item-label">关键件SN</text>
+								<text class="item-label">关键件</text>
 								<text class="item-value sn">{{ item.keySn || '--' }}</text>
 							</view>
 						</view>
@@ -133,12 +136,12 @@
 					</view>
 				</view>
 
-				<!-- 新关键件SN输入 -->
+				<!-- 新关键件输入 -->
 				<view class="form-item">
-					<text class="form-label"><text class="required-star">*</text>新关键件SN</text>
+					<text class="form-label"><text class="required-star">*</text>新关键件</text>
 					<view class="input-row">
 						<view class="input-right full-width">
-							<input class="input-value-input" v-model="newKeySn" placeholder="请输入或扫码新关键件SN"
+							<input class="input-value-input" v-model="newKeySn" placeholder="请输入或扫码新关键件"
 								:focus="newKeySnFocus" @confirm="onNewKeySnConfirm" @focus="onNewKeySnFocus" />
 							<uni-icons type="scan" size="22" color="#4A90D9" @click="scanNewKeySn"></uni-icons>
 							<view v-if="newKeySn" class="clear-btn" @click="clearNewKeySn">
@@ -154,6 +157,10 @@
 
 				<!-- 新关键件信息预览 -->
 				<view v-if="newKeySnInfo" class="preview-card">
+					<view class="preview-row">
+						<text class="preview-label">关键件SN</text>
+						<text class="preview-value">{{ newKeySnInfo.keySn || '--' }}</text>
+					</view>
 					<view class="preview-row">
 						<text class="preview-label">物料编码</text>
 						<text class="preview-value">{{ newKeySnInfo.itemCode || '--' }}</text>
@@ -215,7 +222,7 @@
 
 				<!-- 搜索框 -->
 				<view class="popup-search">
-					<input class="search-input" v-model="searchKeySn" placeholder="搜索关键件SN" @confirm="loadSendList" />
+					<input class="search-input" v-model="searchKeySn" placeholder="搜索关键件" @confirm="loadSendList" />
 					<view class="search-btn" @click="loadSendList">
 						<uni-icons type="search" size="20" color="#fff"></uni-icons>
 					</view>
@@ -233,7 +240,8 @@
 						<view class="popup-item" v-for="(item, index) in sendList" :key="index"
 							@click="selectSendItem(item)">
 							<view class="popup-item-info">
-								<text class="popup-item-sn">{{ item.keySn }}</text>
+								<text class="popup-item-sn">{{ item.itemLotSn }}</text>
+								<text class="popup-item-desc">{{ item.keySn }}</text>
 								<text class="popup-item-desc">{{ item.itemCode }} - {{ item.itemName }}</text>
 							</view>
 							<view class="popup-item-tag">
@@ -442,18 +450,18 @@
 			// ==================== 查询新关键件 ====================
 			async queryNewKeySn(sn) {
 				if (!sn) {
-					this.showMessage('请输入新关键件SN', 'warning');
+					this.showMessage('请输入新关键件', 'warning');
 					return;
 				}
 
 				// 不能和原关键件相同
-				if (this.selectedKeySn && this.selectedKeySn.keySn === sn) {
-					this.showMessage('新关键件不能与原关键件相同', 'warning');
-					this.newKeySn = '';
-					this.newKeySnInfo = null;
-					this.focusNewKeySn();
-					return;
-				}
+				// if (this.selectedKeySn && this.selectedKeySn.keySn === sn) {
+				// 	this.showMessage('新关键件不能与原关键件相同', 'warning');
+				// 	this.newKeySn = '';
+				// 	this.newKeySnInfo = null;
+				// 	this.focusNewKeySn();
+				// 	return;
+				// }
 
 				uni.showLoading({
 					title: '查询中...'
@@ -464,7 +472,9 @@
 						url: '/api/pda/pdaProductSn/getKeyInfoBySn',
 						method: 'GET',
 						data: {
-							keySn: sn
+							keySn: sn,
+							bindStatus: 0,
+							pickStatus: 0,
 						}
 					});
 
@@ -481,7 +491,7 @@
 							return;
 						}
 
-						if (this.selectedKeySn && this.newKeySnInfo.itemCodeId !== this.selectedKeySn.itemCodeId) {
+						if (this.selectedKeySn && this.newKeySnInfo.itemCode !== this.selectedKeySn.itemCode) {
 							this.showMessage('新关键件物料必须与原关键件一致', 'warning');
 							this.newKeySnInfo = null;
 							this.focusNewKeySn();
@@ -527,6 +537,7 @@
 				try {
 					const params = {
 						sendStatus: '1', // 已寄出
+						isChange: 0,
 						pageNo: this.sendListPageNo,
 						pageSize: this.sendListPageSize
 					};
@@ -688,7 +699,7 @@
 					if (!this.selectedKeySn) {
 						this.showMessage('请选择要更换的关键件', 'warning');
 					} else if (!this.newKeySnInfo) {
-						this.showMessage('请扫码或输入新关键件SN', 'warning');
+						this.showMessage('请扫码或输入新关键件', 'warning');
 					} else if (!this.changeReason.trim()) {
 						this.showMessage('请输入更换原因', 'warning');
 					}

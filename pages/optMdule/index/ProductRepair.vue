@@ -31,7 +31,10 @@
 			</view>
 		</view>
 
-
+		<!-- ════ 消息提示 ════ -->
+		<view v-if="!productInfo" class="message-box" :class="[messageInfo.type, messageInfo.show ? 'show' : '']">
+			<text>{{ messageInfo.content }}</text>
+		</view>
 
 		<!-- ════ 查询结果 ════ -->
 		<view v-if="productInfo" class="result-container">

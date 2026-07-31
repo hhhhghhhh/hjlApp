@@ -137,11 +137,13 @@
 					areaSn: "", purchaseDept: "", receiveDept: "", stockDept: "", dept: "",
 					returnDept: "", deliveryDept: "", pickDept: "", inDept: ""
 				},
-				typeName: "", 
+				typeName: "",
 				operateType: "",
 				// 从主页面传递的条码类型
 				codeType: "normal",
-				showBackTop: false
+				showBackTop: false,
+				// onLoad 之后会紧接着来一次 onShow，用它区分首次进入和从操作页返回
+				firstShow: true
 			}
 		},
 
@@ -174,7 +176,17 @@
 			
 			this.queryDocList();
 		},
-		
+
+		// navigateTo 不会销毁本页，从 docCommand 返回时只有 onShow 会触发，
+		// 单据状态可能已经被操作改掉了，所以这里必须重查一次
+		onShow() {
+			if (this.firstShow) {
+				this.firstShow = false;
+				return;
+			}
+			this.queryDocList();
+		},
+
 		// 页面滚动监听（替代 scroll-view 的 @scroll）
 		onPageScroll(e) {
 			this.showBackTop = e.scrollTop > 300;

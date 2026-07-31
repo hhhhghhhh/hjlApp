@@ -87,6 +87,18 @@ function openBluetoothSettings() {
 	startActivityByAction('android.settings.BLUETOOTH_SETTINGS')
 }
 
+// 打印机机身/电池仓下方贴的条码通常就是它的蓝牙 MAC，扫出来是不带分隔符的 12 位十六进制。
+// Android 的 getRemoteDevice 只认「大写 + 冒号」这一种写法，别的形式会直接抛 IllegalArgumentException，
+// 所以所有入口都先过这里归一化。扫码内容可能夹在一段更长的文本里，因此按模式提取而不是简单剔字符。
+function normalizeAddress(raw) {
+	const text = String(raw || '').toUpperCase()
+	const hit = text.match(/([0-9A-F]{2}[:-]){5}[0-9A-F]{2}/) || text.match(/\b[0-9A-F]{12}\b/)
+	if (!hit) return ''
+	return hit[0].replace(/[^0-9A-F]/g, '').match(/.{2}/g).join(':')
+}
+
+const BOND_STATE = { 10: 'none', 11: 'bonding', 12: 'bonded' }
+
 const PRINTER_NAME_HINT = /(zebra|^zq|^zd|^zt|^qln|^imz|^zr|^rw|^mz|printer)/i
 
 // 读取系统已配对设备，疑似打印机的排在前面
@@ -138,27 +150,55 @@ function disconnect() {
 	current = null
 }
 
+// 安全通道在部分手机上会被拒（尤其 Android 12+），非安全通道往往能连上，所以逐个试。
+const SOCKET_FACTORIES = [
+	{ method: 'createRfcommSocketToServiceRecord', label: '安全通道' },
+	{ method: 'createInsecureRfcommSocketToServiceRecord', label: '非安全通道' }
+]
+
 // 连接打印机。socket.connect() 是阻塞调用，最长可能等待十几秒。
+// address 接受 AABBCCDDEEFF / AA:BB:CC:DD:EE:FF 等写法；设备不在已配对列表里也能连，系统会弹配对框。
 async function connect(address, name) {
+	const addr = normalizeAddress(address)
+	if (!addr) throw new Error('蓝牙地址不合法：' + address + '（应为 12 位十六进制，如 AABBCCDDEEFF）')
+
 	await requestPermissions()
 	disconnect()
 	const ad = getAdapter()
 	if (!inv(ad, 'isEnabled')) throw new Error('蓝牙未开启')
 
 	await sleep(50) // 让调用方的 loading 先渲染出来，再进入阻塞调用
-	try {
-		const device = inv(ad, 'getRemoteDevice', address)
-		const UUID = plus.android.importClass('java.util.UUID')
-		socket = inv(device, 'createRfcommSocketToServiceRecord', UUID.fromString(SPP_UUID))
-		inv(socket, 'connect')
-		outStream = inv(socket, 'getOutputStream')
-		inStream = inv(socket, 'getInputStream')
-		current = { address, name: name || '' }
-	} catch (e) {
-		disconnect()
-		throw new Error('连接失败: ' + (e.message || e) + '（请确认打印机已开机、已配对且未被其他设备占用）')
+	const device = inv(ad, 'getRemoteDevice', addr)
+	const UUID = plus.android.importClass('java.util.UUID')
+	const uuid = UUID.fromString(SPP_UUID)
+
+	const failures = []
+	for (const way of SOCKET_FACTORIES) {
+		let sock = null
+		try {
+			sock = inv(device, way.method, uuid)
+			inv(sock, 'connect')
+			socket = sock
+			outStream = inv(sock, 'getOutputStream')
+			inStream = inv(sock, 'getInputStream')
+			current = { address: addr, name: name || inv(device, 'getName') || '' }
+			current.verified = await verifyLink()
+			return current
+		} catch (e) {
+			closeQuietly(sock)
+			failures.push(way.label + ': ' + (e.message || e))
+		}
 	}
-	return current
+
+	disconnect()
+	let bond = 'unknown'
+	try {
+		bond = BOND_STATE[inv(device, 'getBondState')] || 'unknown'
+	} catch (e) {}
+	const hint = bond === 'bonded'
+		? '该设备已配对，请确认打印机已开机、未休眠，且没有被其它手机/电脑占用连接'
+		: '该设备在本机尚未配对，请先在系统蓝牙设置里配对，或在系统弹出配对框时确认'
+	throw new Error('连接 ' + addr + ' 失败（' + failures.join('；') + '）。' + hint)
 }
 
 function ensureConnected() {
@@ -210,6 +250,19 @@ async function readResponse(timeout) {
 		await sleep(100)
 	}
 	return text
+}
+
+// socket.connect() 返回成功只说明 RFCOMM 通道建起来了：打印机没进入配对/可连接模式、
+// 或者链路已经半死时，连接照样"成功"，写入也不报错，于是界面误报连上了。
+// 发一次 ~HS 看有没有回音，才算真的通。CPCL 机型不认 ~HS，所以这只是标记，不是硬失败。
+async function verifyLink() {
+	try {
+		readAvailable() // 清掉残留，避免把上一次的回复当成本次响应
+		sendZpl('~HS')
+		return (await readResponse(1500)).length > 0
+	} catch (e) {
+		return false
+	}
 }
 
 const flag = (v) => v === '1'
@@ -345,6 +398,7 @@ export default {
 	enableBluetooth,
 	openBluetoothSettings,
 	getPairedDevices,
+	normalizeAddress,
 	connect,
 	disconnect,
 	isConnected,

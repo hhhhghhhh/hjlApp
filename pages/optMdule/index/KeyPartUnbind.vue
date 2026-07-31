@@ -31,7 +31,10 @@
 			</view>
 		</view>
 
-		
+		<!-- ════ 消息提示 ════ -->
+		<view v-if="!productInfo" class="message-box" :class="[messageInfo.type, messageInfo.show ? 'show' : '']">
+			<text>{{ messageInfo.content }}</text>
+		</view>
 
 		<!-- ════ 查询结果 ════ -->
 		<view v-if="productInfo" class="result-container">
@@ -70,14 +73,14 @@
 				</view>
 			</view>
 
-			<!-- ════ 关键件SN输入（加入待解绑） ════ -->
+			<!-- ════ 关键件输入（加入待解绑） ════ -->
 			<view class="input-card key-sn-input">
 				<view class="input-row">
 					<view class="input-left">
-						<text class="input-label">关键件SN</text>
+						<text class="input-label">关键件</text>
 					</view>
 					<view class="input-right">
-						<input class="input-value-input" v-model="currentKeySn" placeholder="请输入或扫码关键件SN，回车加入待解绑"
+						<input class="input-value-input" v-model="currentKeySn" placeholder="请输入或扫码关键件，回车加入待解绑"
 							:focus="keySnInputFocus" @confirm="onKeySnInputConfirm" @focus="onKeySnFocus" />
 						<uni-icons type="scan" size="22" color="#4A90D9" @click="scanKeySn"></uni-icons>
 						<view v-if="currentKeySn" class="clear-btn" @click="clearCurrentKeySn">
@@ -129,7 +132,7 @@
 									<text class="item-value">{{ item.supplierName || '--' }}</text>
 								</view>
 								<view class="item-row">
-									<text class="item-label">关键件SN</text>
+									<text class="item-label">关键件</text>
 									<text class="item-value sn">{{ item.keySn || '--' }}</text>
 								</view>
 							</view>
@@ -168,7 +171,7 @@
 									<text class="item-value">{{ item.supplierName || '--' }}</text>
 								</view>
 								<view class="item-row">
-									<text class="item-label">关键件SN</text>
+									<text class="item-label">关键件</text>
 									<text class="item-value sn">{{ item.keySn || '--' }}</text>
 								</view>
 							</view>
@@ -356,10 +359,10 @@
 				}
 			},
 
-			// ==================== 处理关键件SN ====================
+			// ==================== 处理关键件 ====================
 			handleKeySn(sn) {
 				if (!sn) {
-					this.showMessage('请输入关键件SN', 'warning');
+					this.showMessage('请输入关键件', 'warning');
 					return;
 				}
 
@@ -374,7 +377,7 @@
 				// 从已绑定列表中查找
 				const boundItem = this.boundList.find(item => item.keySn === sn);
 				if (!boundItem) {
-					this.showMessage(`关键件SN[${sn}]不在该产品绑定列表中`, 'warning');
+					this.showMessage(`关键件[${sn}]不在该产品绑定列表中`, 'warning');
 					this.clearCurrentKeySn();
 					this.focusKeySnInput();
 					return;
@@ -453,28 +456,28 @@
 			// ==================== 提交解绑 ====================
 			async doUnbind() {
 				if (this.isSubmitting) return;
-			
+
 				this.isSubmitting = true;
 				uni.showLoading({
 					title: '解绑中...'
 				});
-			
+
 				try {
 					const keySnList = this.pendingList.map(item => item.keySn);
 					const requestData = {
 						productSn: this.productInfo.productSn,
 						keySnList: keySnList
 					};
-			
+
 					const res = await this.$request({
 						url: '/api/pda/pdaProductSn/unBinding',
-						method: 'POST',  // 修改为 POST
+						method: 'POST', // 修改为 POST
 						data: requestData
 					});
-			
+
 					uni.hideLoading();
 					this.isSubmitting = false;
-			
+
 					if (res.data && res.data.code === 200) {
 						this.showMessage(`成功解绑 ${this.pendingList.length} 个关键件`, 'success');
 						// 清空待解绑列表

@@ -7,17 +7,21 @@
 			</view>
 			<view class="row">
 				<text class="label">当前打印机</text>
-				<text :class="['value', connected ? 'ok' : 'warn']">{{ connected ? connectedName : '未连接' }}</text>
+				<text :class="['value', connected && verified ? 'ok' : 'warn']">{{ connectedText }}</text>
 			</view>
 			<view class="btn-row">
 				<button size="mini" @click="openSettings">系统蓝牙设置</button>
 				<button size="mini" @click="refresh">刷新设备</button>
 				<button size="mini" v-if="!btEnabled" type="primary" @click="turnOnBluetooth">开启蓝牙</button>
 			</view>
+			<view class="tip-inline warn" v-if="permError">{{ permError }}</view>
 		</view>
 
 		<view class="tip">
-			打印机需先在「系统蓝牙设置」中完成配对，配对后回到本页刷新即可看到。
+			连接前先让打印机进入蓝牙配对/可连接模式（多数机型是长按蓝牙键或走纸键到指示灯闪烁），否则会连接失败，或者连上了却对指令没反应。
+		</view>
+		<view class="tip">
+			打印机需先在「系统蓝牙设置」中完成配对，配对后回到本页刷新即可看到；也可以用下面的「按地址连接」跳过列表。
 		</view>
 
 		<view class="card">
@@ -34,6 +38,22 @@
 			</view>
 		</view>
 
+		<view class="card">
+			<text class="card-title">按地址连接</text>
+			<view class="addr-row">
+				<input class="addr-input" v-model="manualAddress" placeholder="12 位十六进制，如 AABBCCDDEEFF" />
+				<button size="mini" @click="scanAddress">扫码</button>
+			</view>
+			<text class="addr-preview" v-if="manualNormalized">将连接 {{ manualNormalized }}</text>
+			<text class="addr-preview bad" v-else-if="manualAddress">地址不完整，需要 12 位十六进制</text>
+			<view class="btn-row">
+				<button size="mini" type="primary" @click="connectManual">连接此地址</button>
+				<button size="mini" v-if="manualAddress" @click="manualAddress = ''">清空</button>
+			</view>
+			<view class="tip-inline">打印机机身或电池仓下方的条码通常就是它的蓝牙地址，扫它即可，大小写和有没有冒号都不影响。</view>
+			<view class="tip-inline">设备没出现在上面的已配对列表里也能连；首次连接时系统会弹配对框，确认一次就行。</view>
+		</view>
+
 		<view class="card" v-if="connected">
 			<text class="card-title">打印测试</text>
 			<view class="btn-row">
@@ -41,7 +61,7 @@
 				<button size="mini" type="primary" @click="testCpcl">CPCL 测试</button>
 				<button size="mini" @click="queryStatus">查询状态</button>
 			</view>
-			<textarea class="zpl-input" v-model="customZpl" placeholder="可粘贴 ZPL/CPCL 指令；若只填纯文字会自动包装成一张标签" />
+			<textarea class="zpl-input" v-model="customZpl" maxlength="-1" placeholder="可粘贴 ZPL/CPCL 指令；若只填纯文字会自动包装成一张标签" />
 			<view class="btn-row">
 				<button size="mini" @click="sendCustom('zpl')">发送 ZPL</button>
 				<button size="mini" @click="sendCustom('cpcl')">发送 CPCL</button>
@@ -68,8 +88,10 @@
 			<text class="card-title">标签模板</text>
 			<view class="btn-row">
 				<button size="mini" type="primary" @click="goTemplate">编辑标签模板</button>
+				<button size="mini" @click="goImport">从 CodeSoft 导入</button>
 			</view>
 			<view class="tip-inline">在模板页可设置标签尺寸、页面参数，并添加文本、二维码、一维条码等元素。</view>
+			<view class="tip-inline">电脑上已用 CodeSoft 画好的 .Lab 标签，先在 CSPrintService 里解析成二维码，再用「从 CodeSoft 导入」扫码，不用在 PDA 上重画。</view>
 		</view>
 
 		<view class="card" v-if="statusText">
@@ -91,13 +113,28 @@
 				connectedAddress: '',
 				connectedName: '',
 				customZpl: '',
-				statusText: ''
+				statusText: '',
+				manualAddress: '',
+				permError: '',
+				verified: false
 			}
 		},
 		computed: {
 			connected() {
 				return !!this.connectedAddress
+			},
+			connectedText() {
+				if (!this.connected) return '未连接'
+				return this.connectedName + (this.verified ? '' : '（无响应）')
+			},
+			manualNormalized() {
+				return printer.normalizeAddress(this.manualAddress)
 			}
+		},
+		onLoad() {
+			// 用默认打印机预填，省得在小键盘上重新敲一遍地址
+			const saved = printer.loadPrinter()
+			if (saved && saved.address) this.manualAddress = saved.address
 		},
 		onShow() {
 			this.refresh()
@@ -114,9 +151,18 @@
 				const cur = printer.getCurrentPrinter()
 				this.connectedAddress = cur ? cur.address : ''
 				this.connectedName = cur ? cur.name || cur.address : ''
+				this.verified = !!(cur && cur.verified)
 			},
 
-			refresh() {
+			async refresh() {
+				// Android 12+ 没先拿到 BLUETOOTH_CONNECT 的话，getBondedDevices 直接抛 SecurityException，
+				// 列表会空着，看起来就像「系统里配好对了，App 里却找不到设备」
+				this.permError = ''
+				try {
+					await printer.requestPermissions()
+				} catch (e) {
+					this.permError = e.message
+				}
 				this.btEnabled = printer.isBluetoothEnabled()
 				this.syncConnection()
 				if (!this.btEnabled) {
@@ -127,8 +173,27 @@
 					this.devices = printer.getPairedDevices()
 				} catch (e) {
 					this.devices = []
-					this.toast(e.message)
+					if (!this.permError) this.toast(e.message)
 				}
+			},
+
+			scanAddress() {
+				uni.scanCode({
+					success: (res) => {
+						const addr = printer.normalizeAddress(res.result)
+						if (!addr) return this.toast('扫到的内容里没有蓝牙地址：' + res.result)
+						this.manualAddress = addr
+						this.connectManual()
+					},
+					fail: () => this.toast('已取消扫码')
+				})
+			},
+
+			connectManual() {
+				const addr = this.manualNormalized
+				if (!addr) return this.toast('请输入 12 位十六进制蓝牙地址，如 AABBCCDDEEFF')
+				this.manualAddress = addr
+				this.connectDevice({ address: addr, name: '' })
 			},
 
 			turnOnBluetooth() {
@@ -148,13 +213,22 @@
 			},
 
 			async connectDevice(dev) {
-				if (dev.address === this.connectedAddress) return
-				uni.showLoading({ title: '连接中...', mask: true })
+				if (dev.address === this.connectedAddress) return this.toast('已连接该打印机')
+				// 安全通道失败会再试非安全通道，两次阻塞连接加起来可能到 20 秒，先说清楚免得以为卡死
+				uni.showLoading({ title: '连接中，最长约 20 秒...', mask: true })
 				try {
-					await printer.connect(dev.address, dev.name)
+					const cur = await printer.connect(dev.address, dev.name)
 					this.syncConnection()
 					uni.hideLoading()
-					this.toast('连接成功')
+					if (cur.verified) {
+						this.toast('连接成功，打印机已响应')
+					} else {
+						uni.showModal({
+							title: '连接未确认',
+							content: '蓝牙通道已打开，但打印机没有回应状态查询，这时候打印可能不出纸。请确认打印机已开机并处于蓝牙配对/可连接模式，然后重新连接。如果本机是 CPCL 机型，不响应该查询是正常的，可以直接测试打印。',
+							showCancel: false
+						})
+					}
 				} catch (e) {
 					uni.hideLoading()
 					this.syncConnection()
@@ -241,6 +315,10 @@
 				uni.navigateTo({ url: '/pages/print/labelTemplate' })
 			},
 
+			goImport() {
+				uni.navigateTo({ url: '/pages/print/labelImport' })
+			},
+
 			async queryStatus() {
 				uni.showLoading({ title: '查询中...', mask: true })
 				try {
@@ -269,7 +347,8 @@
 			setDefault() {
 				const cur = printer.getCurrentPrinter()
 				if (!cur) return this.toast('请先连接打印机')
-				printer.savePrinter(cur)
+				// verified 只对本次连接有意义，别存进去下次误读
+				printer.savePrinter({ address: cur.address, name: cur.name })
 				this.toast('已设为默认打印机')
 			}
 		}
@@ -390,6 +469,33 @@
 	.device-state {
 		font-size: 26rpx;
 		color: #576b95;
+	}
+
+	.addr-row {
+		display: flex;
+		align-items: center;
+		gap: 16rpx;
+	}
+
+	.addr-input {
+		flex: 1;
+		height: 72rpx;
+		border: 1rpx solid #ddd;
+		border-radius: 8rpx;
+		padding: 0 16rpx;
+		font-size: 28rpx;
+		box-sizing: border-box;
+	}
+
+	.addr-preview {
+		display: block;
+		font-size: 24rpx;
+		color: #07c160;
+		margin-top: 12rpx;
+	}
+
+	.addr-preview.bad {
+		color: #fa5151;
 	}
 
 	.zpl-input {

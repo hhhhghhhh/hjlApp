@@ -14,14 +14,14 @@
 			</view>
 		</view>
 
-		<!-- ════ 关键件SN输入 ════ -->
+		<!-- ════ 关键件输入 ════ -->
 		<view class="input-card">
 			<view class="input-row">
 				<view class="input-left">
-					<text class="input-label">关键件SN</text>
+					<text class="input-label">关键件</text>
 				</view>
 				<view class="input-right">
-					<input class="input-value-input" v-model="currentSn" placeholder="请输入或扫码关键件SN" :focus="inputFocus"
+					<input class="input-value-input" v-model="currentSn" placeholder="请输入或扫码关键件" :focus="inputFocus"
 						@confirm="onInputConfirm" @focus="onInputFocus" />
 					<uni-icons type="scan" size="22" color="#4A90D9" @click="scanSn"></uni-icons>
 					<view v-if="currentSn" class="clear-btn" @click="clearCurrentSn">
@@ -29,6 +29,10 @@
 					</view>
 				</view>
 			</view>
+		</view>
+		<!-- ════ 消息提示 ════ -->
+		<view v-if="!keySnInfo" class="message-box" :class="[messageInfo.type, messageInfo.show ? 'show' : '']">
+			<text>{{ messageInfo.content }}</text>
 		</view>
 
 		<!-- ════ 查询结果 ════ -->
@@ -38,7 +42,7 @@
 				<view class="card-title">关键件信息</view>
 				<view class="info-grid">
 					<view class="info-item">
-						<text class="info-label">关键件SN</text>
+						<text class="info-label">关键件</text>
 						<text class="info-value sn">{{ keySnInfo.keySn || '--' }}</text>
 					</view>
 					<view class="info-item">
@@ -91,7 +95,7 @@
 		<!-- 空状态 -->
 		<view v-else-if="!loading && !keySnInfo" class="empty-result">
 			<uni-icons type="search" size="64" color="#ccc"></uni-icons>
-			<text>请输入或扫码关键件SN查询</text>
+			<text>请输入或扫码关键件查询</text>
 		</view>
 
 		<!-- 加载中 -->
@@ -190,7 +194,7 @@
 			// ==================== 查询关键件信息 ====================
 			async doQuery(sn) {
 				if (!sn) {
-					this.showMessage('请输入关键件SN', 'warning');
+					this.showMessage('请输入关键件', 'warning');
 					return;
 				}
 
@@ -203,7 +207,10 @@
 						url: '/api/pda/pdaProductSn/getKeyInfoBySn',
 						method: 'GET',
 						data: {
-							keySn: sn
+							keySn: sn,
+							sendStatus: 0,
+							pickStatus: 0,
+							bindStatus: 0,
 						}
 					});
 
@@ -345,7 +352,7 @@
 
 			handleSend() {
 				if (!this.keySnInfo) {
-					this.showMessage('请先查询关键件SN', 'warning');
+					this.showMessage('请先查询关键件', 'warning');
 					this.focusInput();
 					return;
 				}

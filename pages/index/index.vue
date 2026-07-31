@@ -112,23 +112,41 @@
 			</view>
 		</view>
 
-		<!-- ════ 🖨️ 打印管理（新增） ════ -->
-		<view class="card">
+		<!-- ════ 🖨️ 打印管理（新增权限控制） ════ -->
+		<view class="card" v-if="hasAnyPermission(['printBluetooth', 'printKeySn', 'printPackageSn', 'printProductSn'])">
 			<view class="card-header">
 				<text class="card-title">打印管理</text>
 			</view>
 			<view class="func-grid">
-				<view class="func-item" @click="goToBluetoothPrint">
+				<view class="func-item" v-if="hasPermission('printBluetooth')" @click="goToBluetoothPrint">
 					<view class="func-icon" style="background: #E8833A;">
-						<uni-icons type="printer" size="32" color="#fff"></uni-icons>
+						<uni-icons type="link" size="32" color="#fff"></uni-icons>
 					</view>
 					<text class="func-name">蓝牙打印</text>
+				</view>
+				<view class="func-item" v-if="hasPermission('printKeySn')" @click="goToPrintPage('keySnPrint')">
+					<view class="func-icon" style="background: #4A90D9;">
+						<uni-icons type="scan" size="32" color="#fff"></uni-icons>
+					</view>
+					<text class="func-name">关键件打印</text>
+				</view>
+				<view class="func-item" v-if="hasPermission('printPackageSn')" @click="goToPrintPage('packageSnPrint')">
+					<view class="func-icon" style="background: #52B788;">
+						<uni-icons type="shop" size="32" color="#fff"></uni-icons>
+					</view>
+					<text class="func-name">包装打印</text>
+				</view>
+				<view class="func-item" v-if="hasPermission('printProductSn')" @click="goToPrintPage('productSnPrint')">
+					<view class="func-icon" style="background: #7B6CD9;">
+						<uni-icons type="paperplane" size="32" color="#fff"></uni-icons>
+					</view>
+					<text class="func-name">产品SN打印</text>
 				</view>
 			</view>
 		</view>
 
-		<!-- 无权限提示 -->
-		<view class="no-permission" v-if="!hasAnyPermission(['DJ02', 'DJ11', 'DJ05', 'DJ12', 'packagBind', 'packagUnBind', 'keyUnBind', 'productSnQuery', 'keySnQuery', 'productRepair', 'partSend', 'partReplace'])">
+		<!-- 无权限提示（已同步加入打印权限判断） -->
+		<view class="no-permission" v-if="!hasAnyPermission(['DJ02', 'DJ11', 'DJ05', 'DJ12', 'packagBind', 'packagUnBind', 'keyUnBind', 'productSnQuery', 'keySnQuery', 'productRepair', 'partSend', 'partReplace', 'printBluetooth', 'printKeySn', 'printPackageSn', 'printProductSn'])">
 			<uni-icons type="info" size="48" color="#999"></uni-icons>
 			<text class="no-permission-text">暂无任何功能权限，请联系管理员</text>
 		</view>
@@ -247,6 +265,12 @@
 			goToBluetoothPrint() {
 				uni.navigateTo({
 					url: '/pages/print/printSetting'
+				});
+			},
+
+			goToPrintPage(page) {
+				uni.navigateTo({
+					url: '/pages/print/' + page
 				});
 			}
 			// =====================================

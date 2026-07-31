@@ -116,7 +116,11 @@ function renderElement(el, data, tpl, toDots) {
 		const font = hasCjk(text)
 			? `^A@${rot},${h},${w},${tpl.cjkFont || 'E:GB18030.FNT'}`
 			: `^A0${rot},${h},${w}`
-		return `^FO${x},${y}${font}^FH^FD${escapeText(text)}^FS`
+		// ^FB 要知道行宽才能居中/右对齐，没有 width 就只能左对齐
+		const block = (el.align === 'center' || el.align === 'right') && num(el.width, 0) > 0
+			? `^FB${toDots(el.width)},1,0,${el.align === 'center' ? 'C' : 'R'}`
+			: ''
+		return `^FO${x},${y}${font}${block}^FH^FD${escapeText(text)}^FS`
 	}
 
 	if (el.type === 'qrcode') {
@@ -132,10 +136,11 @@ function renderElement(el, data, tpl, toDots) {
 		const h = toDots(el.heightMm)
 		const mw = num(el.moduleWidth, 2)
 		const show = el.showText === false ? 'N' : 'Y'
+		const above = el.textAbove ? 'Y' : 'N'
 		const by = `^BY${mw},3,${h}`
-		if (el.codeType === 'code39') return `^FO${x},${y}${by}^B3${rot},N,${h},${show},N^FD${value}^FS`
-		if (el.codeType === 'ean13') return `^FO${x},${y}${by}^BE${rot},${h},${show},N^FD${value}^FS`
-		return `^FO${x},${y}${by}^BC${rot},${h},${show},N,N^FD${value}^FS`
+		if (el.codeType === 'code39') return `^FO${x},${y}${by}^B3${rot},N,${h},${show},${above}^FD${value}^FS`
+		if (el.codeType === 'ean13') return `^FO${x},${y}${by}^BE${rot},${h},${show},${above}^FD${value}^FS`
+		return `^FO${x},${y}${by}^BC${rot},${h},${show},${above},N^FD${value}^FS`
 	}
 
 	if (el.type === 'line') {

@@ -155,6 +155,38 @@
 		    "navigationBarBackgroundColor": "#ffffff",
 		    "navigationBarTextStyle": "black"
 		  }
+		},
+		{
+		  "path": "pages/print/labelImport",
+		  "style": {
+		    "navigationBarTitleText": "模板导入",
+		    "navigationBarBackgroundColor": "#ffffff",
+		    "navigationBarTextStyle": "black"
+		  }
+		},
+		{
+		  "path": "pages/print/keySnPrint",
+		  "style": {
+		    "navigationBarTitleText": "关键件打印",
+		    "navigationBarBackgroundColor": "#ffffff",
+		    "navigationBarTextStyle": "black"
+		  }
+		},
+		{
+		  "path": "pages/print/packageSnPrint",
+		  "style": {
+		    "navigationBarTitleText": "包装SN打印",
+		    "navigationBarBackgroundColor": "#ffffff",
+		    "navigationBarTextStyle": "black"
+		  }
+		},
+		{
+		  "path": "pages/print/productSnPrint",
+		  "style": {
+		    "navigationBarTitleText": "产品SN打印",
+		    "navigationBarBackgroundColor": "#ffffff",
+		    "navigationBarTextStyle": "black"
+		  }
 		}
 	],
 	"globalStyle": {

@@ -1,0 +1,885 @@
+╭─── Claude Code v2.1.145 ─────────────────────────────────────────────────────╮
+│                                       │ Tips for getting started             │
+│             Welcome back!             │ Run /init to create a CLAUDE.md fil… │
+│                                       │ ──────────────────────────────────── │
+│                ▐▛███▜▌                │ What's new                           │
+│               ▝▜█████▛▘               │ Added `claude agents --json` to lis… │
+│                 ▘▘ ▝▝                 │ Added `agent_id` and `parent_agent_… │
+│                                       │ Status line JSON input now includes… │
+│   claude-opus-5 · API Usage Billing   │ /release-notes for more              │
+│        ~\Desktop\github\hjlApp        │                                      │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+> continue                                                                      
+
+● I'll get oriented first — checking memory and the current working state.
+
+  Recalled 1 memory (ctrl+o to expand)
+
+● Bash(git status --short && echo "---" && git diff --stat)
+  ⎿   M package-lock.json
+      M package.json
+      M pages.json
+     … +22 lines (ctrl+o to expand)
+
+● There's a saved session transcript in the repo — let me check where the
+  previous session left off.
+
+  Read 1 file, listed 1 directory (ctrl+o to expand)
+
+● The previous session finished its work. Let me check the plan file for any
+  remaining items.
+
+  Read 1 file, listed 1 directory (ctrl+o to expand)
+
+● Plan is fully implemented per the last session. Let me verify the actual state
+   rather than trust the summary.
+
+● Bash(ls components/mes/print/ && echo "--- pako:" && ls
+      node_modules/pako/package.json 2>/dev/null && node -e
+      "console.log(require('./package.json').dependencies)")
+  ⎿  docSelectPopup.vue
+     snPrintList.vue
+     --- pako:
+     … +2 lines (ctrl+o to expand)
+
+● Bash(git diff utils/zplTemplate.js)
+  ⎿  warning: in the working copy of 'utils/zplTemplate.js', LF will be rep
+     laced by CRLF the next time Git touches it
+     diff --git a/utils/zplTemplate.js b/utils/zplTemplate.js
+     … +21 lines (ctrl+o to expand)
+
+● All plan artifacts are in place (pako installed, 8 new files, both
+  zplTemplate.js edits). The one thing the plan promised but I can't confirm
+  happened is the pure-logic verification of decode→convert→ZPL. Let me run it.
+
+● Bash(node -e "const s=require('fs').readFileSync('utils/labTemplate.js','utf8'
+      );console.log('lines',s.split('\n').length);" && grep -n
+      "^export\|^function\|^const.*=…)
+  ⎿  lines 389
+     41:function base64ToBytes(b64) {
+     62:function bytesToString(bytes) {
+     … +9 lines (ctrl+o to expand)
+
+  Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+● Writing a temporary harness (ESM copies with uni stubbed) to exercise decode →
+   convert → ZPL.
+
+● Write(__verify.mjs)
+  ⎿  Wrote 97 lines to __verify.mjs
+         完删除。 证脚本：decodePayload -> toZplTemplate -> buildZpl。验
+       2 import fs from 'fs'
+       4 import zlib from 'zlib'
+       5 // 1. 造 ESM 副本，把 uni/plus 依赖摘掉
+       6 const zpl = fs.readFileSync('utils/zplTemplate.js', 'utf8')
+       7        .replace("import printer from './zebraPrinter.js'", 'const print
+         er = {}')
+         i\n' + zpl, 'utf8')tils/__t_zpl.mjs', 'const uni = globalThis.un
+       9 
+      10 const lab = fs.readFileSync('utils/labTemplate.js', 'utf8')
+     … +119 lines (ctrl+o to expand)
+
+● Bash(node __verify.mjs 2>&1 | head -80)
+  ⎿  file:///C:/Users/26281/Desktop/github/hjlApp/utils/__t_lab.mjs:10
+     import pako from 'pako'
+            ^^^^
+     … +12 lines (ctrl+o to expand)
+  ⎿  Interrupted · What should Claude do instead?
+
+> 开始新的任务吧，我发现了一些新的需求                                          
+
+● 先把刚才的临时文件清掉。
+
+● Bash(rm -f __verify.mjs utils/__t_zpl.mjs utils/__t_lab.mjs && git status
+      --short)
+  ⎿   M package-lock.json
+      M package.json
+      M pages.json
+     … +14 lines (ctrl+o to expand)
+
+● 临时文件已清理，工作区回到上次会话结束时的状态（SN
+  打印那批改动都还在，未提交）。
+
+  说说新需求吧 —— 是什么问题或者要加什么功能？
+
+✻ Worked for 12s
+※ recap: Goal is the SN 打印 feature set for the PDA app — last session's code is all in place but uncommitted, and I cleaned up my temp verification files. I'm waiting on you to describe the new requirements you found. (disable recaps in /config)
+
+>   我在pda上可以连接上我的打印机，手机上配对后却无法连接蓝牙，是扫码原因       
+    可以增加蓝牙连接方式输入蓝牙地址连接                                        
+    打印机下有条形码可以扫出内容9075DE1E5DA2                                    
+
+● 明白了 —— 打印机底下条码 9075DE1E5DA2 就是它的
+  MAC（90:75:DE:1E:5D:A2）。我先看一下现在的连接实现。
+
+  Read 1 file (ctrl+o to expand)
+
+● connect() 已经用的是
+  getRemoteDevice(address)，所以底层本来就不要求设备在已配对列表里 ——
+  缺的只是入口。我看一下设置页的结构。
+
+  Read 1 file (ctrl+o to expand)
+
+● Bash(node -e "const m=require('./manifest.json'); const a=m['app-plus']&&m['ap
+      p-plus'].distribute&&m['app-plus'].distribute.android;
+      console.log(JSON.stringify(a&&a.…)
+  ⎿  [
+      "<uses-permission android:name=\"android.permission.CHANGE_NETWORK_ST
+     ATE\"/>",
+     … +17 lines (ctrl+o to expand)
+
+● 我找到了大概率的根因，先说清楚再改。
+
+  connect() 底层用的是
+  getRemoteDevice(address)，本来就不依赖已配对列表。但有两个坑正好解释「PDA
+  能连、手机不能连」：
+
+  1. Android 12+ 权限时机。refresh() 在 onShow 里直接调 getPairedDevices()，而
+  BLUETOOTH_CONNECT 只在 connect() 里才申请。DT50
+  系统版本低不需要运行时权限，手机是 Android 12+ ——getBondedDevices()
+  没权限会直接抛
+  SecurityException，列表就空了，看起来就是「配对了却找不到设备」。
+  2. 地址格式。Android 的 getRemoteDevice 只认大写冒号格式，9075DE1E5DA2
+  这种直接扫出来的值传进去会抛 IllegalArgumentException。
+
+  所以我按三块改：地址归一化 + 按地址/扫码连接入口、权限提前申请、以及安全通道连
+  不上时降级到非安全通道（手机上常见）。
+
+● Now the printer module.
+
+● Update(utils\zebraPrinter.js)
+  ⎿  Added 12 lines
+       87    startActivityByAction('android.settings.BLUETOOTH_SETTINGS')
+       88  }
+       89  
+       90 +// 打印机机身/电池仓下方贴的条码通常就是它的蓝牙 MAC，扫出来是
+          +不带分隔符的 12 位十六进制。                                  
+       91 +// Android 的 getRemoteDevice 只认「大写 + 冒号」这一种写法， 
+          +别的形式会直接抛 IllegalArgumentException，                   
+       92 +// 所以所有入口都先过这里归一化。扫码内容可能夹在一段更长的文 
+          +本里，因此按模式提取而不是简单剔字符。                        
+       93 +function normalizeAddress(raw) {                              
+       94 +  const text = String(raw || '').toUpperCase()                
+       95 +  const hit = text.match(/([0-9A-F]{2}[:-]){5}[0-9A-F]{2}/) ||
+          + text.match(/\b[0-9A-F]{12}\b/)                               
+       96 +  if (!hit) return ''                                         
+       97 +  return hit[0].replace(/[^0-9A-F]/g, '').match(/.{2}/g).join(
+          +':')                                                          
+       98 +}                                                             
+       99 +                                                              
+      100 +const BOND_STATE = { 10: 'none', 11: 'bonding', 12: 'bonded' }
+      101 +                                                              
+      102  const PRINTER_NAME_HINT = /(zebra|^zq|^zd|^zt|^qln|^imz|^zr|^r
+           w|^mz|printer)/i
+      103  
+      104  // 读取系统已配对设备，疑似打印机的排在前面
+
+● Update(utils\zebraPrinter.js)
+  ⎿  Added 39 lines, removed 12 lines
+      150    current = null
+      151  }
+      152  
+      153 +// 安全通道在部分手机上会被拒（尤其 Android 12+），非安全通道 
+          +往往能连上，所以逐个试。                                      
+      154 +const SOCKET_FACTORIES = [                                    
+      155 +  { method: 'createRfcommSocketToServiceRecord', label: '安全 
+          +通道' },                                                      
+      156 +  { method: 'createInsecureRfcommSocketToServiceRecord', label
+          +: '非安全通道' }                                              
+      157 +]                                                             
+      158 +                                                              
+      159  // 连接打印机。socket.connect() 是阻塞调用，最长可能等待十几秒
+           。
+      160 +// address 接受 9075DE1E5DA2 / 90:75:DE:1E:5D:A2 等写法；设备 
+          +不在已配对列表里也能连，系统会弹配对框。                      
+      161  async function connect(address, name) {
+      162 +  const addr = normalizeAddress(address)                      
+      163 +  if (!addr) throw new Error('蓝牙地址不合法：' + address + ' 
+          +（应为 12 位十六进制，如 9075DE1E5DA2）')                     
+      164 +                                                              
+      165    await requestPermissions()
+      166    disconnect()
+      167    const ad = getAdapter()
+      168    if (!inv(ad, 'isEnabled')) throw new Error('蓝牙未开启')
+      169  
+      170    await sleep(50) // 让调用方的 loading 先渲染出来，再进入阻塞
+           调用
+      161 -  try {                                                       
+      162 -    const device = inv(ad, 'getRemoteDevice', address)        
+      163 -    const UUID = plus.android.importClass('java.util.UUID')   
+      164 -    socket = inv(device, 'createRfcommSocketToServiceRecord', 
+          -UUID.fromString(SPP_UUID))                                    
+      165 -    inv(socket, 'connect')                                    
+      166 -    outStream = inv(socket, 'getOutputStream')                
+      167 -    inStream = inv(socket, 'getInputStream')                  
+      168 -    current = { address, name: name || '' }                   
+      169 -  } catch (e) {                                               
+      170 -    disconnect()                                              
+      171 -    throw new Error('连接失败: ' + (e.message || e) + '（请确 
+          -认打印机已开机、已配对且未被其他设备占用）')                  
+      171 +  const device = inv(ad, 'getRemoteDevice', addr)             
+      172 +  const UUID = plus.android.importClass('java.util.UUID')     
+      173 +  const uuid = UUID.fromString(SPP_UUID)                      
+      174 +                                                              
+      175 +  const failures = []                                         
+      176 +  for (const way of SOCKET_FACTORIES) {                       
+      177 +    let sock = null                                           
+      178 +    try {                                                     
+      179 +      sock = inv(device, way.method, uuid)                    
+      180 +      inv(sock, 'connect')                                    
+      181 +      socket = sock                                           
+      182 +      outStream = inv(sock, 'getOutputStream')                
+      183 +      inStream = inv(sock, 'getInputStream')                  
+      184 +      current = { address: addr, name: name || inv(device, 'ge
+          +tName') || '' }                                               
+      185 +      return current                                          
+      186 +    } catch (e) {                                             
+      187 +      closeQuietly(sock)                                      
+      188 +      failures.push(way.label + ': ' + (e.message || e))      
+      189 +    }                                                         
+      190    }
+      173 -  return current                                              
+      191 +                                                              
+      192 +  disconnect()                                                
+      193 +  let bond = 'unknown'                                        
+      194 +  try {                                                       
+      195 +    bond = BOND_STATE[inv(device, 'getBondState')] || 'unknown
+          +'                                                             
+      196 +  } catch (e) {}                                              
+      197 +  const hint = bond === 'bonded'                              
+      198 +    ? '该设备已配对，请确认打印机已开机、未休眠，且没有被其它 
+          +手机/电脑占用连接'                                            
+      199 +    : '该设备在本机尚未配对，请先在系统蓝牙设置里配对，或在系 
+          +统弹出配对框时确认'                                           
+      200 +  throw new Error('连接 ' + addr + ' 失败（' + failures.join('
+          +；') + '）。' + hint)                                         
+      201  }
+      202  
+      203  function ensureConnected() {
+
+● Update(utils\zebraPrinter.js)
+  ⎿  Added 1 line
+      384    enableBluetooth,
+      385    openBluetoothSettings,
+      386    getPairedDevices,
+      387 +  normalizeAddress,                                           
+      388    connect,
+      389    disconnect,
+      390    isConnected,
+
+● Bash(node -e "
+      function normalizeAddress(raw) {…)
+  ⎿  "9075DE1E5DA2" -> "90:75:DE:1E:5D:A2"
+     "90:75:de:1e:5d:a2" -> "90:75:DE:1E:5D:A2"
+     "90-75-DE-1E-5D-A2" -> "90:75:DE:1E:5D:A2"
+     … +9 lines (ctrl+o to expand)
+
+● 归一化对所有写法都正确，包括你那张条码 9075DE1E5DA2 → 90:75:DE:1E:5D:A2。
+
+● Update(pages\print\printSetting.vue)
+  ⎿  Added 1 line
+      14          <button size="mini" @click="refresh">刷新设备</button>
+      15          <button size="mini" v-if="!btEnabled" type="primary" @c
+          lick="turnOnBluetooth">开启蓝牙</button>
+      16        </view>
+      17 +      <view class="tip-inline warn" v-if="permError">{{ permErr
+         +or }}</view>                                                   
+      18      </view>
+      19  
+      20      <view class="tip">
+
+● Now the new card, right after the paired-device list.
+
+● Update(pages\print\printSetting.vue)  ⎿  Added 16 lines
+      35        </view>
+      36      </view>
+      37  
+      38 +    <view class="card">                                        
+      39 +      <text class="card-title">按地址连接</text>               
+      40 +      <view class="addr-row">                                  
+      41 +        <input class="addr-input" v-model="manualAddress" place
+         +holder="9075DE1E5DA2 或 90:75:DE:1E:5D:A2" />                  
+      42 +        <button size="mini" @click="scanAddress">扫码</button> 
+      43 +      </view>                                                  
+      44 +      <text class="addr-preview" v-if="manualNormalized">将连接
+         + {{ manualNormalized }}</text>                                 
+      45 +      <text class="addr-preview bad" v-else-if="manualAddress">
+         +地址不完整，需要 12 位十六进制</text>                          
+      46 +      <view class="btn-row">                                   
+      47 +        <button size="mini" type="primary" @click="connectManua
+         +l">连接此地址</button>                                         
+      48 +        <button size="mini" v-if="manualAddress" @click="manual
+         +Address = ''">清空</button>                                    
+      49 +      </view>                                                  
+      50 +      <view class="tip-inline">打印机机身或电池仓下方的条码通常
+         +就是它的蓝牙地址，扫它即可，大小写和有没有冒号都不影响。</view>
+      51 +      <view class="tip-inline">设备没出现在上面的已配对列表里也
+         +能连；首次连接时系统会弹配对框，确认一次就行。</view>          
+      52 +    </view>                                                    
+      53 +                                                               
+      54      <view class="card" v-if="connected">
+      55        <text class="card-title">打印测试</text>
+      56        <view class="btn-row">
+
+● Now the script side.
+
+● Update(pages\print\printSetting.vue)
+  ⎿  Error editing file
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(pages\print\printSetting.vue)
+  ⎿  Added 11 lines, removed 1 line
+      110          connectedAddress: '',
+      111          connectedName: '',
+      112          customZpl: '',
+      113 -        statusText: ''                                        
+      113 +        statusText: '',                                       
+      114 +        manualAddress: '',                                    
+      115 +        permError: ''                                         
+      116        }
+      117      },
+      118      computed: {
+      119        connected() {
+      120          return !!this.connectedAddress
+      121 +      },                                                      
+      122 +      manualNormalized() {                                    
+      123 +        return printer.normalizeAddress(this.manualAddress)   
+      124        }
+      125      },
+      126 +    onLoad() {                                                
+      127 +      // 用默认打印机预填，省得在小键盘上重新敲一遍地址       
+      128 +      const saved = printer.loadPrinter()                     
+      129 +      if (saved && saved.address) this.manualAddress = saved.a
+          +ddress                                                        
+      130 +    },                                                        
+      131      onShow() {
+      132        this.refresh()
+      133      },
+
+● Now refresh() with permission handling, plus the two new methods.
+
+● Update(pages\print\printSetting.vue)
+  ⎿  Added 29 lines, removed 2 lines
+      145          this.connectedName = cur ? cur.name || cur.address : '
+           '
+      146        },
+      147  
+      148 -      refresh() {                                             
+      148 +      async refresh() {                                       
+      149 +        // Android 12+ 没先拿到 BLUETOOTH_CONNECT 的话，getBon
+          +dedDevices 直接抛 SecurityException，                         
+      150 +        // 列表会空着，看起来就像「系统里配好对了，App 里却找 
+          +不到设备」                                                    
+      151 +        this.permError = ''                                   
+      152 +        try {                                                 
+      153 +          await printer.requestPermissions()                  
+      154 +        } catch (e) {                                         
+      155 +          this.permError = e.message                          
+      156 +        }                                                     
+      157          this.btEnabled = printer.isBluetoothEnabled()
+      158          this.syncConnection()
+      159          if (!this.btEnabled) {
+     ...
+      164            this.devices = printer.getPairedDevices()
+      165          } catch (e) {
+      166            this.devices = []
+      159 -          this.toast(e.message)                               
+      167 +          if (!this.permError) this.toast(e.message)          
+      168          }
+      169        },
+      170  
+      171 +      scanAddress() {                                         
+      172 +        uni.scanCode({                                        
+      173 +          success: (res) => {                                 
+      174 +            const addr = printer.normalizeAddress(res.result) 
+      175 +            if (!addr) return this.toast('扫到的内容里没有蓝牙
+          +地址：' + res.result)                                         
+      176 +            this.manualAddress = addr                         
+      177 +            this.connectManual()                              
+      178 +          },                                                  
+      179 +          fail: () => this.toast('已取消扫码')                
+      180 +        })                                                    
+      181 +      },                                                      
+      182 +                                                              
+      183 +      connectManual() {                                       
+      184 +        const addr = this.manualNormalized                    
+      185 +        if (!addr) return this.toast('请输入 12 位十六进制蓝牙
+          +地址，如 9075DE1E5DA2')                                       
+      186 +        this.manualAddress = addr                             
+      187 +        this.connectDevice({ address: addr, name: '' })       
+      188 +      },                                                      
+      189 +                                                              
+      190        turnOnBluetooth() {
+      191          try {
+      192            printer.enableBluetooth()
+
+● Update(pages\print\printSetting.vue)
+  ⎿  Added 1 line, removed 1 line
+      204        },
+      205  
+      206        async connectDevice(dev) {
+      207 -        if (dev.address === this.connectedAddress) return     
+      207 +        if (dev.address === this.connectedAddress) return this
+          +.toast('已连接该打印机')                                      
+      208          uni.showLoading({ title: '连接中...', mask: true })
+      209          try {
+      210            await printer.connect(dev.address, dev.name)
+
+● Now the styles for the new card.
+
+● Update(pages\print\printSetting.vue)
+  ⎿  Added 27 lines
+      452      color: #576b95;
+      453    }
+      454  
+      455 +  .addr-row {                                                 
+      456 +    display: flex;                                            
+      457 +    align-items: center;                                      
+      458 +    gap: 16rpx;                                               
+      459 +  }                                                           
+      460 +                                                              
+      461 +  .addr-input {                                               
+      462 +    flex: 1;                                                  
+      463 +    height: 72rpx;                                            
+      464 +    border: 1rpx solid #ddd;                                  
+      465 +    border-radius: 8rpx;                                      
+      466 +    padding: 0 16rpx;                                         
+      467 +    font-size: 28rpx;                                         
+      468 +    box-sizing: border-box;                                   
+      469 +  }                                                           
+      470 +                                                              
+      471 +  .addr-preview {                                             
+      472 +    display: block;                                           
+      473 +    font-size: 24rpx;                                         
+      474 +    color: #07c160;                                           
+      475 +    margin-top: 12rpx;                                        
+      476 +  }                                                           
+      477 +                                                              
+      478 +  .addr-preview.bad {                                         
+      479 +    color: #fa5151;                                           
+      480 +  }                                                           
+      481 +                                                              
+      482    .zpl-input {
+      483      width: 100%;
+      484      height: 200rpx;
+
+● Let me verify tag balance and that both files parse.
+
+● Bash(cd "C:/Users/26281/Desktop/github/hjlApp" && node -e "
+      const fs=require('fs'),os=require('os'),path=require('path'),cp=require('c
+      hild_process');…)
+  ⎿  script OK  utils/zebraPrinter.js
+     script OK  pages/print/printSetting.vue
+     view open/close 28 28 BALANCED
+     raw NUL bytes: 0
+
+● Bash(git diff utils/zebraPrinter.js pages/print/printSetting.vue 2>&1 | grep
+      -v "^warning:")
+  ⎿  diff --git a/pages/print/printSetting.vue b/pages/print/printSetting.v
+     ue
+     index 88b1fbf..a67d8c9 100644
+     … +122 lines (ctrl+o to expand)
+
+● 一个副作用要处理：现在最坏情况会试两次阻塞连接，等待时间翻倍，得让 loading
+  文案说实话。
+
+● Update(pages\print\printSetting.vue)
+  ⎿  Added 2 lines, removed 1 line
+      205  
+      206        async connectDevice(dev) {
+      207          if (dev.address === this.connectedAddress) return this
+           .toast('已连接该打印机')
+      208 -        uni.showLoading({ title: '连接中...', mask: true })   
+      208 +        // 安全通道失败会再试非安全通道，两次阻塞连接加起来可 
+          +能到 20 秒，先说清楚免得以为卡死                              
+      209 +        uni.showLoading({ title: '连接中，最长约 20 秒...', ma
+          +sk: true })                                                   
+      210          try {
+      211            await printer.connect(dev.address, dev.name)
+      212            this.syncConnection()
+
+● 记一笔设备事实到已有的打印记忆里。
+
+  Wrote 1 memory (ctrl+o to expand)
+
+● 改完了，两个文件，语法和标签配对都过了检查。
+
+  utils/zebraPrinter.js
+  - 新增导出 normalizeAddress()：9075DE1E5DA2、90:75:de:1e:5d:a2、90-75-DE-...、
+  夹在长文本里的地址都能提取成 90:75:DE:1E:5D:A2。这步是必须的 —— Android 的
+  getRemoteDevice 只认大写冒号格式，扫码出来的原始值直接传进去会抛
+  IllegalArgumentException。已用 12 组输入在 node 里验过，含你那张条码。
+  - connect() 先归一化再连；安全通道失败后自动降级试 createInsecureRfcommSocketT
+  oServiceRecord（手机上连不上的常见原因）；两次都失败时报错会带上
+  getBondState()，区分「已配对但连不上」和「还没配对」，不再是一句笼统的连接失败
+  。名称留空时用 getName() 回填。
+
+  pages/print/printSetting.vue
+  - 新增「按地址连接」卡片：输入框 + 扫码 +
+  连接，实时显示归一化后的地址，扫到码直接连。地址从默认打印机预填，不用重敲。
+  - refresh() 改成先 await requestPermissions()
+  再读已配对列表。这是「手机上配对了却连不上」最可能的根因：BLUETOOTH_CONNECT
+  原来只在 connect() 里申请，而 Android 12+ 上 getBondedDevices() 没权限会抛
+  SecurityException，列表直接空掉，等于没有可点的设备。权限被拒时在卡片里显示原
+  因，不再每次 onShow 弹 toast。
+
+  蓝牙我在开发机上没法验，需要你在手机上确认：进「蓝牙打印」页看是否弹「附近的设
+  备」权限框、已配对列表是否出现打印机、然后扫机身条码看能不能连上。如果安全通道
+  被拒而非安全通道成功，连接会正常返回，不会有提示 ——
+  想确认走的是哪条路径的话我可以把它显示出来。
+
+✻ Baked for 6m 9s
+
+※ recap: Goal was letting the phone connect to the Zebra printer despite pairing failing. I added a scan-or-type Bluetooth address connect option plus an earlier permission request. Next: test it on your phone by scanning the printer's barcode. (disable recaps in /config)
+
+> 选择模板会记忆，按批次打印和普通打印要分开记忆各自模板。蓝牙连接是要打印机开  
+  启配对模式确认后连接的，但现在蓝牙连接打印机显示失败还是显示连接成功。如果改  
+  不了就加提示先打开打印机蓝牙配对模式                                          
+
+● 三件事，我先看 snPrintList 里模板记忆和批次打印的实现。
+
+● Bash(cd "C:/Users/26281/Desktop/github/hjlApp" && grep -n
+      "sn_print_tpl\|批次\|batch\|tplKey\|selectedTpl\|templates"
+      components/mes/print/snPrintList.vue | head -40)  ⎿  96:                                按批次打印（{{ lotGroups.length }}）
+     125:                                               <text class="lot-title">
+     lo
+     tRows.length }} 个料号+批次</text>
+     … +16 lines (ctrl+o to expand)
+
+  Read 1 file (ctrl+o to expand)
+  ⎿  Interrupted · What should Claude do instead?
+
+> 按地址连接的地方不要提示真实地址                                              
+
+● 明白 —— placeholder 里放的正是你那台机器的真实地址。换成通用示例。
+
+● Update(pages\print\printSetting.vue)
+  ⎿  Added 1 line, removed 1 line
+      38      <view class="card">
+      39        <text class="card-title">按地址连接</text>
+      40        <view class="addr-row">
+      41 -        <input class="addr-input" v-model="manualAddress" place
+         -holder="9075DE1E5DA2 或 90:75:DE:1E:5D:A2" />                  
+      41 +        <input class="addr-input" v-model="manualAddress" place
+         +holder="12 位十六进制，如 AABBCCDDEEFF" />                     
+      42          <button size="mini" @click="scanAddress">扫码</button>
+      43        </view>
+      44        <text class="addr-preview" v-if="manualNormalized">将连接
+           {{ manualNormalized }}</text>
+
+● Update(pages\print\printSetting.vue)
+  ⎿  Added 1 line, removed 1 line
+      182  
+      183        connectManual() {
+      184          const addr = this.manualNormalized
+      185 -        if (!addr) return this.toast('请输入 12 位十六进制蓝牙
+          -地址，如 9075DE1E5DA2')                                       
+      185 +        if (!addr) return this.toast('请输入 12 位十六进制蓝牙
+          +地址，如 AABBCCDDEEFF')                                       
+      186          this.manualAddress = addr
+      187          this.connectDevice({ address: addr, name: '' })
+      188        },
+
+● Update(utils\zebraPrinter.js)
+  ⎿  Added 1 line, removed 1 line
+      160  // address 接受 9075DE1E5DA2 / 90:75:DE:1E:5D:A2 等写法；设备
+           不在已配对列表里也能连，系统会弹配对框。
+      161  async function connect(address, name) {
+      162    const addr = normalizeAddress(address)
+      163 -  if (!addr) throw new Error('蓝牙地址不合法：' + address + ' 
+          -（应为 12 位十六进制，如 9075DE1E5DA2）')                     
+      163 +  if (!addr) throw new Error('蓝牙地址不合法：' + address + ' 
+          +（应为 12 位十六进制，如 AABBCCDDEEFF）')                     
+      164  
+      165    await requestPermissions()
+      166    disconnect()
+
+● Bash(cd "C:/Users/26281/Desktop/github/hjlApp" && grep -rn
+      "9075DE1E5DA2\|9075de1e5da2" --include=*.vue --include=*.js
+      --include=*.json . 2>/dev/null | grep -v node_…)
+  ⎿  ./unpackage/dist/dev/app-plus/app-service.js:32949:eval("\n\nvar _inte
+     ropRequireDefault = __webpack_require__(/*! @babel/runtime/helpers/int
+     eropRequireDefault */ 2);\nObject.defineProperty(exports, \"__esModule
+     … +401 lines (ctrl+o to expand)
+
+  Searched for 2 patterns (ctrl+o to expand)
+
+● Update(utils\zebraPrinter.js)
+  ⎿  Added 1 line, removed 1 line
+      157  ]
+      158  
+      159  // 连接打印机。socket.connect() 是阻塞调用，最长可能等待十几秒
+           。
+      160 -// address 接受 9075DE1E5DA2 / 90:75:DE:1E:5D:A2 等写法；设备 
+          -不在已配对列表里也能连，系统会弹配对框。                      
+      160 +// address 接受 AABBCCDDEEFF / AA:BB:CC:DD:EE:FF 等写法；设备 
+          +不在已配对列表里也能连，系统会弹配对框。                      
+      161  async function connect(address, name) {
+      162    const addr = normalizeAddress(address)
+      163    if (!addr) throw new Error('蓝牙地址不合法：' + address + '
+           （应为 12 位十六进制，如 AABBCCDDEEFF）')
+
+  Recalled 1 memory, wrote 3 memories (ctrl+o to expand)
+
+● 真实地址已从源码里清掉（只剩 unpackage/dist
+  里上次的构建产物，重新编译会覆盖），示例统一改成
+  AABBCCDDEEFF，并记进了记忆避免我再犯。
+
+  现在回到你前一条消息的两件事。
+
+  Read 1 file (ctrl+o to expand)
+
+● Now splitting the template memory by mode.
+
+● Update(components\mes\print\snPrintList.vue)
+  ⎿  Added 9 lines, removed 4 lines
+      290      },
+      291      created() {
+      292        this.templates = loadTemplates()
+      293 -      const lastId = uni.getStorageSync(this.tplKey())        
+      294 -      const i = this.templates.findIndex((t) => t.id === lastI
+          -d)                                                            
+      295 -      if (i !== -1) this.templateIndex = i                    
+      293 +      this.restoreTemplate()                                  
+      294        this.loadDicts()
+      295        this.query()
+      296      },
+     ...
+      299          uni.showToast({ title, icon: 'none', duration: 3000 })
+      300        },
+      301  
+      302 +      // 批次标签和 SN 标签通常是两张不同的模板，各自记住上次 
+          +选的那张                                                      
+      303        tplKey() {
+      305 -        return 'sn_print_tpl_' + this.config.snKey            
+      304 +        return 'sn_print_tpl_' + this.config.snKey + (this.lot
+          +Mode ? '_lot' : '')                                           
+      305        },
+      306  
+      307 +      restoreTemplate() {                                     
+      308 +        const lastId = uni.getStorageSync(this.tplKey())      
+      309 +        const i = this.templates.findIndex((t) => t.id === las
+          +tId)                                                          
+      310 +        this.templateIndex = i === -1 ? 0 : i                 
+      311 +      },                                                      
+      312 +                                                              
+      313        rowKey(item) {
+      314          return item.id || item[this.config.snKey]
+      315        },
+
+● Update(components\mes\print\snPrintList.vue)
+  ⎿  Added 1 line
+      496            return this.toast('选中的记录里没有料号/批次号（' + 
+           lp.itemKey + ' / ' + lp.lotKey + '），无法按批次打印')
+      497          }
+      498          this.lotMode = !!lotMode
+      499 +        this.restoreTemplate() // 切换模式后要换成这个模式记住
+          +的模板                                                        
+      500          this.printState = 'idle'
+      501          this.lotRows = lotMode ? this.lotGroups.slice() : []
+      502          this.jobs = lotMode ? this.lotRows.map((g) => g.record
+           ) : this.selected.slice()
+
+  Searched for 1 pattern (ctrl+o to expand)
+● Now the connection-result accuracy. socket.connect() succeeding doesn't mean
+  the link is usable, so I'll verify with a real ~HS round-trip.
+
+● Update(utils\zebraPrinter.js)
+  ⎿  Added 1 line
+      182        outStream = inv(sock, 'getOutputStream')
+      183        inStream = inv(sock, 'getInputStream')
+      184        current = { address: addr, name: name || inv(device, 'ge
+           tName') || '' }
+      185 +      current.verified = await verifyLink()                   
+      186        return current
+      187      } catch (e) {
+      188        closeQuietly(sock)
+
+● Update(utils\zebraPrinter.js)
+  ⎿  Added 13 lines
+      252    return text
+      253  }
+      254  
+      255 +// socket.connect() 返回成功只说明 RFCOMM 通道建起来了：打印机
+          +没进入配对/可连接模式、                                       
+      256 +// 或者链路已经半死时，连接照样"成功"，写入也不报错，于是界面 
+          +误报连上了。                                                  
+      257 +// 发一次 ~HS 看有没有回音，才算真的通。CPCL 机型不认 ~HS，所 
+          +以这只是标记，不是硬失败。                                    
+      258 +async function verifyLink() {                                 
+      259 +  try {                                                       
+      260 +    readAvailable() // 清掉残留，避免把上一次的回复当成本次响 
+          +应                                                            
+      261 +    sendZpl('~HS')                                            
+      262 +    return (await readResponse(1500)).length > 0              
+      263 +  } catch (e) {                                               
+      264 +    return false                                              
+      265 +  }                                                           
+      266 +}                                                             
+      267 +                                                              
+      268  const flag = (v) => v === '1'
+      269  
+      270  // ~HS 主机状态查询，回复 3 行逗号分隔字段
+
+● Now the setting page: honest status display, plus the pairing-mode tip.
+
+● Update(pages\print\printSetting.vue)
+  ⎿  Added 1 line, removed 1 line
+       7        </view>
+       8        <view class="row">
+       9          <text class="label">当前打印机</text>
+      10 -        <text :class="['value', connected ? 'ok' : 'warn']">{{ 
+         -connected ? connectedName : '未连接' }}</text>                 
+      10 +        <text :class="['value', connected && verified ? 'ok' : 
+         +'warn']">{{ connectedText }}</text>                            
+      11        </view>
+      12        <view class="btn-row">
+      13          <button size="mini" @click="openSettings">系统蓝牙设置<
+          /button>
+
+● Update(pages\print\printSetting.vue)
+  ⎿  Added 4 lines, removed 1 line
+      18      </view>
+      19  
+      20      <view class="tip">
+      21 -      打印机需先在「系统蓝牙设置」中完成配对，配对后回到本页刷 
+         -新即可看到。                                                   
+      21 +      连接前先让打印机进入蓝牙配对/可连接模式（多数机型是长按蓝
+         +牙键或走纸键到指示灯闪烁），否则会连接失败，或者连上了却对指令 
+         +没反应。                                                       
+      22      </view>
+      23 +    <view class="tip">                                         
+      24 +      打印机需先在「系统蓝牙设置」中完成配对，配对后回到本页刷 
+         +新即可看到；也可以用下面的「按地址连接」跳过列表。             
+      25 +    </view>                                                    
+      26  
+      27      <view class="card">
+      28        <text class="card-title">已配对设备</text>
+
+● Update(pages\print\printSetting.vue)
+  ⎿  Added 6 lines, removed 1 line
+      115          customZpl: '',
+      116          statusText: '',
+      117          manualAddress: '',
+      118 -        permError: ''                                         
+      118 +        permError: '',                                        
+      119 +        verified: false                                       
+      120        }
+      121      },
+      122      computed: {
+      123        connected() {
+      124          return !!this.connectedAddress
+      125        },
+      126 +      connectedText() {                                       
+      127 +        if (!this.connected) return '未连接'                  
+      128 +        return this.connectedName + (this.verified ? '' : '（ 
+          +无响应）')                                                    
+      129 +      },                                                      
+      130        manualNormalized() {
+      131          return printer.normalizeAddress(this.manualAddress)
+      132        }
+
+● Update(pages\print\printSetting.vue)
+  ⎿  Added 1 line
+      151          const cur = printer.getCurrentPrinter()
+      152          this.connectedAddress = cur ? cur.address : ''
+      153          this.connectedName = cur ? cur.name || cur.address : '
+           '
+      154 +        this.verified = !!(cur && cur.verified)               
+      155        },
+      156  
+      157        async refresh() {
+
+● Update(pages\print\printSetting.vue)
+  ⎿  Added 10 lines, removed 2 lines
+      217          // 安全通道失败会再试非安全通道，两次阻塞连接加起来可
+           能到 20 秒，先说清楚免得以为卡死
+      218          uni.showLoading({ title: '连接中，最长约 20 秒...', ma
+           sk: true })
+      219          try {
+      220 -          await printer.connect(dev.address, dev.name)        
+      220 +          const cur = await printer.connect(dev.address, dev.n
+          +ame)                                                          
+      221            this.syncConnection()
+      222            uni.hideLoading()
+      223 -          this.toast('连接成功')                              
+      223 +          if (cur.verified) {                                 
+      224 +            this.toast('连接成功，打印机已响应')              
+      225 +          } else {                                            
+      226 +            uni.showModal({                                   
+      227 +              title: '连接未确认',                            
+      228 +              content: '蓝牙通道已打开，但打印机没有回应状态查
+          +询，这时候打印可能不出纸。请确认打印机已开机并处于蓝牙配对/可 
+          +连接模式，然后重新连接。如果本机是 CPCL 机型，不响应该查询是正
+          +常的，可以直接测试打印。',                                    
+      229 +              showCancel: false                               
+      230 +            })                                                
+      231 +          }                                                   
+      232          } catch (e) {
+      233            uni.hideLoading()
+      234            this.syncConnection()
+
+● Bash(cd "C:/Users/26281/Desktop/github/hjlApp" && node -e "
+      const fs=require('fs'),os=require('os'),path=require('path'),cp=require('c
+      hild_process');…)
+  ⎿  script OK   utils/zebraPrinter.js
+     script OK   pages/print/printSetting.vue
+        view 29 29 BALANCED
+     … +2 lines (ctrl+o to expand)
+
+● Update(pages\print\printSetting.vue)
+  ⎿  Added 2 lines, removed 1 line
+      347        setDefault() {
+      348          const cur = printer.getCurrentPrinter()
+      349          if (!cur) return this.toast('请先连接打印机')
+      350 -        printer.savePrinter(cur)                              
+      350 +        // verified 只对本次连接有意义，别存进去下次误读      
+      351 +        printer.savePrinter({ address: cur.address, name: cur.
+          +name })                                                       
+      352          this.toast('已设为默认打印机')
+      353        }
+      354      }
+
+● Bash(cd "C:/Users/26281/Desktop/github/hjlApp" && node -e "
+      const fs=require('fs'),os=require('os'),path=require('path'),cp=require('c
+      hild_process');…)
+  ⎿  printSetting script OK
+      package-lock.json             |  32 +++++++++--
+      package.json                  |   3 +-
+     … +9 lines (ctrl+o to expand)
+
+● 三件都改完了，语法和标签配对都过。
+
+  1. 模板记忆按模式分开 — components/mes/print/snPrintList.vue
+  存储键从 sn_print_tpl_{snKey} 变成 sn_print_tpl_{snKey} /
+  sn_print_tpl_{snKey}_lot，批次标签和 SN 标签各记各的。抽了个
+  restoreTemplate()，openPrint(lotMode) 里切换模式后立即按新模式恢复，所以在同一
+  页面来回切「打印」和「按批次打印」，两边各自记住的模板都在。
+
+  2. 连接结果不再误报 — utils/zebraPrinter.js + printSetting.vue
+  根因是 socket.connect() 返回成功只代表 RFCOMM
+  通道建起来了：打印机没进配对模式时通道照样能开，写入也不报错，所以界面直接报了
+  「连接成功」。现在连上后立刻发一次 ~HS 等回音（verifyLink()，1.5
+  秒超时），结果放在 current.verified 里：
+  - 有回音 → toast「连接成功，打印机已响应」
+  - 没回音 →
+  弹窗说明通道已开但打印机没反应、这时候打印可能不出纸、让先确认进入配对模式再重
+  连；同时「当前打印机」那一行显示成（无响应）并标红，不是一闪而过的提示
+
+  没做成硬失败，因为 CPCL 机型本来就不认 ~HS，弹窗里也照实说了这种情况。
+
+  3. 配对模式提示（你要的兜底，我一起加了）
+  页面顶部加了一条：连接前先让打印机进入蓝牙配对/可连接模式（长按蓝牙键或走纸键
+  到指示灯闪烁），否则会连接失败或连上后无反应。
+
+  另外「按地址连接」的 placeholder 和所有报错示例都换成了
+  AABBCCDDEEFF，源码里已经没有你真机的地址。
+
+  蓝牙这部分我在开发机上验不了，需要你在手机上确认：不进配对模式连一次，看是否弹
+  「连接未确认」而不是报成功；再进配对模式连一次，看是否显示「已响应」。
+
+✻ Cooked for 4m 48s
+
+※ recap: 正在给 hjlApp 的蓝牙打印补功能：按地址连接、连接结果不再误报成功、批次和普通打印分开记忆模板，代码都改完了。下一步需要你在手机上真机验证连接提示是否正确。 (disable recaps in /config)

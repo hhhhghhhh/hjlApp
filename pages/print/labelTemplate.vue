@@ -205,7 +205,7 @@
 
 		<view class="card">
 			<text class="card-title">ZPL 预览</text>
-			<textarea class="zpl-preview" :value="zplPreview" disabled />
+			<textarea class="zpl-preview" :value="zplPreview" maxlength="-1" disabled />
 		</view>
 
 		<view class="footer">

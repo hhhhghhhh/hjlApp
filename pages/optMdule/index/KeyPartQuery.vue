@@ -14,17 +14,17 @@
 			</view>
 		</view>
 
-		<!-- ════ 关键件SN输入 ════ -->
+		<!-- ════ 关键件输入 ════ -->
 		<view class="input-card">
 			<view class="input-row">
 				<view class="input-left">
-					<text class="input-label">关键件SN</text>
+					<text class="input-label">关键件</text>
 				</view>
 				<view class="input-right">
 					<input 
 						class="input-value-input" 
 						v-model="currentSn" 
-						placeholder="请输入或扫码关键件SN"
+						placeholder="请输入或扫码关键件"
 						:focus="inputFocus"
 						@confirm="onInputConfirm"
 						@focus="onInputFocus"
@@ -65,7 +65,7 @@
 						<text class="info-value">{{ keySnInfo.supplierName || '--' }}</text>
 					</view>
 					<view class="info-item">
-						<text class="info-label">关键件SN</text>
+						<text class="info-label">关键件</text>
 						<text class="info-value sn">{{ keySnInfo.keySn || '--' }}</text>
 					</view>
 					<view class="info-item" v-if="keySnInfo.isReplaced === 'Y'">
@@ -146,7 +146,7 @@
 		<!-- 空状态 -->
 		<view v-else-if="!loading && !keySnInfo" class="empty-result">
 			<uni-icons type="search" size="64" color="#ccc"></uni-icons>
-			<text>请输入或扫码关键件SN查询</text>
+			<text>请输入或扫码关键件查询</text>
 		</view>
 
 		<!-- 加载中 -->
@@ -237,7 +237,7 @@ export default {
 		// ==================== 查询 ====================
 		async doQuery(sn) {
 			if (!sn) {
-				this.showMessage('请输入关键件SN', 'warning');
+				this.showMessage('请输入关键件', 'warning');
 				return;
 			}
 
