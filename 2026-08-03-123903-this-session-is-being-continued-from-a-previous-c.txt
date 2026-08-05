@@ -1,0 +1,894 @@
+╭─── Claude Code v2.1.145 ─────────────────────────────────────────────────────╮
+│                                       │ Tips for getting started             │
+│             Welcome back!             │ Run /init to create a CLAUDE.md fil… │
+│                                       │ ──────────────────────────────────── │
+│                ▐▛███▜▌                │ What's new                           │
+│               ▝▜█████▛▘               │ Added `claude agents --json` to lis… │
+│                 ▘▘ ▝▝                 │ Added `agent_id` and `parent_agent_… │
+│                                       │ Status line JSON input now includes… │
+│   claude-opus-5 · API Usage Billing   │ /release-notes for more              │
+│        ~\Desktop\github\hjlApp        │                                      │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+✻ Conversation compacted (ctrl+o for history)
+
+  ⎿  Referenced file ..\..\CSPrintService\CSPrintService\CSPrintService\LabParser.cs
+  ⎿  Read ..\..\CSPrintService\CSPrintService\CSPrintService\PdaTemplateMapper.cs (308 lines)
+  ⎿  Read ..\..\CSPrintService\CSPrintService\CSPrintService\LabModels.cs (209 lines)
+  ⎿  Read ..\..\CSPrintService\CSPrintService\CSPrintService\LabEnums.cs (197 lines)
+  ⎿  Read ..\..\..\.claude\projects\C--Users-26281-Desktop-github-hjlApp\memory\project-bluetooth-printing.md (21 lines)
+  ⎿  Plan file referenced (~\.claude\plans\wobbly-chasing-eich.md)
+
+● The LabEnums.cs edit got applied twice —
+  AnchorTopLeft/AnchorFractionX/AnchorFractionY are duplicated, which won't
+  compile. Fixing that first.
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(~\Desktop\CSPrintService\CSPrintService\CSPrintService\LabEnums.cs)
+  ⎿  Removed 17 lines
+       81  
+       82          /// <summary>
+       83          /// 基点在包围盒里的横向相对位置：0=左，0.5=中，1=右。
+       84 -        /// 基点编号 1..9 是九宫格按行排列，所以列号就是 (a-1)
+          -%3。认不出来的按左上角算。                                    
+       85 -        /// </summary>                                        
+       86 -        public static double AnchorFractionX(int a)           
+       87 -        {                                                     
+       88 -            return a < 1 || a > 9 ? 0 : ((a - 1) % 3) * 0.5;  
+       89 -        }                                                     
+       90 -                                                              
+       91 -        /// <summary>基点在包围盒里的纵向相对位置：0=上，0.5= 
+          -中，1=下</summary>                                            
+       92 -        public static double AnchorFractionY(int a)           
+       93 -        {                                                     
+       94 -            return a < 1 || a > 9 ? 0 : ((a - 1) / 3) * 0.5;  
+       95 -        }                                                     
+       96 -                                                              
+       97 -        public const int AnchorTopLeft = 1;                   
+       98 -                                                              
+       99 -        /// <summary>                                         
+      100 -        /// 基点在包围盒里的横向相对位置：0=左，0.5=中，1=右。
+       84          /// 基点编号 1..9 是九宫格按行排列，所以列号就是 (a-1)
+           %3。认不出的编号按左上角算。
+       85          /// </summary>
+       86          public static double AnchorFractionX(int a)
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Clean now. Moving to the PDA side.
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(utils\zplTemplate.js)
+  ⎿  Added 53 lines
+       53    { value: 'box', label: '矩形框' }
+       54  ]
+       55  
+       56 +// x/y 是元素框上「基点」那一点的坐标，不一定是左上角 —— CodeS
+          +oft 模板里基点可以是                                          
+       57 +// 九宫格里任意一点。导入时原样保留基点坐标，到生成 ZPL 时才按
+          +当次实际内容换算出                                            
+       58 +// ^FO 需要的左上角：这样数据变长（SN 加长把条码撑宽）时元素仍
+          +绕基点居中，                                                  
+       59 +// 而不是拿设计稿的框宽一味往右长。                           
+       60 +export const ANCHORS = [                                      
+       61 +  { value: 'topLeft', label: '左上角', fx: 0, fy: 0 },        
+       62 +  { value: 'topCenter', label: '上边中点', fx: 0.5, fy: 0 },  
+       63 +  { value: 'topRight', label: '右上角', fx: 1, fy: 0 },       
+       64 +  { value: 'centerLeft', label: '左边中点', fx: 0, fy: 0.5 }, 
+       65 +  { value: 'center', label: '正中', fx: 0.5, fy: 0.5 },       
+       66 +  { value: 'centerRight', label: '右边中点', fx: 1, fy: 0.5 },
+       67 +  { value: 'bottomLeft', label: '左下角', fx: 0, fy: 1 },     
+       68 +  { value: 'bottomCenter', label: '下边中点', fx: 0.5, fy: 1 }
+          +,                                                             
+       69 +  { value: 'bottomRight', label: '右下角', fx: 1, fy: 1 }     
+       70 +]                                                             
+       71 +                                                              
+       72 +const ANCHOR_TOP_LEFT = ANCHORS[0]                            
+       73 +                                                              
+       74 +function anchorOf(el) {                                       
+       75 +  return ANCHORS.find((a) => a.value === el.anchor) || ANCHOR_
+          +TOP_LEFT                                                      
+       76 +}                                                             
+       77 +                                                              
+       78 +// 以下常量都是估算值，只在模板没给出设计框宽高时才会走到     
+       79 +const HRI_LINE_DOTS = 12 // 条码下方可读字符行：ZPL 默认用内置
+          + A 字体（9 点高），加行距按 12 点算                           
+       80 +const QR_VERSION1_MODULES = 21 // QR 版本 1 的边长模块数，拿不
+          +到框宽时的下限                                                
+       81 +const PROPORTIONAL_CHAR_RATIO = 0.6 // ^A0 是比例字体，平均字 
+          +宽约为标称字宽的 0.6 倍                                       
+       82 +const CODE39_UNITS_PER_CHAR = 16 // 每字符 6 窄条 + 3 宽条 + 1
+          + 窄间隙，宽窄比固定 3 => 7 + 3×3                              
+       83 +const CODE128_MODULES_PER_CHAR = 11                           
+       84 +const CODE128_FIXED_MODULES = 35 // 起始 11 + 校验 11 + 终止 1
+          +3                                                             
+       85 +const EAN13_MODULES = 95                                      
+       86 +                                                              
+       87 +// ^A0 的实际字宽拿不到（比例字体），只能估。^A@ 的 CJK 字模是
+          +方的，ASCII 约半宽。                                          
+       88 +function textInkDots(text, fontW, cjk) {                      
+       89 +  if (!cjk) return Math.round(text.length * fontW * PROPORTION
+          +AL_CHAR_RATIO)                                                
+       90 +  let dots = 0                                                
+       91 +  for (let i = 0; i < text.length; i++) {                     
+       92 +    dots += text.charCodeAt(i) >= 0x2e80 ? fontW : fontW / 2  
+       93 +  }                                                           
+       94 +  return Math.round(dots)                                     
+       95 +}                                                             
+       96 +                                                              
+       97 +// 条码模块数（窄条算 1 个模块），乘 ^BY 的模块宽就是实际打印 
+          +宽度。                                                        
+       98 +// 这是基点换算里唯一随数据变化又能算准的量，所以宁可算它也不 
+          +用设计框宽。                                                  
+       99 +function barcodeModules(value, codeType) {                    
+      100 +  if (codeType === 'ean13') return EAN13_MODULES              
+      101 +  if (codeType === 'code39') return (value.length + 2) * CODE3
+          +9_UNITS_PER_CHAR                                              
+      102 +  // code128 全数字时走 subset C，两位数字压成一个符号字符；奇
+          +数位末尾要切回 subset B                                       
+      103 +  const chars = /^\d+$/.test(value)                           
+      104 +    ? (value.length % 2 === 0 ? value.length / 2 : (value.leng
+          +th - 1) / 2 + 2)                                              
+      105 +    : value.length                                            
+      106 +  return chars * CODE128_MODULES_PER_CHAR + CODE128_FIXED_MODU
+          +LES                                                           
+      107 +}                                                             
+      108 +                                                              
+      109  const num = (v, fallback) => {
+      110    const n = Number(v)
+      111    return isNaN(n) ? fallback : n
+
+● Now the render function.
+
+● Update(utils\zplTemplate.js)
+  ⎿  Added 38 lines, removed 11 lines
+      156  }
+      157  
+      158  function renderElement(el, data, tpl, toDots) {
+      159 -  const x = toDots(el.x)                                      
+      160 -  const y = toDots(el.y)                                      
+      159    const rot = el.rotation || 'N'
+      160  
+      161 +  // 把基点坐标换算成 ^FO 要的左上角。boxW/boxH 是这次实际占的
+          +框（点）。                                                    
+      162 +  const place = (boxW, boxH) => {                             
+      163 +    const a = anchorOf(el)                                    
+      164 +    if (a === ANCHOR_TOP_LEFT) return `^FO${toDots(el.x)},${to
+          +Dots(el.y)}`                                                  
+      165 +    // 旋转 90/270 后元素在标签上占的宽高互换                 
+      166 +    const quarter = rot === 'R' || rot === 'B'                
+      167 +    const w = quarter ? boxH : boxW                           
+      168 +    const h = quarter ? boxW : boxH                           
+      169 +    // ^FO 参数超范围时 ZPL 会整条忽略，元素会跑到上一个原点去
+          +，钳到 0 比忽略安全                                           
+      170 +    const x = Math.max(0, Math.round(toDots(el.x) - w * a.fx))
+      171 +    const y = Math.max(0, Math.round(toDots(el.y) - h * a.fy))
+      172 +    return `^FO${x},${y}`                                     
+      173 +  }                                                           
+      174 +                                                              
+      175    if (el.type === 'text') {
+      176      const text = fillVars(el.text, data)
+      177      if (!text) return ''
+      178      const h = num(el.fontH, 30)
+      179      const w = num(el.fontW, h)
+      180 +    const cjk = hasCjk(text)                                  
+      181      // 中文必须走 ^A@ 指定 CJK 字体文件，内置 ^A0 字体没有汉字
+      169 -    const font = hasCjk(text)                                 
+      182 +    const font = cjk                                          
+      183        ? `^A@${rot},${h},${w},${tpl.cjkFont || 'E:GB18030.FNT'}
+           `
+      184        : `^A0${rot},${h},${w}`
+      185 +    const frameW = num(el.width, 0)                           
+      186      // ^FB 要知道行宽才能居中/右对齐，没有 width 就只能左对齐
+      173 -    const block = (el.align === 'center' || el.align === 'righ
+          -t') && num(el.width, 0) > 0                                   
+      187 +    const block = (el.align === 'center' || el.align === 'righ
+          +t') && frameW > 0                                             
+      188        ? `^FB${toDots(el.width)},1,0,${el.align === 'center' ? 
+           'C' : 'R'}`
+      189        : ''
+      176 -    return `^FO${x},${y}${font}${block}^FH^FD${escapeText(text
+          -)}^FS`                                                        
+      190 +    // 有框宽时基点换算和 ^FB 用的是同一个数，两者不会互相打架
+          +，结果精确；                                                  
+      191 +    // 没有框宽只能按字宽估，误差落在文本自身宽度上           
+      192 +    const boxW = frameW > 0 ? toDots(el.width) : textInkDots(t
+          +ext, w, cjk)                                                  
+      193 +    const boxH = num(el.height, 0) > 0 ? toDots(el.height) : h
+      194 +    return `${place(boxW, boxH)}${font}${block}^FH^FD${escapeT
+          +ext(text)}^FS`                                                
+      195    }
+      196  
+      197    if (el.type === 'qrcode') {
+      198      const value = sanitizeCode(fillVars(el.data, data))
+      199      if (!value) return ''
+      200      const ecc = QR_ECC.indexOf(el.ecc) === -1 ? 'M' : el.ecc
+      183 -    return `^FO${x},${y}^BQ${rot},2,${num(el.magnification, 5)
+          -}^FD${ecc}A,${value}^FS`                                      
+      201 +    const mag = num(el.magnification, 5)                      
+      202 +    // 按数据长度反推 QR 版本要一张 40×4 的容量表，先用设计框 
+          +；没有框就按版本 1 估                                         
+      203 +    const boxW = num(el.width, 0) > 0 ? toDots(el.width) : QR_
+          +VERSION1_MODULES * mag                                        
+      204 +    const boxH = num(el.height, 0) > 0 ? toDots(el.height) : b
+          +oxW                                                           
+      205 +    return `${place(boxW, boxH)}^BQ${rot},2,${mag}^FD${ecc}A,$
+          +{value}^FS`                                                   
+      206    }
+      207  
+      208    if (el.type === 'barcode') {
+     ...
+      212      const mw = num(el.moduleWidth, 2)
+      213      const show = el.showText === false ? 'N' : 'Y'
+      214      const above = el.textAbove ? 'Y' : 'N'
+      215 +    // 宽度一律按当次数据算，不用设计框宽 —— 设计框是照某个样 
+          +例 SN 定的，换个长度就不对了                                  
+      216 +    const boxW = barcodeModules(value, el.codeType) * mw      
+      217 +    const boxH = num(el.height, 0) > 0 ? toDots(el.height) : h
+          + + (show === 'Y' ? HRI_LINE_DOTS : 0)                         
+      218 +    const fo = place(boxW, boxH)                              
+      219      const by = `^BY${mw},3,${h}`
+      194 -    if (el.codeType === 'code39') return `^FO${x},${y}${by}^B3
+          -${rot},N,${h},${show},${above}^FD${value}^FS`                 
+      195 -    if (el.codeType === 'ean13') return `^FO${x},${y}${by}^BE$
+          -{rot},${h},${show},${above}^FD${value}^FS`                    
+      196 -    return `^FO${x},${y}${by}^BC${rot},${h},${show},${above},N
+          -^FD${value}^FS`                                               
+      220 +    if (el.codeType === 'code39') return `${fo}${by}^B3${rot},
+          +N,${h},${show},${above}^FD${value}^FS`                        
+      221 +    if (el.codeType === 'ean13') return `${fo}${by}^BE${rot},$
+          +{h},${show},${above}^FD${value}^FS`                           
+      222 +    return `${fo}${by}^BC${rot},${h},${show},${above},N^FD${va
+          +lue}^FS`                                                      
+      223    }
+      224  
+      225    if (el.type === 'line') {
+      200 -    return `^FO${x},${y}^GB${toDots(el.width)},0,${num(el.thic
+          -kness, 2)},B,0^FS`                                            
+      226 +    const thickness = num(el.thickness, 2)                    
+      227 +    return `${place(toDots(el.width), thickness)}^GB${toDots(e
+          +l.width)},0,${thickness},B,0^FS`                              
+      228    }
+      229  
+      230    if (el.type === 'box') {
+      204 -    return `^FO${x},${y}^GB${toDots(el.width)},${toDots(el.hei
+          -ght)},${num(el.thickness, 2)},B,0^FS`                         
+      231 +    return `${place(toDots(el.width), toDots(el.height))}^GB${
+          +toDots(el.width)},${toDots(el.height)},${num(el.thickness, 2)}
+          +,B,0^FS`                                                      
+      232    }
+      233  
+      234    return ''
+
+● zplTemplate.js done. Now the import converter.
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(utils\labTemplate.js)
+  ⎿  Added 4 lines, removed 1 line
+       2  // 把 CSPrintService 解析 CodeSoft .Lab 得到的 pdaTemplate 转成
+          本机的 zplTemplate 结构。
+       3  //
+       4  // 数据契约（对方 LabModels.cs 的 PdaTemplate / PdaElement）：
+       5 -//   位置和尺寸都是毫米，旋转是十进制角度，字号是 pt，原点在左 
+         -上角，占位符是 {{varName}}。                                   
+       5 +//   位置和尺寸都是毫米，旋转是十进制角度，字号是 pt，占位符是 
+         +{{varName}}。                                                  
+       6 +//   xMm/yMm 是「定位基点」的坐标，基点是元素框九宫格里的哪一点
+         +由 anchor 字段说明，                                           
+       7 +//   没有 anchor 就是左上角。换算成 ^FO 要的左上角是在 zplTempl
+         +ate.js 生成指令时做的，                                        
+       8 +//   那时候才知道条码这次实际有多宽 —— 所以这里要把 anchor 和设
+         +计框宽高一起带下去。                                           
+       9  // 二维码有两种：
+      10  //   离线码 = gzip + base64 的紧凑 JSON，上限 2331 字节；
+      11  //   回连码 = 明文 JSON {ws, cmd:"ParseLab", labelFile, view}，
+          由 PDA 自己连回去取最新结果。
+
+● Update(utils\labTemplate.js)
+  ⎿  Added 1 line, removed 1 line
+      11  //   回连码 = 明文 JSON {ws, cmd:"ParseLab", labelFile, view}，
+          由 PDA 自己连回去取最新结果。
+      12  
+      13  import pako from 'pako'
+      14 -import { DPI_OPTIONS, MEDIA_TYPES, QR_ECC, mmToDots } from './z
+         -plTemplate.js'                                                 
+      14 +import { ANCHORS, DPI_OPTIONS, MEDIA_TYPES, QR_ECC, mmToDots } 
+         +from './zplTemplate.js'                                        
+      15  
+      16  const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwx
+          yz0123456789+/'
+      17  
+
+● Update(utils\labTemplate.js)  ⎿  Added 26 lines, removed 6 lines
+      235    return { rotation: { 0: 'N', 90: 'R', 180: 'I', 270: 'B' }[s
+           napped], snapped, exact: d === snapped }
+      236  }
+      237  
+      238 +// 服务端只在基点不是左上角时才给 anchor，认不出的值按左上角处
+          +理                                                            
+      239 +function anchorOf(el, label, warn) {                          
+      240 +  if (!el.anchor) return null                                 
+      241 +  if (ANCHORS.some((a) => a.value === el.anchor)) {           
+      242 +    return el.anchor === 'topLeft' ? null : el.anchor         
+      243 +  }                                                           
+      244 +  warn(label + ' 的定位基点 "' + el.anchor + '" 认不出来，已按
+          +左上角处理，位置可能偏移')                                    
+      245 +  return null                                                 
+      246 +}                                                             
+      247 +                                                              
+      248  function convertElement(el, dpi, warn) {
+      249    const label = elementLabel(el)
+      250    const toDots = (mm) => mmToDots(mm, dpi)
+     ...
+      254    }
+      255    const x = round2(el.xMm)
+      256    const y = round2(el.yMm)
+      257 +  const anchor = anchorOf(el, label, warn)                    
+      258 +  const withAnchor = (out) => {                               
+      259 +    if (anchor) out.anchor = anchor                           
+      260 +    return out                                                
+      261 +  }                                                           
+      262 +  // 设计框：基点换算要用它反推左上角。文本还兼作 ^FB 的行宽  
+      263 +  const frameW = Number(el.widthMm) > 0 ? round2(el.widthMm) :
+          + 0                                                            
+      264 +  const frameH = Number(el.heightMm) > 0 ? round2(el.heightMm)
+          + : 0                                                          
+      265  
+      266    if (el.type === 'text') {
+      267      const mm = Number(el.fontHeightMm) || (Number(el.fontSizeP
+           t) ? (Number(el.fontSizePt) * 25.4) / 72 : 0)
+     ...
+      269      const h = Math.max(8, toDots(mm || 3))
+      270      const out = { type: 'text', x, y, fontH: h, fontW: h, rota
+           tion: rot.rotation, text: el.text || '' }
+      271      // ^FB 需要知道行宽才能居中/右对齐
+      254 -    if ((el.align === 'center' || el.align === 'right') && Num
+          -ber(el.widthMm) > 0) {                                        
+      255 -      out.align = el.align                                    
+      256 -      out.width = round2(el.widthMm)                          
+      257 -    }                                                         
+      258 -    return out                                                
+      272 +    if ((el.align === 'center' || el.align === 'right') && fra
+          +meW > 0) out.align = el.align                                 
+      273 +    if (frameW > 0) out.width = frameW                        
+      274 +    if (frameH > 0) out.height = frameH                       
+      275 +    return withAnchor(out)                                    
+      276    }
+      277  
+      278    if (el.type === 'qrcode') {
+      262 -    return {                                                  
+      279 +    const out = {                                             
+      280        type: 'qrcode',
+      281        x,
+      282        y,
+     ...
+      285        ecc: QR_ECC.indexOf(el.ec) === -1 ? 'M' : el.ec,
+      286        data: el.data || ''
+      287      }
+      288 +    if (frameW > 0) out.width = frameW                        
+      289 +    if (frameH > 0) out.height = frameH                       
+      290 +    return withAnchor(out)                                    
+      291    }
+      292  
+      293    if (el.type === 'barcode') {
+
+● Update(utils\labTemplate.js)
+  ⎿  Added 10 lines, removed 4 lines
+      300      if (!codeType) {
+      301        warn('条码 ' + label + ' 的类型是 ' + (el.subtype || '未
+           知') + '，模板引擎不支持，已降级成 Code 128，请核对能不能扫出
+           来')
+      302      }
+      303 -    return {                                                  
+      303 +    // 新版服务端把净条高单列在 barHeightMm，heightMm 是含可读
+          +字符的整框；                                                  
+      304 +    // 老版本只有 heightMm 且它就是条高 —— PDA 是装好的 APK， 
+          +两边版本一定会错开                                            
+      305 +    const hasFrame = Number(el.barHeightMm) > 0               
+      306 +    const out = {                                             
+      307        type: 'barcode',
+      308        x,
+      309        y,
+      310        rotation: rot.rotation,
+      311        codeType: codeType || 'code128',
+      309 -      heightMm: round2(el.heightMm) || 10,                    
+      312 +      heightMm: round2(hasFrame ? el.barHeightMm : el.heightMm
+          +) || 10,                                                      
+      313        moduleWidth: Math.max(1, toDots(el.moduleWidthMm) || 2),
+      314        showText: el.showText !== false,
+      315        textAbove: el.textPosition === 'above',
+      316        data: el.data || ''
+      317      }
+      318 +    // 只有拿得到净条高时 heightMm 才是整框；否则不给 height，
+          +让渲染时按条高 + 字符行估                                     
+      319 +    if (hasFrame && frameH > 0) out.height = frameH           
+      320 +    return withAnchor(out)                                    
+      321    }
+      322  
+      323    // CodeSoft 的线和矩形都用 ^GB 画：高为 0 是横线，宽为 0 是
+           竖线
+      324    if (el.type === 'line' || el.type === 'rect') {
+      319 -    return {                                                  
+      325 +    return withAnchor({                                       
+      326        type: 'box',
+      327        x,
+      328        y,
+      329        width: round2(el.widthMm),
+      330        height: round2(el.heightMm),
+      331        thickness: Math.max(1, toDots(el.thicknessMm) || 2)
+      326 -    }                                                         
+      332 +    })                                                        
+      333    }
+      334  
+      335    warn('已跳过 ' + label + '：' + (SKIP_REASON[el.type] || '类
+           型 ' + el.type + ' 无法转换'))
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(pages\print\labelTemplate.vue)
+  ⎿  Error editing file
+
+● Update(pages\print\labelTemplate.vue)
+  ⎿  Added 16 lines
+      111            <text class="label">Y (mm)</text>
+      112            <input class="ipt" type="digit" v-model="el.y" />
+      113          </view>
+      114 +        <view class="row">                                    
+      115 +          <text class="label">定位基点</text>                 
+      116 +          <picker :range="anchorLabels" :value="anchorIndex(el
+          +)" @change="e => setAnchor(el, e)">                           
+      117 +            <text class="picker">{{ anchorLabel(el) }} ▾</text
+          +>                                                             
+      118 +          </picker>                                           
+      119 +        </view>                                               
+      120 +        <template v-if="showFrame(el)">                       
+      121 +          <view class="row" v-if="el.type !== 'barcode'">     
+      122 +            <text class="label">框宽 (mm)</text>              
+      123 +            <input class="ipt" type="digit" :value="el.width" 
+          +@input="e => setFrame(el, 'width', e)" />                     
+      124 +          </view>                                             
+      125 +          <view class="row">                                  
+      126 +            <text class="label">框高 (mm)</text>              
+      127 +            <input class="ipt" type="digit" :value="el.height"
+          + @input="e => setFrame(el, 'height', e)" />                   
+      128 +          </view>                                             
+      129 +        </template>                                           
+      130  
+      131          <template v-if="el.type === 'text'">
+      132            <view class="row">
+
+● Now the hint and the script side.
+
+● Update(pages\print\labelTemplate.vue)
+  ⎿  Added 4 lines
+      207            </picker>
+      208          </view>
+      209        </view>
+      210 +                                                              
+      211 +      <view class="hint" v-if="tpl.elements.length > 0">      
+      212 +        定位基点决定 X/Y 说的是元素框上哪一点。默认左上角；选 
+          +「正中」后元素会绕这个点居中，内容变长（比如 SN 位数变多把条码
+          +撑宽）时向两边同时扩，不会一味往右长。条码的宽度按当次数据算出
+          +来，所以只用填框高。                                          
+      213 +      </view>                                                 
+      214      </view>
+      215  
+      216      <view class="card">
+
+● Update(pages\print\labelTemplate.vue)
+  ⎿  Error editing file
+
+● Update(pages\print\labelTemplate.vue)
+  ⎿  Added 1 line
+      245      newElement,
+      246      labelDots,
+      247      buildApplyMediaCommand,
+      248 +    ANCHORS,                                                  
+      249      DPI_OPTIONS,
+      250      ROTATIONS,
+      251      BARCODE_TYPES,
+
+● Update(pages\print\labelTemplate.vue)
+  ⎿  Error editing file
+
+● Update(pages\print\labelTemplate.vue)
+  ⎿  Added 3 lines
+      309        barcodeLabels() {
+      310          return BARCODE_TYPES.map((b) => b.label)
+      311        },
+      312 +      anchorLabels() {                                        
+      313 +        return ANCHORS.map((a) => a.label)                    
+      314 +      },                                                      
+      315        variableKeys() {
+      316          const keys = []
+      317          this.tpl.elements.forEach((el) => {
+
+● Update(pages\print\labelTemplate.vue)
+  ⎿  Added 24 lines
+      420          return BARCODE_TYPES[this.barcodeIndex(el)].label
+      421        },
+      422  
+      423 +      anchorIndex(el) {                                       
+      424 +        const i = ANCHORS.findIndex((a) => a.value === el.anch
+          +or)                                                           
+      425 +        return i === -1 ? 0 : i                               
+      426 +      },                                                      
+      427 +                                                              
+      428 +      anchorLabel(el) {                                       
+      429 +        return ANCHORS[this.anchorIndex(el)].label            
+      430 +      },                                                      
+      431 +                                                              
+      432 +      // 旧模板和新建的元素都没有 anchor 字段，要用 $set 写进 
+          +去才有响应式                                                  
+      433 +      setAnchor(el, e) {                                      
+      434 +        this.$set(el, 'anchor', ANCHORS[Number(e.detail.value)
+          +].value)                                                      
+      435 +      },                                                      
+      436 +                                                              
+      437 +      setFrame(el, key, e) {                                  
+      438 +        this.$set(el, key, e.detail.value)                    
+      439 +      },                                                      
+      440 +                                                              
+      441 +      // 基点不是左上角时才需要参照框；线和矩形本来就有确切宽 
+          +高，不重复问                                                  
+      442 +      showFrame(el) {                                         
+      443 +        if (!el.anchor || el.anchor === 'topLeft') return fals
+          +e                                                             
+      444 +        return el.type === 'text' || el.type === 'qrcode' || e
+          +l.type === 'barcode'                                          
+      445 +      },                                                      
+      446 +                                                              
+      447        addElement(type) {
+      448          this.tpl.elements.push(newElement(type))
+      449        },
+
+● Let me sanity-check the anchor math by running the pure logic in node.
+
+● Bash(mkdir -p /tmp/zt && sed "s#^import printer from './zebraPrinter.js'#const
+       printer = {}#" utils/zplTemplate.js > /tmp/zt/zpl.mjs && node
+      --input-type=module -e "…)
+  ⎿  Error: Exit code 1
+     node:internal/url:1489
+         throw new ERR_INVALID_FILE_URL_PATH('must be absolute', url);
+               ^
+
+     TypeError [ERR_INVALID_FILE_URL_PATH]: File URL path must be absolute
+         at getPathFromURLWin32 (node:internal/url:1489:11)
+         at fileURLToPath (node:internal/url:1613:35)
+         at finalizeResolution (node:internal/modules/esm/resolve:243:12)
+         at moduleResolve (node:internal/modules/esm/resolve:859:10)
+     … +11 lines (ctrl+o to expand)
+
+● Bash(sed "s#^import printer from './zebraPrinter.js'#const printer = {}#"
+      utils/zplTemplate.js > utils/__zt_tmp.mjs && node --input-type=module -e "
+      import { buildZp…)
+  ⎿  --- sn=HJL001 (len 6)
+     ^FO179,114^BY2,3,80^BCN,80,Y,N,N^FDHJL001^FS
+     ^FO120,40^A@N,30,30,E:GB18030.FNT^FB320,1,0,C^FH^FD前门总成^FS
+     … +7 lines (ctrl+o to expand)
+
+● Anchor math verifies: the center-anchored barcode's ^FO x drops from 179 to 36
+   as SN grows from 6 to 19 chars, staying centered on 280 dots (35mm), and
+  ^FB320 matches the text frame exactly.
+  Listed 1 directory (ctrl+o to expand)
+
+● VS 2019 is installed — let me find its MSBuild.
+
+  Searched for 1 pattern, listed 1 directory (ctrl+o to expand)
+
+● PowerShell(Get-ChildItem "C:\Program Files (x86)\Microsoft Visual Studio\2019"
+             -Force | Select-Object Name; Get-ChildItem "C:\Program Files
+            (x86)\Microsoft Visual Studio\2…)
+  ⎿  (No output)
+
+● Bash(cd "/c/Users/26281/Desktop/CSPrintService/CSPrintService" && ls && cat
+      CSPrintService/CSPrintService.csproj | head -80)
+  ⎿  2026-07-29-184056-this-session-is-being-continued-from-a-previous-c.tx
+     t
+     2026-07-29-190105-this-session-is-being-continued-from-a-previous-c.tx
+     … +54 lines (ctrl+o to expand)
+  ⎿  Shell cwd was reset to C:\Users\26281\Desktop\github\hjlApp
+
+● Bash(cd "/c/Users/26281/Desktop/CSPrintService/CSPrintService" && sed -n
+      '80,200p' CSPrintService/CSPrintService.csproj)
+  ⎿      <Reference Include="System.Management" />
+         <Reference Include="System.Windows.Forms" />
+         <Reference Include="System.Xml.Linq" />
+     … +28 lines (ctrl+o to expand)
+  ⎿  Shell cwd was reset to C:\Users\26281\Desktop\github\hjlApp
+
+  Listed 1 directory (ctrl+o to expand)
+
+● Bash(cd "/c/Users/26281/Desktop/CSPrintService/CSPrintService/CSPrintService"
+      && CSC="/c/Program Files (x86)/Microsoft Visual
+      Studio/Shared/Packages/Microsoft.Net.Co…)
+  ⎿  Microsoft (R) Visual C# Compiler version 2.6.1.62414 (2c94423e)
+     Copyright (C) Microsoft Corporation. All rights reserved.
+     … +54 lines (ctrl+o to expand)
+  ⎿  Shell cwd was reset to C:\Users\26281\Desktop\github\hjlApp
+
+● Bash(cd "/c/Users/26281/Desktop/CSPrintService/CSPrintService/CSPrintService"
+      && REF="C:\Program Files (x86)\Reference
+      Assemblies\Microsoft\Framework\.NETFramework\v…)
+  ⎿  warning CS2023: Ignoring /noconfig option because it was specified in
+     a response file
+     error CS0006: Metadata file 'C:\Program Files (x86)\Reference Assembli
+     es\Microsoft\Framework\.NETFramework\v4.7.2$d.dll' could not be found
+  ⎿  Shell cwd was reset to C:\Users\26281\Desktop\github\hjlApp
+
+● Write(~\AppData\Local\Temp\csc_verify.rsp)
+  ⎿  Wrote 24 lines to ..\..\..\AppData\Local\Temp\csc_verify.rsp
+       2 -target:winexe
+       3 -langversion:7.2
+       5 -nostdlib+BUG;TRACE
+       6 -out:"C:\Users\26281\AppData\Local\Temp\cs_verify.exe"
+       7 -r:"C:\Program Files (x86)\Reference Assemblies\Microsoft\Framew
+       8 -r:"C:\Program Files (x86)\Reference Assemblies\Microsoft\Framew
+         ork\.NETFramework\v4.7.2\System.dll"
+         ork\.NETFramework\v4.7.2\System.Configuration.dll"crosoft\Framew
+      10 -r:"C:\Program Files (x86)\Reference Assemblies\Microsoft\Framew
+         ork\.NETFramework\v4.7.2\System.Core.dll"
+     … +32 lines (ctrl+o to expand)
+
+● PowerShell(& "C:\Program Files (x86)\Microsoft Visual
+            Studio\Shared\Packages\Microsoft.Net.Compilers.2.6.1\tools\csc.exe"
+            -noconfig "@C:\Users\26281\AppData\Local\Temp\csc…)
+  ⎿  (No output)
+
+● PowerShell(Get-Item "C:\Users\26281\AppData\Local\Temp\cs_verify.exe" |
+            Select-Object Length, LastWriteTime)
+  ⎿  (No output)
+
+  Listed 1 directory (ctrl+o to expand)
+
+● Bash(rm -f "/c/Users/26281/AppData/Local/Temp/cs_verify.exe"
+      "/c/Users/26281/AppData/Local/Temp/csc_verify.rsp" /tmp/csc.rsp; ls
+      node_modules/pako/package.json 2>&1…)
+  ⎿  node_modules/pako/package.json
+
+● Service compiles clean. Now an end-to-end check of the import path.
+
+● Bash(sed "s#^import printer from './zebraPrinter.js'#const printer = {}#"
+      utils/zplTemplate.js > utils/__zt_tmp.mjs && sed
+      "s#'./zplTemplate.js'#'./__zt_tmp.mjs'#" u…)
+  ⎿  file:///C:/Users/26281/Desktop/github/hjlApp/utils/__lt_tmp.mjs:13
+     import pako from 'pako'
+            ^^^^
+     … +14 lines (ctrl+o to expand)
+
+● Bash(sed "s#^import printer from './zebraPrinter.js'#const printer = {}#"
+      utils/zplTemplate.js > utils/__zt_tmp.mjs && sed -e
+      "s#'./zplTemplate.js'#'./__zt_tmp.mjs'#…)
+  ⎿  warnings: []
+     [
+       {
+     … +42 lines (ctrl+o to expand)
+
+● Bash(git -C "C:/Users/26281/Desktop/github/hjlApp" diff --stat && git -C
+      "C:/Users/26281/Desktop/github/hjlApp" diff --
+      pages/print/labelTemplate.vue)  ⎿  warning: in the working copy of 'manifest.json', LF will be replaced b
+     y CRLF the next time Git touches it
+     warning: in the working copy of 'pages/print/labelTemplate.vue', LF wi
+     … +46 lines (ctrl+o to expand)
+
+● 定位基点已经贯通了，服务端和 PDA 两侧都验证过。
+
+  服务端（LabEnums.cs / LabModels.cs / PdaTemplateMapper.cs / LabParser.cs）
+  - pdaTemplate.elements[] 多了 anchor
+  字段（左上角时不输出，省离线二维码的字节），xMm/yMm 保持 CodeSoft
+  的基点坐标原样。
+  - 条码的 heightMm 改回「含可读字符的整框高」，净条高单列成 barHeightMm。
+  - 新增设计期越界检查（按基点反推左上角，四边超出标签就报，留 0.5mm
+  余量）和「旋转 +
+  非左上角基点」的核对提示；原来每个对象刷一条的基点提示合并成一条汇总。
+  - 用 VS 2019 残留的 Roslyn 2.6.1 编译全部源码，零错误零警告。（LabEnums.cs
+  之前被重复插入了一份 AnchorFractionX/Y，会编不过，已删掉。）
+
+  PDA（utils/zplTemplate.js / utils/labTemplate.js /
+  pages/print/labelTemplate.vue）
+  - 导出 ANCHORS（9 项含 fx/fy），生成 ZPL 时按当次实际内容算参照框再反推
+  ^FO，并把 ^FO 钳到 ≥0。
+  - 一维条码宽度按数据算模块数（Code128 11n+35，全数字走 subset C；Code39
+  (n+2)×16；EAN-13 95），不用设计框宽。
+  - 文本有框宽时基点换算和 ^FB 用的是同一个数，居中零误差；没有框宽才按字宽估。
+  - 编辑页每个元素加了「定位基点」下拉，选非左上角时才出现「框宽/框高」（条码只
+  问框高）。
+  - barHeightMm 读不到时退回 heightMm，兼容旧版服务端。
+
+  实测结果：Center 基点的条码在 SN 从 6 位变成 19 位时，^FO 的 x 从 179 降到
+  36，始终绕 280 点（35mm）居中；^FB 行宽与框宽一致。
+
+  两件需要你来做的：
+  1. 服务端我只是用 csc 验证了能编译，没有生成可用的 exe（这台机器的 VS 2019
+  目录是空的、也没有 .NET SDK，我不想拿手搓的 csc 输出覆盖你 bin\Debug
+  里的构建产物）。需要在有 VS 的机器上正常编一次。
+  2. 实机打一张带 Center 基点的标签，核对条码水平中心是否落在设计位置 ——
+  这是唯一能验证旋转/基点假设的手段。
+
+✻ Worked for 16m 18s
+
+※ recap: Anchor-point positioning is now wired through both the C# service and the PDA app, and verified in code. Next: build the service exe on a machine with Visual Studio, then print a Center-anchored test label to confirm placement. (disable recaps in /config)
+
+> 我测试打印出来当内容过长时center二维码没有在中心，像是左上角定位内容是A.JDQ.0 
+  0227-1#260622004                                                              
+
+● 先确认一下服务端 exe 是否重新编译过 —— 如果没有，导入的模板里根本没有 anchor
+  字段，PDA 就会按左上角算，症状正好是你看到的这样。
+
+● PowerShell(Get-ChildItem "C:\Users\26281\Desktop\CSPrintService\CSPrintService
+            \CSPrintService\bin\Debug\CSPrintService.exe","C:\Users\26281\Deskto
+            p\CSPrintService\CSPrintS…)
+  ⎿  (No output)
+
+● Bash(cd "/c/Users/26281/Desktop/CSPrintService/CSPrintService/CSPrintService"
+      && ls -la --time-style=+%m-%d\ %H:%M bin/Debug/CSPrintService.exe
+      bin/Release/CSPrintSe…)
+  ⎿  -rwxr-xr-x 1 26281 197609 139776 07-29 17:48 bin/Debug/CSPrintService.
+     exe
+     -rwxr-xr-x 1 26281 197609 135168 08-03 12:20 bin/Release/CSPrintServic
+     … +4 lines (ctrl+o to expand)
+  ⎿  Shell cwd was reset to C:\Users\26281\Desktop\github\hjlApp
+  ⎿  Interrupted · What should Claude do instead?
+
+> 有定位基点字段为正中                                                          
+
+● 明白了 —— 那 anchor 是通的，问题在参照框：二维码的边长完全由数据长度和纠错等级
+  决定，我之前偷懒用了设计稿的框宽。数据一变长，QR 就跨到下一个版本、实际印出来
+  比设计框大，于是元素往右下多长出去一截，看起来就像按左上角定位。修掉它。
+
+● Update(utils\zplTemplate.js)
+  ⎿  Added 2 lines, removed 1 line
+      77  
+      78  // 以下常量都是估算值，只在模板没给出设计框宽高时才会走到
+      79  const HRI_LINE_DOTS = 12 // 条码下方可读字符行：ZPL 默认用内置 
+          A 字体（9 点高），加行距按 12 点算
+      80 -const QR_VERSION1_MODULES = 21 // QR 版本 1 的边长模块数，拿不 
+         -到框宽时的下限                                                 
+      80 +const QR_VERSION1_MODULES = 21 // QR 版本 1 的边长模块数       
+      81 +const QR_MODULES_PER_VERSION = 4 // 每升一个版本边长加 4 个模块
+      82  const PROPORTIONAL_CHAR_RATIO = 0.6 // ^A0 是比例字体，平均字宽
+          约为标称字宽的 0.6 倍
+      83  const CODE39_UNITS_PER_CHAR = 16 // 每字符 6 窄条 + 3 宽条 + 1 
+          窄间隙，宽窄比固定 3 => 7 + 3×3
+      84  const CODE128_MODULES_PER_CHAR = 11
+
+● Update(utils\zplTemplate.js)
+  ⎿  Added 56 lines
+       95    return Math.round(dots)
+       96  }
+       97  
+       98 +// QR 版本 1~10 在各纠错等级下能装的数据码字数。版本 10 的字节
+          +模式已能装 213 字节，                                         
+       99 +// 标签上的 SN 远用不到更大的版本，所以表只到 10。            
+      100 +const QR_DATA_CODEWORDS = {                                   
+      101 +  L: [19, 34, 55, 80, 108, 136, 156, 194, 232, 274],          
+      102 +  M: [16, 28, 44, 64, 86, 108, 124, 154, 182, 216],           
+      103 +  Q: [13, 22, 34, 48, 62, 76, 88, 110, 132, 154],             
+      104 +  H: [9, 16, 26, 36, 46, 60, 66, 86, 100, 122]                
+      105 +}                                                             
+      106 +                                                              
+      107 +// QR「字符模式」的字符集就这些，出现别的符号（比如 #）整串就 
+          +得退到字节模式，位数翻近一倍                                  
+      108 +const QR_ALNUM = /^[0-9A-Z $%*+\-./:]+$/                      
+      109 +                                                              
+      110 +// ^CI28 下数据是按 UTF-8 发给打印机的，字节模式按 UTF-8 长度 
+          +算                                                            
+      111 +function utf8Length(text) {                                   
+      112 +  let n = 0                                                   
+      113 +  for (let i = 0; i < text.length; i++) {                     
+      114 +    const c = text.charCodeAt(i)                              
+      115 +    if (c < 0x80) n += 1                                      
+      116 +    else if (c < 0x800) n += 2                                
+      117 +    else if (c >= 0xd800 && c < 0xdc00) {                     
+      118 +      n += 4                                                  
+      119 +      i++ // 代理对，一个码点占两个 charCode                  
+      120 +    } else n += 3                                             
+      121 +  }                                                           
+      122 +  return n                                                    
+      123 +}                                                             
+      124 +                                                              
+      125 +// 编码这段数据要占多少位：模式指示符 4 位 + 字符计数指示符 + 
+          +数据位。                                                      
+      126 +// 计数指示符的宽度跟版本有关，版本 10 起变宽，所以要按版本分 
+          +别算。                                                        
+      127 +function qrDataBits(value, version) {                         
+      128 +  if (/^\d+$/.test(value)) {                                  
+      129 +    const rest = value.length % 3                             
+      130 +    return 4 + (version < 10 ? 10 : 12) + Math.floor(value.len
+          +gth / 3) * 10 +                                               
+      131 +      (rest === 0 ? 0 : rest === 1 ? 4 : 7)                   
+      132 +  }                                                           
+      133 +  if (QR_ALNUM.test(value)) {                                 
+      134 +    return 4 + (version < 10 ? 9 : 11) + Math.floor(value.leng
+          +th / 2) * 11 +                                                
+      135 +      (value.length % 2 ? 6 : 0)                              
+      136 +  }                                                           
+      137 +  return 4 + (version < 10 ? 8 : 16) + utf8Length(value) * 8  
+      138 +}                                                             
+      139 +                                                              
+      140 +// QR 的边长只由数据长度和纠错等级决定，设计稿的框宽是照某个样
+          +例数据定的 ——                                                 
+      141 +// 数据一变长就跨到下一个版本、实际印出来更大，拿框宽换算基点 
+          +就会往右下偏。                                                
+      142 +// 这里整串按单一模式估；打印机的自动模式可能拆成多段混合编码 
+          +更省位，那样我们会高估一个版本，                              
+      143 +// 高估会让元素略偏左上，比低估安全。返回 0 表示超出容量表，让
+          +调用方退回设计框。                                            
+      144 +function qrModules(value, ecc) {                              
+      145 +  const caps = QR_DATA_CODEWORDS[ecc] || QR_DATA_CODEWORDS.M  
+      146 +  for (let v = 1; v <= caps.length; v++) {                    
+      147 +    if (qrDataBits(value, v) <= caps[v - 1] * 8) {            
+      148 +      return QR_VERSION1_MODULES + (v - 1) * QR_MODULES_PER_VE
+          +RSION                                                         
+      149 +    }                                                         
+      150 +  }                                                           
+      151 +  return 0                                                    
+      152 +}                                                             
+      153 +                                                              
+      154  // 条码模块数（窄条算 1 个模块），乘 ^BY 的模块宽就是实际打印
+           宽度。
+      155  // 这是基点换算里唯一随数据变化又能算准的量，所以宁可算它也不
+           用设计框宽。
+      156  function barcodeModules(value, codeType) {
+
+● Update(utils\zplTemplate.js)
+  ⎿  Added 6 lines, removed 4 lines
+      256      if (!value) return ''
+      257      const ecc = QR_ECC.indexOf(el.ecc) === -1 ? 'M' : el.ecc
+      258      const mag = num(el.magnification, 5)
+      259 -    // 按数据长度反推 QR 版本要一张 40×4 的容量表，先用设计框 
+          -；没有框就按版本 1 估                                         
+      260 -    const boxW = num(el.width, 0) > 0 ? toDots(el.width) : QR_
+          -VERSION1_MODULES * mag                                        
+      261 -    const boxH = num(el.height, 0) > 0 ? toDots(el.height) : b
+          -oxW                                                           
+      262 -    return `${place(boxW, boxH)}^BQ${rot},2,${mag}^FD${ecc}A,$
+          -{value}^FS`                                                   
+      259 +    const modules = qrModules(value, ecc)                     
+      260 +    // QR 是正方形，宽高同一个数                              
+      261 +    const box = modules > 0                                   
+      262 +      ? modules * mag                                         
+      263 +      : (num(el.width, 0) > 0 ? toDots(el.width) : QR_VERSION1
+          +_MODULES * mag)                                               
+      264 +    return `${place(box, box)}^BQ${rot},2,${mag}^FD${ecc}A,${v
+          +alue}^FS`                                                     
+      265    }
+      266  
+      267    if (el.type === 'barcode') {
+
+● Bash(sed "s#^import printer from './zebraPrinter.js'#const printer = {}#"
+      utils/zplTemplate.js > utils/__zt_tmp.mjs && node --input-type=module -e "
+      import { buildZp…)
+  ⎿    9字  ^FO228,108^BQN,2,5^FDM   中心=(280.5,160.5)  推回模块数=21 版本
+     1
+      14字  ^FO228,108^BQN,2,5^FDM   中心=(280.5,160.5)  推回模块数=21 版本
+     … +5 lines (ctrl+o to expand)
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● QR 的参照框现在改成按数据算真实版本了（不再用设计框宽），实测中心稳定在
+  35mm/20mm：9 字和 14 字是版本 1（21 模块），你这串 23 字的
+  A.JDQ.00227-1#260622004 因为带 # 只能走字节模式，是版本 2（25 模块），53
+  字是版本 4。
+
+  但我得跟你说实话：这个修正只把偏差从 ~1.5mm 拉到
+  0，解释不了"像是左上角定位"这种量级的偏移。那个症状对应的是基点偏移量约等于
+  0，也就是 anchor 压根没生效。两个最可能的原因：
+
+  1. 改了基点但没点「保存模板」。编辑页的「打印测试」用的是内存里的 tpl，而 SN
+  列表页打印是从本地存储重新读模板的 —— 没保存的话业务页拿到的还是没有 anchor
+  的旧模板。
+  2. 你看到的「正中」是编辑页里你自己选的，但那个元素的 anchor
+  字段其实没写进去。
+
+  麻烦你给我一个数就能定死：在编辑页把「变量测试值」填成
+  A.JDQ.00227-1#260622004，然后把「ZPL 预览」里那条 ^FO...^BQ...
+  复制给我，同时说一下这个二维码的 X/Y 填的是多少。我算一下 ^FO
+  应该是几，跟你实际看到的对一下就知道是哪一环断了。
+
+✻ Churned for 3m 1s
+
+※ recap: Goal: make center-anchored elements print centered. QR sizing is now computed from data, but the reported offset looks like anchor never applied. Next: you send the `^FO...^BQ...` line from ZPL 预览 plus that element's X/Y. (disable recaps in /config)

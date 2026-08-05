@@ -1,5 +1,5 @@
 <template>
-	<snPrintList ref="listRef" :config="config" />
+	<snPrintList ref="listRef" :config="config" :initDocNo="initDocNo" />
 </template>
 
 <script>
@@ -8,11 +8,17 @@
 
 	export default {
 		components: { snPrintList },
+		onLoad(options) {
+			if (options.docNo) {
+				this.initDocNo = decodeURIComponent(options.docNo);
+			}
+		},
 		onReachBottom() {
 			this.$refs.listRef.loadMore()
 		},
 		data() {
 			return {
+				initDocNo: '',
 				config: {
 					snKey: 'keySn',
 					nameKey: 'itemName',

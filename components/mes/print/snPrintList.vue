@@ -22,7 +22,8 @@
 
 					<view class="frow" v-if="config.docFilter">
 						<text class="flabel">{{ config.docFilter.label }}</text>
-						<text class="fpicker" @click="openDoc">{{ doc ? doc.docNo : '选择' + config.docFilter.title }} ▾</text>
+						<text class="fpicker" @click="openDoc">{{ doc ? doc.docNo : '选择' + config.docFilter.title }}
+							▾</text>
 					</view>
 
 					<view class="fbtns">
@@ -72,11 +73,13 @@
 					</view>
 					<view class="detail" v-if="isExp(item)">
 						<view class="badges" v-if="otherBadges.length > 0">
-							<text class="badge" v-for="b in otherBadges" :key="b.key" :class="'tone-' + badgeTone(b, item)">
+							<text class="badge" v-for="b in otherBadges" :key="b.key"
+								:class="'tone-' + badgeTone(b, item)">
 								{{ badgeText(b, item) }}
 							</text>
 						</view>
-						<text class="field" v-for="f in visibleFields(item)" :key="f.key">{{ f.label }}：{{ item[f.key] }}</text>
+						<text class="field" v-for="f in visibleFields(item)"
+							:key="f.key">{{ f.label }}：{{ item[f.key] }}</text>
 					</view>
 				</view>
 			</view>
@@ -150,7 +153,8 @@
 
 				<!-- 打印后 -->
 				<view v-else class="pp-body">
-					<text class="pp-result">指令已发出 {{ okList.length }} 条，失败 {{ failList.length }} 条{{ canceled ? '（已手动停止）' : '' }}</text>
+					<text class="pp-result">指令已发出 {{ okList.length }} 条，失败 {{ failList.length }}
+						条{{ canceled ? '（已手动停止）' : '' }}</text>
 					<view class="pp-hint">纸有没有真的出来只能看打印机，缺纸或卡纸时打印机不会回报给 App。</view>
 					<view class="fail-item" v-for="(f, i) in failList" :key="i">
 						{{ f.sn }} — {{ f.message }}
@@ -170,17 +174,30 @@
 
 <script>
 	import printer from '@/utils/zebraPrinter.js'
-	import { getDictItems } from '@/api/printApi.js'
-	import { buildZpl, loadTemplates } from '@/utils/zplTemplate.js'
-	import { templateVariables } from '@/utils/labTemplate.js'
+	import {
+		getDictItems
+	} from '@/api/printApi.js'
+	import {
+		buildZpl,
+		loadTemplates
+	} from '@/utils/zplTemplate.js'
+	import {
+		templateVariables
+	} from '@/utils/labTemplate.js'
 	import docSelectPopup from './docSelectPopup.vue'
 
 	export default {
-		components: { docSelectPopup },
+		components: {
+			docSelectPopup
+		},
 		props: {
 			config: {
 				type: Object,
 				required: true
+			},
+			initDocNo: {
+				type: String,
+				default: ''
 			}
 		},
 		data() {
@@ -259,7 +276,10 @@
 					const g = {
 						itemLotSn: lotSn,
 						count: 1,
-						record: { ...r, [this.config.snKey]: '' }
+						record: {
+							...r,
+							[this.config.snKey]: ''
+						}
 					}
 					seen[lotSn] = g
 					out.push(g)
@@ -275,8 +295,8 @@
 				return templateVariables(this.currentTemplate).filter((k) => sample[k] === undefined || sample[k] === null)
 			},
 			filterSummary() {
-				const parts = []
-				;(this.config.filters || []).forEach((f) => {
+				const parts = [];
+				(this.config.filters || []).forEach((f) => {
 					const v = this.form[f.key]
 					if (v === undefined || v === null || v === '') return
 					parts.push(f.type === 'input' ? v : this.dictText(f))
@@ -289,11 +309,19 @@
 			this.templates = loadTemplates()
 			this.restoreTemplate()
 			this.loadDicts()
+			if (this.initDocNo) {
+				this.doc = { docNo: this.initDocNo }
+				this.allMode = true
+			}
 			this.query()
 		},
 		methods: {
 			toast(title) {
-				uni.showToast({ title, icon: 'none', duration: 3000 })
+				uni.showToast({
+					title,
+					icon: 'none',
+					duration: 3000
+				})
 			},
 
 			tplKey() {
@@ -328,7 +356,10 @@
 			},
 
 			dictOptions(f) {
-				return [{ label: '全部', value: '' }].concat(this.dicts[f.dictCode] || [])
+				return [{
+					label: '全部',
+					value: ''
+				}].concat(this.dicts[f.dictCode] || [])
 			},
 
 			dictLabels(f) {
@@ -385,11 +416,13 @@
 
 			onDocSelect(row) {
 				this.doc = row
+				this.allMode = true
 				this.query()
 			},
 
 			clearDoc() {
 				this.doc = null
+				this.allMode = false
 				this.query()
 			},
 
@@ -428,7 +461,10 @@
 				if (this.loading || !this.hasMore) return
 				this.loading = true
 				try {
-					const params = { pageNo: this.current, pageSize: this.size }
+					const params = {
+						pageNo: this.current,
+						pageSize: this.size
+					}
 					Object.keys(this.form).forEach((k) => {
 						const v = this.form[k]
 						if (v !== undefined && v !== null && v !== '') params[k] = v
@@ -528,7 +564,10 @@
 				if (!tpl) return this.toast('先选一个标签模板')
 				if (this.jobs.length === 0) return this.toast('没有要打印的记录')
 
-				uni.showLoading({ title: '检查打印机...', mask: true })
+				uni.showLoading({
+					title: '检查打印机...',
+					mask: true
+				})
 				try {
 					await this.preflight()
 					uni.hideLoading()
@@ -539,7 +578,13 @@
 
 				uni.setStorageSync(this.tplKey(), tpl.id)
 				const copies = Math.max(1, Number(this.copies) || 1)
-				const job = { ...tpl, print: { ...tpl.print, copies } }
+				const job = {
+					...tpl,
+					print: {
+						...tpl.print,
+						copies
+					}
+				}
 
 				this.printState = 'running'
 				this.done = 0
@@ -555,7 +600,11 @@
 						await printer.printWithSaved(buildZpl(job, record))
 						this.okList.push(record)
 					} catch (e) {
-						this.failList.push({ record, sn: this.currentSn, message: e.message })
+						this.failList.push({
+							record,
+							sn: this.currentSn,
+							message: e.message
+						})
 					}
 					this.done++
 					await new Promise((r) => setTimeout(r, 300))
@@ -581,7 +630,9 @@
 				}
 				const printedIds = this.okList.map((r) => r.id || r[this.config.snKey])
 				try {
-					const res = await this.config.updatePrintedApi({ printedIds })
+					const res = await this.config.updatePrintedApi({
+						printedIds
+					})
 					if (res && res.data && res.data.code === 200) {
 						this.writebackMsg = '已回写 ' + printedIds.length + ' 条打印状态'
 						this.selected = []

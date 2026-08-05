@@ -111,6 +111,22 @@
 					<text class="label">Y (mm)</text>
 					<input class="ipt" type="digit" v-model="el.y" />
 				</view>
+				<view class="row">
+					<text class="label">定位基点</text>
+					<picker :range="anchorLabels" :value="anchorIndex(el)" @change="e => setAnchor(el, e)">
+						<text class="picker">{{ anchorLabel(el) }} ▾</text>
+					</picker>
+				</view>
+				<template v-if="showFrame(el)">
+					<view class="row" v-if="el.type !== 'barcode'">
+						<text class="label">框宽 (mm)</text>
+						<input class="ipt" type="digit" :value="el.width" @input="e => setFrame(el, 'width', e)" />
+					</view>
+					<view class="row">
+						<text class="label">框高 (mm)</text>
+						<input class="ipt" type="digit" :value="el.height" @input="e => setFrame(el, 'height', e)" />
+					</view>
+				</template>
 
 				<template v-if="el.type === 'text'">
 					<view class="row">
@@ -191,6 +207,10 @@
 					</picker>
 				</view>
 			</view>
+
+			<view class="hint" v-if="tpl.elements.length > 0">
+				定位基点决定 X/Y 说的是元素框上哪一点。默认左上角；选「正中」后元素会绕这个点居中，内容变长（比如 SN 位数变多把条码撑宽）时向两边同时扩，不会一味往右长。条码的宽度按当次数据算出来，所以只用填框高。
+			</view>
 		</view>
 
 		<view class="card">
@@ -225,6 +245,7 @@
 		newElement,
 		labelDots,
 		buildApplyMediaCommand,
+		ANCHORS,
 		DPI_OPTIONS,
 		ROTATIONS,
 		BARCODE_TYPES,
@@ -287,6 +308,9 @@
 			},
 			barcodeLabels() {
 				return BARCODE_TYPES.map((b) => b.label)
+			},
+			anchorLabels() {
+				return ANCHORS.map((a) => a.label)
 			},
 			variableKeys() {
 				const keys = []
@@ -394,6 +418,30 @@
 
 			barcodeLabel(el) {
 				return BARCODE_TYPES[this.barcodeIndex(el)].label
+			},
+
+			anchorIndex(el) {
+				const i = ANCHORS.findIndex((a) => a.value === el.anchor)
+				return i === -1 ? 0 : i
+			},
+
+			anchorLabel(el) {
+				return ANCHORS[this.anchorIndex(el)].label
+			},
+
+			// 旧模板和新建的元素都没有 anchor 字段，要用 $set 写进去才有响应式
+			setAnchor(el, e) {
+				this.$set(el, 'anchor', ANCHORS[Number(e.detail.value)].value)
+			},
+
+			setFrame(el, key, e) {
+				this.$set(el, key, e.detail.value)
+			},
+
+			// 基点不是左上角时才需要参照框；线和矩形本来就有确切宽高，不重复问
+			showFrame(el) {
+				if (!el.anchor || el.anchor === 'topLeft') return false
+				return el.type === 'text' || el.type === 'qrcode' || el.type === 'barcode'
 			},
 
 			addElement(type) {

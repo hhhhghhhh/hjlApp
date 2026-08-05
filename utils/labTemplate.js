@@ -2,13 +2,16 @@
 // 把 CSPrintService 解析 CodeSoft .Lab 得到的 pdaTemplate 转成本机的 zplTemplate 结构。
 //
 // 数据契约（对方 LabModels.cs 的 PdaTemplate / PdaElement）：
-//   位置和尺寸都是毫米，旋转是十进制角度，字号是 pt，原点在左上角，占位符是 {{varName}}。
+//   位置和尺寸都是毫米，旋转是十进制角度，字号是 pt，占位符是 {{varName}}。
+//   xMm/yMm 是「定位基点」的坐标，基点是元素框九宫格里的哪一点由 anchor 字段说明，
+//   没有 anchor 就是左上角。换算成 ^FO 要的左上角是在 zplTemplate.js 生成指令时做的，
+//   那时候才知道条码这次实际有多宽 —— 所以这里要把 anchor 和设计框宽高一起带下去。
 // 二维码有两种：
 //   离线码 = gzip + base64 的紧凑 JSON，上限 2331 字节；
 //   回连码 = 明文 JSON {ws, cmd:"ParseLab", labelFile, view}，由 PDA 自己连回去取最新结果。
 
 import pako from 'pako'
-import { DPI_OPTIONS, MEDIA_TYPES, QR_ECC, mmToDots } from './zplTemplate.js'
+import { ANCHORS, DPI_OPTIONS, MEDIA_TYPES, QR_ECC, mmToDots } from './zplTemplate.js'
 
 const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
 
@@ -232,6 +235,16 @@ function degToRotation(deg) {
 	return { rotation: { 0: 'N', 90: 'R', 180: 'I', 270: 'B' }[snapped], snapped, exact: d === snapped }
 }
 
+// 服务端只在基点不是左上角时才给 anchor，认不出的值按左上角处理
+function anchorOf(el, label, warn) {
+	if (!el.anchor) return null
+	if (ANCHORS.some((a) => a.value === el.anchor)) {
+		return el.anchor === 'topLeft' ? null : el.anchor
+	}
+	warn(label + ' 的定位基点 "' + el.anchor + '" 认不出来，已按左上角处理，位置可能偏移')
+	return null
+}
+
 function convertElement(el, dpi, warn) {
 	const label = elementLabel(el)
 	const toDots = (mm) => mmToDots(mm, dpi)
@@ -241,6 +254,14 @@ function convertElement(el, dpi, warn) {
 	}
 	const x = round2(el.xMm)
 	const y = round2(el.yMm)
+	const anchor = anchorOf(el, label, warn)
+	const withAnchor = (out) => {
+		if (anchor) out.anchor = anchor
+		return out
+	}
+	// 设计框：基点换算要用它反推左上角。文本还兼作 ^FB 的行宽
+	const frameW = Number(el.widthMm) > 0 ? round2(el.widthMm) : 0
+	const frameH = Number(el.heightMm) > 0 ? round2(el.heightMm) : 0
 
 	if (el.type === 'text') {
 		const mm = Number(el.fontHeightMm) || (Number(el.fontSizePt) ? (Number(el.fontSizePt) * 25.4) / 72 : 0)
@@ -248,15 +269,14 @@ function convertElement(el, dpi, warn) {
 		const h = Math.max(8, toDots(mm || 3))
 		const out = { type: 'text', x, y, fontH: h, fontW: h, rotation: rot.rotation, text: el.text || '' }
 		// ^FB 需要知道行宽才能居中/右对齐
-		if ((el.align === 'center' || el.align === 'right') && Number(el.widthMm) > 0) {
-			out.align = el.align
-			out.width = round2(el.widthMm)
-		}
-		return out
+		if ((el.align === 'center' || el.align === 'right') && frameW > 0) out.align = el.align
+		if (frameW > 0) out.width = frameW
+		if (frameH > 0) out.height = frameH
+		return withAnchor(out)
 	}
 
 	if (el.type === 'qrcode') {
-		return {
+		const out = {
 			type: 'qrcode',
 			x,
 			y,
@@ -265,6 +285,9 @@ function convertElement(el, dpi, warn) {
 			ecc: QR_ECC.indexOf(el.ec) === -1 ? 'M' : el.ec,
 			data: el.data || ''
 		}
+		if (frameW > 0) out.width = frameW
+		if (frameH > 0) out.height = frameH
+		return withAnchor(out)
 	}
 
 	if (el.type === 'barcode') {
@@ -277,30 +300,36 @@ function convertElement(el, dpi, warn) {
 		if (!codeType) {
 			warn('条码 ' + label + ' 的类型是 ' + (el.subtype || '未知') + '，模板引擎不支持，已降级成 Code 128，请核对能不能扫出来')
 		}
-		return {
+		// 新版服务端把净条高单列在 barHeightMm，heightMm 是含可读字符的整框；
+		// 老版本只有 heightMm 且它就是条高 —— PDA 是装好的 APK，两边版本一定会错开
+		const hasFrame = Number(el.barHeightMm) > 0
+		const out = {
 			type: 'barcode',
 			x,
 			y,
 			rotation: rot.rotation,
 			codeType: codeType || 'code128',
-			heightMm: round2(el.heightMm) || 10,
+			heightMm: round2(hasFrame ? el.barHeightMm : el.heightMm) || 10,
 			moduleWidth: Math.max(1, toDots(el.moduleWidthMm) || 2),
 			showText: el.showText !== false,
 			textAbove: el.textPosition === 'above',
 			data: el.data || ''
 		}
+		// 只有拿得到净条高时 heightMm 才是整框；否则不给 height，让渲染时按条高 + 字符行估
+		if (hasFrame && frameH > 0) out.height = frameH
+		return withAnchor(out)
 	}
 
 	// CodeSoft 的线和矩形都用 ^GB 画：高为 0 是横线，宽为 0 是竖线
 	if (el.type === 'line' || el.type === 'rect') {
-		return {
+		return withAnchor({
 			type: 'box',
 			x,
 			y,
 			width: round2(el.widthMm),
 			height: round2(el.heightMm),
 			thickness: Math.max(1, toDots(el.thicknessMm) || 2)
-		}
+		})
 	}
 
 	warn('已跳过 ' + label + '：' + (SKIP_REASON[el.type] || '类型 ' + el.type + ' 无法转换'))

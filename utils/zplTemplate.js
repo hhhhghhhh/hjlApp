@@ -53,6 +53,116 @@ export const ELEMENT_TYPES = [
 	{ value: 'box', label: '矩形框' }
 ]
 
+// x/y 是元素框上「基点」那一点的坐标，不一定是左上角 —— CodeSoft 模板里基点可以是
+// 九宫格里任意一点。导入时原样保留基点坐标，到生成 ZPL 时才按当次实际内容换算出
+// ^FO 需要的左上角：这样数据变长（SN 加长把条码撑宽）时元素仍绕基点居中，
+// 而不是拿设计稿的框宽一味往右长。
+export const ANCHORS = [
+	{ value: 'topLeft', label: '左上角', fx: 0, fy: 0 },
+	{ value: 'topCenter', label: '上边中点', fx: 0.5, fy: 0 },
+	{ value: 'topRight', label: '右上角', fx: 1, fy: 0 },
+	{ value: 'centerLeft', label: '左边中点', fx: 0, fy: 0.5 },
+	{ value: 'center', label: '正中', fx: 0.5, fy: 0.5 },
+	{ value: 'centerRight', label: '右边中点', fx: 1, fy: 0.5 },
+	{ value: 'bottomLeft', label: '左下角', fx: 0, fy: 1 },
+	{ value: 'bottomCenter', label: '下边中点', fx: 0.5, fy: 1 },
+	{ value: 'bottomRight', label: '右下角', fx: 1, fy: 1 }
+]
+
+const ANCHOR_TOP_LEFT = ANCHORS[0]
+
+function anchorOf(el) {
+	return ANCHORS.find((a) => a.value === el.anchor) || ANCHOR_TOP_LEFT
+}
+
+// 以下常量都是估算值，只在模板没给出设计框宽高时才会走到
+const HRI_LINE_DOTS = 12 // 条码下方可读字符行：ZPL 默认用内置 A 字体（9 点高），加行距按 12 点算
+const QR_VERSION1_MODULES = 21 // QR 版本 1 的边长模块数
+const QR_MODULES_PER_VERSION = 4 // 每升一个版本边长加 4 个模块
+const PROPORTIONAL_CHAR_RATIO = 0.6 // ^A0 是比例字体，平均字宽约为标称字宽的 0.6 倍
+const CODE39_UNITS_PER_CHAR = 16 // 每字符 6 窄条 + 3 宽条 + 1 窄间隙，宽窄比固定 3 => 7 + 3×3
+const CODE128_MODULES_PER_CHAR = 11
+const CODE128_FIXED_MODULES = 35 // 起始 11 + 校验 11 + 终止 13
+const EAN13_MODULES = 95
+
+// ^A0 的实际字宽拿不到（比例字体），只能估。^A@ 的 CJK 字模是方的，ASCII 约半宽。
+function textInkDots(text, fontW, cjk) {
+	if (!cjk) return Math.round(text.length * fontW * PROPORTIONAL_CHAR_RATIO)
+	let dots = 0
+	for (let i = 0; i < text.length; i++) {
+		dots += text.charCodeAt(i) >= 0x2e80 ? fontW : fontW / 2
+	}
+	return Math.round(dots)
+}
+
+// QR 版本 1~10 在各纠错等级下能装的数据码字数。版本 10 的字节模式已能装 213 字节，
+// 标签上的 SN 远用不到更大的版本，所以表只到 10。
+const QR_DATA_CODEWORDS = {
+	L: [19, 34, 55, 80, 108, 136, 156, 194, 232, 274],
+	M: [16, 28, 44, 64, 86, 108, 124, 154, 182, 216],
+	Q: [13, 22, 34, 48, 62, 76, 88, 110, 132, 154],
+	H: [9, 16, 26, 36, 46, 60, 66, 86, 100, 122]
+}
+
+// QR「字符模式」的字符集就这些，出现别的符号（比如 #）整串就得退到字节模式，位数翻近一倍
+const QR_ALNUM = /^[0-9A-Z $%*+\-./:]+$/
+
+// ^CI28 下数据是按 UTF-8 发给打印机的，字节模式按 UTF-8 长度算
+function utf8Length(text) {
+	let n = 0
+	for (let i = 0; i < text.length; i++) {
+		const c = text.charCodeAt(i)
+		if (c < 0x80) n += 1
+		else if (c < 0x800) n += 2
+		else if (c >= 0xd800 && c < 0xdc00) {
+			n += 4
+			i++ // 代理对，一个码点占两个 charCode
+		} else n += 3
+	}
+	return n
+}
+
+// 编码这段数据要占多少位：模式指示符 4 位 + 字符计数指示符 + 数据位。
+// 计数指示符的宽度跟版本有关，版本 10 起变宽，所以要按版本分别算。
+function qrDataBits(value, version) {
+	if (/^\d+$/.test(value)) {
+		const rest = value.length % 3
+		return 4 + (version < 10 ? 10 : 12) + Math.floor(value.length / 3) * 10 +
+			(rest === 0 ? 0 : rest === 1 ? 4 : 7)
+	}
+	if (QR_ALNUM.test(value)) {
+		return 4 + (version < 10 ? 9 : 11) + Math.floor(value.length / 2) * 11 +
+			(value.length % 2 ? 6 : 0)
+	}
+	return 4 + (version < 10 ? 8 : 16) + utf8Length(value) * 8
+}
+
+// QR 的边长只由数据长度和纠错等级决定，设计稿的框宽是照某个样例数据定的 ——
+// 数据一变长就跨到下一个版本、实际印出来更大，拿框宽换算基点就会往右下偏。
+// 这里整串按单一模式估；打印机的自动模式可能拆成多段混合编码更省位，那样我们会高估一个版本，
+// 高估会让元素略偏左上，比低估安全。返回 0 表示超出容量表，让调用方退回设计框。
+function qrModules(value, ecc) {
+	const caps = QR_DATA_CODEWORDS[ecc] || QR_DATA_CODEWORDS.M
+	for (let v = 1; v <= caps.length; v++) {
+		if (qrDataBits(value, v) <= caps[v - 1] * 8) {
+			return QR_VERSION1_MODULES + (v - 1) * QR_MODULES_PER_VERSION
+		}
+	}
+	return 0
+}
+
+// 条码模块数（窄条算 1 个模块），乘 ^BY 的模块宽就是实际打印宽度。
+// 这是基点换算里唯一随数据变化又能算准的量，所以宁可算它也不用设计框宽。
+function barcodeModules(value, codeType) {
+	if (codeType === 'ean13') return EAN13_MODULES
+	if (codeType === 'code39') return (value.length + 2) * CODE39_UNITS_PER_CHAR
+	// code128 全数字时走 subset C，两位数字压成一个符号字符；奇数位末尾要切回 subset B
+	const chars = /^\d+$/.test(value)
+		? (value.length % 2 === 0 ? value.length / 2 : (value.length - 1) / 2 + 2)
+		: value.length
+	return chars * CODE128_MODULES_PER_CHAR + CODE128_FIXED_MODULES
+}
+
 const num = (v, fallback) => {
 	const n = Number(v)
 	return isNaN(n) ? fallback : n
@@ -103,31 +213,55 @@ function sanitizeCode(text) {
 }
 
 function renderElement(el, data, tpl, toDots) {
-	const x = toDots(el.x)
-	const y = toDots(el.y)
 	const rot = el.rotation || 'N'
+
+	// 把基点坐标换算成 ^FO 要的左上角。boxW/boxH 是这次实际占的框（点）。
+	const place = (boxW, boxH) => {
+		const a = anchorOf(el)
+		if (a === ANCHOR_TOP_LEFT) return `^FO${toDots(el.x)},${toDots(el.y)}`
+		// 旋转 90/270 后元素在标签上占的宽高互换
+		const quarter = rot === 'R' || rot === 'B'
+		const w = quarter ? boxH : boxW
+		const h = quarter ? boxW : boxH
+		// ^FO 参数超范围时 ZPL 会整条忽略，元素会跑到上一个原点去，钳到 0 比忽略安全
+		const x = Math.max(0, Math.round(toDots(el.x) - w * a.fx))
+		const y = Math.max(0, Math.round(toDots(el.y) - h * a.fy))
+		return `^FO${x},${y}`
+	}
 
 	if (el.type === 'text') {
 		const text = fillVars(el.text, data)
 		if (!text) return ''
 		const h = num(el.fontH, 30)
 		const w = num(el.fontW, h)
+		const cjk = hasCjk(text)
 		// 中文必须走 ^A@ 指定 CJK 字体文件，内置 ^A0 字体没有汉字
-		const font = hasCjk(text)
+		const font = cjk
 			? `^A@${rot},${h},${w},${tpl.cjkFont || 'E:GB18030.FNT'}`
 			: `^A0${rot},${h},${w}`
+		const frameW = num(el.width, 0)
 		// ^FB 要知道行宽才能居中/右对齐，没有 width 就只能左对齐
-		const block = (el.align === 'center' || el.align === 'right') && num(el.width, 0) > 0
+		const block = (el.align === 'center' || el.align === 'right') && frameW > 0
 			? `^FB${toDots(el.width)},1,0,${el.align === 'center' ? 'C' : 'R'}`
 			: ''
-		return `^FO${x},${y}${font}${block}^FH^FD${escapeText(text)}^FS`
+		// 有框宽时基点换算和 ^FB 用的是同一个数，两者不会互相打架，结果精确；
+		// 没有框宽只能按字宽估，误差落在文本自身宽度上
+		const boxW = frameW > 0 ? toDots(el.width) : textInkDots(text, w, cjk)
+		const boxH = num(el.height, 0) > 0 ? toDots(el.height) : h
+		return `${place(boxW, boxH)}${font}${block}^FH^FD${escapeText(text)}^FS`
 	}
 
 	if (el.type === 'qrcode') {
 		const value = sanitizeCode(fillVars(el.data, data))
 		if (!value) return ''
 		const ecc = QR_ECC.indexOf(el.ecc) === -1 ? 'M' : el.ecc
-		return `^FO${x},${y}^BQ${rot},2,${num(el.magnification, 5)}^FD${ecc}A,${value}^FS`
+		const mag = num(el.magnification, 5)
+		const modules = qrModules(value, ecc)
+		// QR 是正方形，宽高同一个数
+		const box = modules > 0
+			? modules * mag
+			: (num(el.width, 0) > 0 ? toDots(el.width) : QR_VERSION1_MODULES * mag)
+		return `${place(box, box)}^BQ${rot},2,${mag}^FD${ecc}A,${value}^FS`
 	}
 
 	if (el.type === 'barcode') {
@@ -137,18 +271,23 @@ function renderElement(el, data, tpl, toDots) {
 		const mw = num(el.moduleWidth, 2)
 		const show = el.showText === false ? 'N' : 'Y'
 		const above = el.textAbove ? 'Y' : 'N'
+		// 宽度一律按当次数据算，不用设计框宽 —— 设计框是照某个样例 SN 定的，换个长度就不对了
+		const boxW = barcodeModules(value, el.codeType) * mw
+		const boxH = num(el.height, 0) > 0 ? toDots(el.height) : h + (show === 'Y' ? HRI_LINE_DOTS : 0)
+		const fo = place(boxW, boxH)
 		const by = `^BY${mw},3,${h}`
-		if (el.codeType === 'code39') return `^FO${x},${y}${by}^B3${rot},N,${h},${show},${above}^FD${value}^FS`
-		if (el.codeType === 'ean13') return `^FO${x},${y}${by}^BE${rot},${h},${show},${above}^FD${value}^FS`
-		return `^FO${x},${y}${by}^BC${rot},${h},${show},${above},N^FD${value}^FS`
+		if (el.codeType === 'code39') return `${fo}${by}^B3${rot},N,${h},${show},${above}^FD${value}^FS`
+		if (el.codeType === 'ean13') return `${fo}${by}^BE${rot},${h},${show},${above}^FD${value}^FS`
+		return `${fo}${by}^BC${rot},${h},${show},${above},N^FD${value}^FS`
 	}
 
 	if (el.type === 'line') {
-		return `^FO${x},${y}^GB${toDots(el.width)},0,${num(el.thickness, 2)},B,0^FS`
+		const thickness = num(el.thickness, 2)
+		return `${place(toDots(el.width), thickness)}^GB${toDots(el.width)},0,${thickness},B,0^FS`
 	}
 
 	if (el.type === 'box') {
-		return `^FO${x},${y}^GB${toDots(el.width)},${toDots(el.height)},${num(el.thickness, 2)},B,0^FS`
+		return `${place(toDots(el.width), toDots(el.height))}^GB${toDots(el.width)},${toDots(el.height)},${num(el.thickness, 2)},B,0^FS`
 	}
 
 	return ''

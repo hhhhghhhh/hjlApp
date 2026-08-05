@@ -1,5 +1,5 @@
 <template>
-	<snPrintList ref="listRef" :config="config" />
+	<snPrintList ref="listRef" :config="config" :initDocNo="initDocNo" />
 </template>
 
 <script>
@@ -8,12 +8,18 @@
 
 	export default {
 		components: { snPrintList },
+		onLoad(options) {
+			if (options.docNo) {
+				this.initDocNo = decodeURIComponent(options.docNo);
+			}
+		},
 		// 列表交给页面滚动，触底只有页面收得到，转发给组件
 		onReachBottom() {
 			this.$refs.listRef.loadMore()
 		},
 		data() {
 			return {
+				initDocNo: '',
 				config: {
 					snKey: 'productSn',
 					nameKey: 'itemName',

@@ -1,0 +1,630 @@
+╭─── Claude Code v2.1.145 ─────────────────────────────────────────────────────╮
+│                                         │ Tips for getting started           │
+│              Welcome back!              │ Run /init to create a CLAUDE.md f… │
+│                                         │ ────────────────────────────────── │
+│                 ▐▛███▜▌                 │ What's new                         │
+│                ▝▜█████▛▘                │ Added `claude agents --json` to l… │
+│                  ▘▘ ▝▝                  │ Added `agent_id` and `parent_agen… │
+│                                         │ Status line JSON input now includ… │
+│   deepseek-v4-pro · API Usage Billing   │ /release-notes for more            │
+│         ~\Desktop\github\hjlApp         │                                    │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+> 我要增加我单据操作功能的需求，页面是C:\Users\26281\Desktop\github\hjlApp\page 
+  s\wms\docOpt                                                                  
+  当指令代码是WMSKN005，这是回传ERP指令，要在成功后跳转到打印页面，并带入单据编 
+  号查询                                                                        
+  现在打印页面已经有相关单据的搜索选择                                          
+                                                                                
+  关键件打印-》生产领料DJ11                                                     
+  产品打印-》完工入库（生产入库）DJ05                                           
+
+  Read 4 files, listed 2 directories (ctrl+o to expand)
+
+● Let me check the snPrintList component to understand how to pass the docNo for
+   searching.
+
+  Read 1 file (ctrl+o to expand)
+
+● Let me also check the docSelectPopup component to understand the doc object
+  structure.
+
+  Read 1 file (ctrl+o to expand)
+
+● Let me also check the pages.json for the route paths.
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Now I have a clear picture of the codebase. Let me implement this.
+
+  Plan:
+  1. In docCommand.vue — after successful submit, if cmdCode === 'WMSKN005',
+  navigate to keySnPrint (DJ11) or productSnPrint (DJ05) with the docNo
+  2. In snPrintList.vue — add a setDoc(docData) method so the parent can
+  programmatically set the document filter
+  3. In keySnPrint.vue and productSnPrint.vue — accept docNo on load and pass it
+   to `snPrintList
+
+● Now I have a complete understanding. Let me implement the changes in 3 files:
+
+  1. snPrintList.vue — add a setDocByNo method for programmatic doc filtering
+  2. docCommand.vue — after WMSKN005 success, navigate to the right print page
+  3. keySnPrint.vue and productSnPrint.vue — accept docNo on load
+
+● Update(components\mes\print\snPrintList.vue)
+  ⎿  Error editing file
+
+  Read 1 file (ctrl+o to expand)
+
+● Bash(sed -n '415,419p' "C:\Users\26281\Desktop\github\hjlApp\components\mes\pr
+      int\snPrintList.vue" | cat -A)
+  ⎿  ^I^I^IclearDoc() {$
+     ^I^I^I^Ithis.doc = null$
+     ^I^I^I^Ithis.allMode = false$
+     … +2 lines (ctrl+o to expand)
+
+● Update(components\mes\print\snPrintList.vue)
+  ⎿  Added 6 lines
+      418          this.query()
+      419        },
+      420  
+      421 +      setDocByNo(docNo) {                                     
+      422 +        this.doc = { docNo }                                  
+      423 +        this.allMode = true                                   
+      424 +        this.query()                                          
+      425 +      },                                                      
+      426 +                                                              
+      427        query() {
+      428          this.list = []
+      429          this.selected = []
+
+● Now let me modify docCommand.vue to navigate to the print page after WMSKN005
+  success
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(pages\wms\docOpt\docCommand.vue)
+  ⎿  Error editing file
+● Bash(sed -n '1462,1478p'
+      "C:\Users\26281\Desktop\github\hjlApp\pages\wms\docOpt\docCommand.vue")
+  ⎿                                     if (result.data.code == '500') {
+                                                this.showMessage(message, 'error
+                                        } else {
+     … +14 lines (ctrl+o to expand)
+
+
+
+● Update(pages\wms\docOpt\docCommand.vue)
+  ⎿  Added 6 lines
+      1465              this.triggerHaptic();
+      1466              this.showMessage(message, 'success');
+      1467  
+      1468 +            // WMSKN005 = 回传ERP，成功后跳转打印页面        
+      1469 +            if (this.formData.cmdOpt === 'WMSKN005') {       
+      1470 +              this.navigateToPrint();                        
+      1471 +              return;                                        
+      1472 +            }                                                
+      1473 +                                                             
+      1474              this.resetParamState({
+      1475                keepFixed: true,
+      1476                keepDocInfo: true,
+
+● Now add the navigateToPrint method to docCommand.vue. Let me find a good place
+   for it.
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(pages\wms\docOpt\docCommand.vue)
+  ⎿  Error editing file
+
+● Bash(sed -n '1490,1495p'
+      "C:\Users\26281\Desktop\github\hjlApp\pages\wms\docOpt\docCommand.vue")
+  ⎿                             } finally {
+                                        this.isSubmitting = false;
+                                }
+     … +3 lines (ctrl+o to expand)
+
+● Update(pages\wms\docOpt\docCommand.vue)
+  ⎿  Added 14 lines
+      1492          }
+      1493        },
+      1494  
+      1495 +      navigateToPrint() {                                    
+      1496 +        const docType = this.docData.docType;                
+      1497 +        const docNo = this.docData.docNo;                    
+      1498 +        let url = '';                                        
+      1499 +        if (docType === 'DJ11') {                            
+      1500 +          url = `/pages/print/keySnPrint?docNo=${encodeURICom
+           +ponent(docNo)}`;                                             
+      1501 +        } else if (docType === 'DJ05') {                     
+      1502 +          url = `/pages/print/productSnPrint?docNo=${encodeUR
+           +IComponent(docNo)}`;                                         
+      1503 +        }                                                    
+      1504 +        if (url) {                                           
+      1505 +          uni.redirectTo({ url });                           
+      1506 +        }                                                    
+      1507 +      },                                                     
+      1508 +                                                             
+      1509        onInputConfirm() {
+      1510          if (!this.inputReady) {
+      1511            setTimeout(() => this.onInputConfirm(), 300);
+
+● Now update keySnPrint.vue and productSnPrint.vue to accept and pass the docNo
+  parameter.
+
+● Update(pages\print\keySnPrint.vue)
+  ⎿  Error editing file
+
+● Bash(sed -n '1,14p'
+      "C:\Users\26281\Desktop\github\hjlApp\pages\print\keySnPrint.vue")
+  ⎿  <template>
+        <snPrintList ref="listRef" :config="config" />
+     </template>
+     … +12 lines (ctrl+o to expand)
+
+● Update(pages\print\keySnPrint.vue)
+  ⎿  Added 10 lines
+       8  
+       9    export default {
+      10      components: { snPrintList },
+      11 +    onLoad(options) {                                          
+      12 +      if (options.docNo) {                                     
+      13 +        this.pendingDocNo = decodeURIComponent(options.docNo); 
+      14 +      }                                                        
+      15 +    },                                                         
+      16 +    onReady() {                                                
+      17 +      if (this.pendingDocNo) {                                 
+      18 +        this.$refs.listRef.setDocByNo(this.pendingDocNo);      
+      19 +      }                                                        
+      20 +    },                                                         
+      21      onReachBottom() {
+      22        this.$refs.listRef.loadMore()
+      23      },
+
+● Now add pendingDocNo to data in keySnPrint.vue
+
+● Update(pages\print\keySnPrint.vue)
+  ⎿  Added 1 line
+      23      },
+      24      data() {
+      25        return {
+      26 +        pendingDocNo: '',                                      
+      27          config: {
+      28            snKey: 'keySn',
+      29            nameKey: 'itemName',
+
+● Now do the same for productSnPrint.vue:
+
+● Update(pages\print\productSnPrint.vue)
+  ⎿  Added 10 lines
+       8  
+       9    export default {
+      10      components: { snPrintList },
+      11 +    onLoad(options) {                                          
+      12 +      if (options.docNo) {                                     
+      13 +        this.pendingDocNo = decodeURIComponent(options.docNo); 
+      14 +      }                                                        
+      15 +    },                                                         
+      16 +    onReady() {                                                
+      17 +      if (this.pendingDocNo) {                                 
+      18 +        this.$refs.listRef.setDocByNo(this.pendingDocNo);      
+      19 +      }                                                        
+      20 +    },                                                         
+      21      // 列表交给页面滚动，触底只有页面收得到，转发给组件
+      22      onReachBottom() {
+      23        this.$refs.listRef.loadMore()
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(pages\print\productSnPrint.vue)  ⎿  Error editing file
+
+● Bash(sed -n '25,28p'
+      "C:\Users\26281\Desktop\github\hjlApp\pages\print\productSnPrint.vue")
+  ⎿             data() {
+                        return {
+                                config: {
+                                        snKey: 'productSn',
+
+● Update(pages\print\productSnPrint.vue)
+  ⎿  Added 1 line
+      24      },
+      25      data() {
+      26        return {
+      27 +        pendingDocNo: '',                                      
+      28          config: {
+      29            snKey: 'productSn',
+      30            nameKey: 'itemName',
+
+● Let me verify all changes are correct
+
+  Read 4 files (ctrl+o to expand)
+
+● 所有改动已生效，让我标记任务完成。
+
+● 改动完成，涉及 4 个文件：
+
+  docCommand.vue — 执行成功后判断 cmdCode === 
+  'WMSKN005'（回传ERP），根据单据类型跳转：
+  - DJ11（生产领料） → keySnPrint（关键件打印）
+  - DJ05（完工入库/生产入库） → productSnPrint（产品打印）
+
+  跳转时带上 docNo 参数，使用 redirectTo（替换当前页，不回退到操作页）。
+
+  snPrintList.vue — 新增 setDocByNo(docNo)
+  方法，供父组件程序化设置单据筛选并自动查询列表。
+
+  keySnPrint.vue / productSnPrint.vue — 在 onLoad 接收 docNo，在 onReady 调用
+  setDocByNo 自动按单据号筛选。
+
+✻ Cooked for 6m 45s
+
+> 测试验证                                                                      
+
+● Skill(verify)
+  ⎿  Successfully loaded skill
+
+● Let me check what the diff looks like first, and see if there's a verifier
+  skill available.
+
+● Bash(git diff HEAD --stat)
+  ⎿  warning: in the working copy of 'manifest.json', LF will be replaced b
+     y CRLF the next time Git touches it
+     warning: in the working copy of 'pages/print/labelTemplate.vue', LF wi
+     … +12 lines (ctrl+o to expand)
+
+  Listed 1 directory (ctrl+o to expand)
+
+● Bash(ls .claude/skills/ 2>&1; if (-not $?) { Write-Output "no skills dir" })
+  ⎿  Error: Exit code 2
+     /usr/bin/bash: eval: line 1: syntax error near unexpected token `{'
+     /usr/bin/bash: eval: line 1: `ls .claude/skills/ 2>&1; if (-not $?) { 
+     Write-Output "no skills dir" }'
+
+● Bash(git diff HEAD -- components/mes/print/snPrintList.vue
+      pages/print/keySnPrint.vue pages/print/productSnPrint.vue
+      pages/wms/docOpt/docCommand.vue)
+  ⎿  Cancelled: parallel tool call Bash(ls .claude/skills/ 2>&1; if (-not $?) { 
+     …) errored
+
+  Listed 1 directory (ctrl+o to expand)
+
+● Bash(git diff HEAD -- components/mes/print/snPrintList.vue
+      pages/print/keySnPrint.vue pages/print/productSnPrint.vue
+      pages/wms/docOpt/docCommand.vue)
+  ⎿  warning: in the working copy of 'pages/print/productSnPrint.vue', LF w
+     ill be replaced by CRLF the next time Git touches it
+     diff --git a/components/mes/print/snPrintList.vue b/components/mes/pri
+     … +117 lines (ctrl+o to expand)
+
+● Bash(node -v 2>&1; npm -v 2>&1)
+  ⎿  v22.22.0
+     10.9.4
+
+● Bash(Test-Path "C:\Users\26281\Desktop\github\hjlApp\package.json")
+  ⎿  Error: Exit code 127
+     /usr/bin/bash: line 1: Test-Path: command not found
+  Read 1 file (ctrl+o to expand)
+
+● This is a uni-app/HBuilderX project — there's no CLI dev server or build tool
+  I can run from the terminal. The app compiles via HBuilderX IDE and runs on a
+  mobile device. But I can still do a thorough code review.
+
+  Let me verify the logic flow and check for edge cases.
+
+  Read 1 file (ctrl+o to expand)
+
+● Let me verify the API functions to make sure the parameter keys match
+
+  Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+● I found a race condition in the current implementation — snPrintList.created()
+   calls query() before onReady fires setDocByNo, so the first query runs
+  without the doc filter. Let me fix this with a cleaner approach using a prop.
+
+  Read 1 file (ctrl+o to expand)
+
+● I found a race condition — snPrintList.created() calls query() before onReady
+  fires setDocByNo, so the first query runs without the doc filter. Let me fix
+  this properly with a prop
+
+● Update(components\mes\print\snPrintList.vue)
+  ⎿  Error editing file
+
+● Bash(sed -n '193,198p' "C:\Users\26281\Desktop\github\hjlApp\components\mes\pr
+      int\snPrintList.vue")
+  ⎿             props: {
+                        config: {
+                                type: Object,
+     … +3 lines (ctrl+o to expand)
+
+● Update(components\mes\print\snPrintList.vue)
+  ⎿  Added 4 lines
+      194        config: {
+      195          type: Object,
+      196          required: true
+      197 +      },                                                      
+      198 +      initDocNo: {                                            
+      199 +        type: String,                                         
+      200 +        default: ''                                           
+      201        }
+      202      },
+      203      data() {
+
+● Now update the created hook to use initDocNo
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(components\mes\print\snPrintList.vue)
+  ⎿  Error editing file
+
+● Bash(sed -n '308,313p' "C:\Users\26281\Desktop\github\hjlApp\components\mes\pr
+      int\snPrintList.vue")
+  ⎿             created() {
+                        this.templates = loadTemplates()
+                        this.restoreTemplate()
+     … +3 lines (ctrl+o to expand)
+
+● Update(components\mes\print\snPrintList.vue)
+  ⎿  Added 4 lines
+      309        this.templates = loadTemplates()
+      310        this.restoreTemplate()
+      311        this.loadDicts()
+      312 +      if (this.initDocNo) {                                   
+      313 +        this.doc = { docNo: this.initDocNo }                  
+      314 +        this.allMode = true                                   
+      315 +      }                                                       
+      316        this.query()
+      317      },
+      318      methods: {
+
+● Now update keySnPrint.vue and productSnPrint.vue to use the initDocNo prop
+  instead of the onReady/setDocByNo pattern, which avoids the race condition.
+
+● Update(pages\print\keySnPrint.vue)
+  ⎿  Error editing file
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(pages\print\keySnPrint.vue)
+  ⎿  Added 1 line, removed 1 line
+      1  <template>
+      2 -  <snPrintList ref="listRef" :config="config" />                
+      2 +  <snPrintList ref="listRef" :config="config" :initDocNo="initDo
+        +cNo" />                                                         
+      3  </template>
+      4  
+      5  <script>
+
+● Update(pages\print\keySnPrint.vue)  ⎿  Error editing file
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(pages\print\keySnPrint.vue)
+  ⎿  Added 1 line, removed 6 lines
+      10      components: { snPrintList },
+      11      onLoad(options) {
+      12        if (options.docNo) {
+      13 -        this.pendingDocNo = decodeURIComponent(options.docNo); 
+      13 +        this.initDocNo = decodeURIComponent(options.docNo);    
+      14        }
+      15      },
+      16 -    onReady() {                                                
+      17 -      if (this.pendingDocNo) {                                 
+      18 -        this.$refs.listRef.setDocByNo(this.pendingDocNo);      
+      19 -      }                                                        
+      20 -    },                                                         
+      16      onReachBottom() {
+      17        this.$refs.listRef.loadMore()
+      18      },
+
+● Update(pages\print\keySnPrint.vue)
+  ⎿  Added 1 line, removed 1 line
+      18      },
+      19      data() {
+      20        return {
+      21 -        pendingDocNo: '',                                      
+      21 +        initDocNo: '',                                         
+      22          config: {
+      23            snKey: 'keySn',
+      24            nameKey: 'itemName',
+
+● Now do the same for productSnPrint.vue
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(pages\print\productSnPrint.vue)
+  ⎿  Added 1 line, removed 1 line
+      1  <template>
+      2 -  <snPrintList ref="listRef" :config="config" />                
+      2 +  <snPrintList ref="listRef" :config="config" :initDocNo="initDo
+        +cNo" />                                                         
+      3  </template>
+      4  
+      5  <script>
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(pages\print\productSnPrint.vue)
+  ⎿  Added 1 line, removed 6 lines
+      10      components: { snPrintList },
+      11      onLoad(options) {
+      12        if (options.docNo) {
+      13 -        this.pendingDocNo = decodeURIComponent(options.docNo); 
+      13 +        this.initDocNo = decodeURIComponent(options.docNo);    
+      14        }
+      15      },
+      16 -    onReady() {                                                
+      17 -      if (this.pendingDocNo) {                                 
+      18 -        this.$refs.listRef.setDocByNo(this.pendingDocNo);      
+      19 -      }                                                        
+      20 -    },                                                         
+      16      // 列表交给页面滚动，触底只有页面收得到，转发给组件
+      17      onReachBottom() {
+      18        this.$refs.listRef.loadMore()
+
+● Update(pages\print\productSnPrint.vue)
+  ⎿  Added 1 line, removed 1 line
+      19      },
+      20      data() {
+      21        return {
+      22 -        pendingDocNo: '',                                      
+      22 +        initDocNo: '',                                         
+      23          config: {
+      24            snKey: 'productSn',
+      25            nameKey: 'itemName',
+
+● Now let me clean up — remove the now-unused setDocByNo method since we're
+  using the prop approach
+
+● Update(components\mes\print\snPrintList.vue)
+  ⎿  Removed 6 lines
+      426          this.query()
+      427        },
+      428  
+      429 -      setDocByNo(docNo) {                                     
+      430 -        this.doc = { docNo }                                  
+      431 -        this.allMode = true                                   
+      432 -        this.query()                                          
+      433 -      },                                                      
+      434 -                                                              
+      429        query() {
+      430          this.list = []
+      431          this.selected = []
+
+● Let me verify the final state of all changed files
+
+  Read 4 files (ctrl+o to expand)
+
+● This is a uni-app/HBuilderX project — there's no CLI build toolchain, no dev
+  server, and the app runs on a mobile device via HBuilderX. I can't drive the
+  runtime from this terminal. But I did a thorough code-level review and found
+  and fixed a race condition in the process.
+
+  ---
+  Verification: WMSKN005 → print page navigation with docNo
+
+  Verdict: BLOCKED — no runtime surface reachable
+
+  Reason: This is a uni-app project that compiles via HBuilderX IDE and runs on
+  a mobile device. No CLI dev server, no emulator, no web build target available
+   from this terminal.
+
+  Claim: After executing WMSKN005 (回传ERP), if docType is DJ11 navigate to
+  keySnPrint (关键件打印), if DJ05 navigate to productSnPrint (产品打印),
+  passing the docNo to auto-filter the print list.
+
+  Code Review
+
+  4 files changed:
+
+  ┌────────────────────────────┬─────────────────────────────────────────────┐
+  │            File            │                   Change                    │
+  ├────────────────────────────┼─────────────────────────────────────────────┤
+  │                            │ After WMSKN005 success, calls               │
+  │ docCommand.vue:1468-1507   │ navigateToPrint() — DJ11 → keySnPrint, DJ05 │
+  │                            │  → productSnPrint, with redirectTo          │
+  ├────────────────────────────┼─────────────────────────────────────────────┤
+  │ snPrintList.vue:198-201    │ New initDocNo prop, consumed in created()   │
+  │                            │ before first query() — no race              │
+  ├────────────────────────────┼─────────────────────────────────────────────┤
+  │ keySnPrint.vue:2,11-14     │ Reads docNo from onLoad, passes as          │
+  │                            │ :initDocNo prop                             │
+  ├────────────────────────────┼─────────────────────────────────────────────┤
+  │ productSnPrint.vue:2,11-14 │ Same as above                               │
+  └────────────────────────────┴─────────────────────────────────────────────┘
+
+  Flow verified:
+  1. docCommand.submitData() → executeCmd → code=200 → navigateToPrint()
+  2. navigateToPrint() sets docNo on query string, uses redirectTo
+  3. Print page onLoad → initDocNo data → passed as prop to snPrintList
+  4. snPrintList.created() → this.doc = { docNo } and allMode = true → query()
+  5. loadMore() → params[config.docFilter.paramKey] = this.doc.docNo → API call
+
+  Bug fixed during review: The original onReady/setDocByNo approach had a race
+  condition — snPrintList.created() calls query() before onReady fires, so the
+  first query would run without the doc filter. Fixed by using a prop consumed
+  in created() instead.
+
+  Findings
+
+  - WMSKN005 without DJ11/DJ05: navigateToPrint() is silent — url stays empty,
+  no navigation happens. Consider adding a showMessage('未匹配到打印页面', 
+  'warning') fallback for unexpected docTypes.
+  - redirectTo vs navigateTo: Using redirectTo replaces the docCommand page, so
+  the user can't go back to continue scanning. This is likely intentional for a
+  "done" flow, but worth double-checking.
+  - No confirmation dialog: The user isn't asked — after WMSKN005 success, it
+  immediately jumps to the print page. If they had more scanning to do, they'd
+  need to navigate back through the menu.
+
+✻ Crunched for 6m 58s
+
+> 只有DJ11/DJ05要跳转，其他维持原样                                             
+
+● You're right, the current code has a bug — when docType is not DJ11/DJ05, the
+  return still skips resetParamState and focusScanInput. Let me fix that
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(pages\wms\docOpt\docCommand.vue)
+  ⎿  Error editing file
+● Bash(sed -n '1468,1472p'
+      "C:\Users\26281\Desktop\github\hjlApp\pages\wms\docOpt\docCommand.vue")
+  ⎿                                             // WMSKN005 = 回传ERP，成功后跳转打印页面
+                                                if (this.formData.cmdOpt === 'WMSKN005') {
+                                                        this.navigateToPrint();
+     … +2 lines (ctrl+o to expand)
+
+
+
+
+● Update(pages\wms\docOpt\docCommand.vue)
+  ⎿  Error editing file
+
+● Bash(sed -n '1468,1472p'
+      "C:\Users\26281\Desktop\github\hjlApp\pages\wms\docOpt\docCommand.vue" |
+      cat -A)
+  ⎿  ^I^I^I^I^I^I// WMSKN005 = M-eM-^[M-^^M-dM-<M- ERPM-oM-<M-^LM-fM-^HM-^P
+     M-eM-^JM-^_M-eM-^PM-^NM-hM-7M-3M-hM-=M-,M-fM-^IM-^SM-eM-^MM-0M-iM-!M-5
+     M-iM-^]M-"$
+     … +4 lines (ctrl+o to expand)
+
+● Update(pages\wms\docOpt\docCommand.vue)
+  ⎿  Added 2 lines, removed 2 lines
+      1467  
+      1468              // WMSKN005 = 回传ERP，成功后跳转打印页面
+      1469              if (this.formData.cmdOpt === 'WMSKN005') {
+      1470 -              this.navigateToPrint();                        
+      1471 -              return;                                        
+      1470 +              const jumped = this.navigateToPrint();         
+      1471 +              if (jumped) return;                            
+      1472              }
+      1473  
+      1474              this.resetParamState({
+
+● Now update navigateToPrint to return true/`false
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(pages\wms\docOpt\docCommand.vue)
+  ⎿  Added 2 lines
+      1503          }
+      1504          if (url) {
+      1505            uni.redirectTo({ url });
+      1506 +          return true;                                       
+      1507          }
+      1508 +        return false;                                        
+      1509        },
+      1510  
+      1511        onInputConfirm() {
+
+● 已修复。现在逻辑是：
+
+  - DJ11 → 跳转 keySnPrint（关键件打印），return true，跳过后续重置
+  - DJ05 → 跳转 productSnPrint（产品打印），return true，跳过后续重置
+  - 其他单据类型 → navigateToPrint() 返回 false，不走 return，继续执行原来的
+  resetParamState + focusScanInput，行为不变
+
+✻ Churned for 1m 26s
+
+※ recap: 改动已完成：WMSKN005 成功后，DJ11 跳关键件打印、DJ05 跳产品打印，非这两种单据保持原样继续扫描。下一步是在 HBuilderX 中真机运行验证。 (disable recaps in /config)

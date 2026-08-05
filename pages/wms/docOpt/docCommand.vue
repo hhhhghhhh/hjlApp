@@ -1465,6 +1465,12 @@
 						this.triggerHaptic();
 						this.showMessage(message, 'success');
 
+						// WMSKN005 = 回传ERP，成功后跳转打印页面
+						if (this.formData.cmdOpt === 'WMSKN005') {
+							const jumped = this.navigateToPrint();
+							if (jumped) return;
+						}
+
 						this.resetParamState({
 							keepFixed: true,
 							keepDocInfo: true,
@@ -1484,6 +1490,22 @@
 				} finally {
 					this.isSubmitting = false;
 				}
+			},
+
+			navigateToPrint() {
+				const docType = this.docData.docType;
+				const docNo = this.docData.docNo;
+				let url = '';
+				if (docType === 'DJ11') {
+					url = `/pages/print/keySnPrint?docNo=${encodeURIComponent(docNo)}`;
+				} else if (docType === 'DJ05') {
+					url = `/pages/print/productSnPrint?docNo=${encodeURIComponent(docNo)}`;
+				}
+				if (url) {
+					uni.redirectTo({ url });
+					return true;
+				}
+				return false;
 			},
 
 			onInputConfirm() {
