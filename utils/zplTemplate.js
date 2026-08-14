@@ -3,10 +3,23 @@
 // 字号(fontH/fontW)与二维码放大倍数沿用 ZPL 原生单位。
 
 import printer from './zebraPrinter.js'
+import { renderTextToGfa, isBitmapSupported } from './cjkBitmap.js'
 
 const TEMPLATE_KEY = 'zebra_templates'
+const BITMAP_QUALITY_KEY = 'zebra_bitmap_quality'
 
 const DOTS_PER_MM = { 203: 8, 300: 11.811, 600: 23.622 }
+
+// 位图清晰度模式：
+//   'speed'  = 性能优先（默认），ss=1 全关超采样
+//   'clear'  = 清晰优先，ss=2 全局超采样，小字号更清晰但慢 4 倍
+export function getBitmapQuality() {
+	const v = uni.getStorageSync(BITMAP_QUALITY_KEY)
+	return v === 'clear' ? 'clear' : 'speed'
+}
+export function setBitmapQuality(mode) {
+	uni.setStorageSync(BITMAP_QUALITY_KEY, mode === 'clear' ? 'clear' : 'speed')
+}
 
 // ASCII/拉丁字符码位都低于 0x2E80，超过即认为需要 CJK 字体
 function hasCjk(text) {
@@ -235,14 +248,61 @@ function renderElement(el, data, tpl, toDots) {
 		const h = num(el.fontH, 30)
 		const w = num(el.fontW, h)
 		const cjk = hasCjk(text)
-		// 中文必须走 ^A@ 指定 CJK 字体文件，内置 ^A0 字体没有汉字
+		const frameW = num(el.width, 0)
+
+		// CJK 文本渲染策略（按优先级）：
+		// 1. 有 TTF 中文字体（HANS.TTF 等）→ ^A@ 原生渲染，速度快、清晰
+		// 2. 无 TTF 但有位图渲染能力 且 打印机无 CJK 字体 → ^GFA 位图渲染
+		// 3. 降级：^A@ E:GB18030.FNT（仅在有内置 CJK 字体的打印机上有效）
+		if (cjk && printer.hasTtfFont()) {
+			// TTF 字体路径：原生渲染，支持 ^FB 自动换行
+			const fontPath = printer.getCjkFontPath()
+			const font = `^A@${rot},${h},${w},${fontPath}`
+			const block = frameW > 0
+				? `^FB${toDots(el.width)},99,0,${el.align === 'center' ? 'C' : el.align === 'right' ? 'R' : 'L'}`
+				: ''
+			const boxW = frameW > 0 ? toDots(el.width) : textInkDots(text, w, cjk)
+			const boxH = num(el.height, 0) > 0 ? toDots(el.height) : h
+			return `${place(boxW, boxH)}${font}${block}^FH^FD${escapeText(text)}^FS`
+		}
+
+		if (cjk && isBitmapSupported() && !printer.hasCjkFont()) {
+			const maxW = frameW > 0
+				? toDots(el.width)
+				: toDots((tpl.page || {}).widthMm || 60)
+			// 超采样策略：默认性能优先（ss=1）
+			//   speed 模式：ss=1 全关超采样
+			//   clear 模式：ss=2，小字号更清晰但慢 4 倍
+			//   元素级 el.superSample 优先级最高，可覆盖全局
+			const globalQuality = getBitmapQuality()
+			const ss = el.superSample != null
+				? el.superSample
+				: (globalQuality === 'clear' ? 2 : 1)
+			const rendered = renderTextToGfa(text, {
+				fontHeightDots: h,
+				maxWidthDots: maxW,
+				align: el.align || 'left',
+				bold: el.bold !== undefined ? el.bold : true,
+				lineHeightRatio: 1.25,
+				superSample: ss
+			})
+			if (rendered.gfa) {
+				// place 用位图实际宽高做 anchor 还原，行为跟字体方案一致
+				const fo = place(rendered.widthDots, rendered.heightDots)
+				return `${fo}${rendered.gfa}`
+			}
+			// 位图渲染失败（如尺寸为 0）则降级到 ZPL 字体路径
+		}
+
+		// ASCII 文本 或 CJK 降级：走 ZPL 原生字体路径
+		// 内置 ^A0 字体没有汉字，cjk 但无位图支持（H5 预览）时会印空白
 		const font = cjk
 			? `^A@${rot},${h},${w},${tpl.cjkFont || 'E:GB18030.FNT'}`
 			: `^A0${rot},${h},${w}`
-		const frameW = num(el.width, 0)
-		// ^FB 要知道行宽才能居中/右对齐，没有 width 就只能左对齐
-		const block = (el.align === 'center' || el.align === 'right') && frameW > 0
-			? `^FB${toDots(el.width)},1,0,${el.align === 'center' ? 'C' : 'R'}`
+		// ^FB 支持自动换行：有框宽时让 ZPL 按行宽断行，最多 99 行
+		// 第二参数原为 1（单行），改为 99 允许多行；左对齐也加 ^FB 以触发换行
+		const block = frameW > 0
+			? `^FB${toDots(el.width)},99,0,${el.align === 'center' ? 'C' : el.align === 'right' ? 'R' : 'L'}`
 			: ''
 		// 有框宽时基点换算和 ^FB 用的是同一个数，两者不会互相打架，结果精确；
 		// 没有框宽只能按字宽估，误差落在文本自身宽度上
@@ -341,6 +401,28 @@ export function buildApplyMediaCommand(tpl) {
 
 // 把一段纯文本包成可打印的标签，用于自定义输入框里直接敲文字的场景
 export function buildTextLabel(text, cjkFont) {
+	// CJK 渲染策略：TTF 字体 > 位图渲染 > ^A@ GB18030.FNT
+	if (hasCjk(text) && printer.hasTtfFont()) {
+		// 有下载的 TTF 字体，原生渲染最快最清晰
+		const fontPath = printer.getCjkFontPath()
+		const body = `^A@N,40,40,${fontPath}`
+		return ['^XA', '^CI28', `^FO30,30${body}^FH^FD${escapeText(text)}^FS`, '^XZ'].join('\n')
+	}
+	// 无 TTF 字体，走位图渲染（便携机无中文字体时）
+	if (hasCjk(text) && isBitmapSupported() && !printer.hasCjkFont()) {
+		const ss = getBitmapQuality() === 'clear' ? 2 : 1
+		const rendered = renderTextToGfa(text, {
+			fontHeightDots: 40,
+			maxWidthDots: 500,
+			align: 'left',
+			bold: true,
+			lineHeightRatio: 1.25,
+			superSample: ss
+		})
+		if (rendered.gfa) {
+			return ['^XA', `^FO30,30${rendered.gfa}`, '^XZ'].join('\n')
+		}
+	}
 	const body = hasCjk(text)
 		? `^A@N,40,40,${cjkFont || 'E:GB18030.FNT'}`
 		: '^A0N,40,40'

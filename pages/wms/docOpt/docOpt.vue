@@ -73,7 +73,7 @@
 							<view class="dc-row" v-if="item.whId_dictText"><text class="dc-l">仓库</text><text class="dc-v">{{ item.whId_dictText }}</text></view>
 							<view class="dc-row" v-if="item.areaSn"><text class="dc-l">车间</text><text class="dc-v">{{ item.areaSn }}</text></view>
 							<view class="dc-row"><text class="dc-l">开单时间</text><text class="dc-v dc-time">{{ formatTime(item.createTime) }}</text></view>
-							<view class="dc-row" v-if="item.creator"><text class="dc-l">创建人</text><text class="dc-v">{{ item.creator }}</text></view>
+							<view class="dc-row" v-if="item.createBy"><text class="dc-l">创建人</text><text class="dc-v">{{ item.createBy }}</text></view>
 						</view>
 					</view>
 				</view>

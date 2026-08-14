@@ -183,6 +183,8 @@ async function connect(address, name) {
 			inStream = inv(sock, 'getInputStream')
 			current = { address: addr, name: name || inv(device, 'getName') || '' }
 			current.verified = await verifyLink()
+			// 连接成功后异步检测中文字体，不阻塞连接流程
+			checkCjkFont().catch(() => {})
 			return current
 		} catch (e) {
 			closeQuietly(sock)
@@ -351,11 +353,16 @@ function buildZplTestLabel() {
 
 function buildCpclTestLabel() {
 	return [
-		'! 0 200 200 300 1',
-		'PAGE-WIDTH 576',
+		'! 0 203 203 300 1',
+		'ENCODING GB18030',
 		'TEXT 4 0 30 30 CPCL Test OK',
-		'BARCODE 128 1 1 80 30 110 123456789',
-		'TEXT 7 0 30 230 ' + new Date().toLocaleString(),
+		'TEXT 4 0 30 60 中文测试',
+		'TEXT 4 0 30 90 直流模块',
+		'BARCODE 128 30 130 2 6 60 2 0 1234567890',
+		'BARCODE QR 30 210 M 2 U 6',
+		'MA,https://zebra.com',
+		'ENDQR',
+		'TEXT 7 0 30 280 ' + new Date().toLocaleString(),
 		'FORM',
 		'PRINT'
 	].join('\r\n')
@@ -369,9 +376,151 @@ function printCpclTest() {
 	sendCpcl(buildCpclTestLabel())
 }
 
+// 查询打印机当前编程语言（ZPL / line_print(CPCL) / epl 等）
+// 斑马便携机是双模式，ZPL 和 CPCL 互斥，切换要重启
+async function queryLanguage() {
+	ensureConnected()
+	readAvailable() // 清残留
+	// SGD 查询指令，回复格式: "zpl" 或 "line_print" 等（带引号和换行）
+	sendRaw('! U1 getvar "device.languages"', 'UTF-8')
+	const raw = await readResponse(1500)
+	return raw.replace(/["\r\n\s]/g, '').trim()
+}
+
+// 切换打印机编程语言。切换后打印机会自动重启，蓝牙连接会断开，需重新连接。
+// lang: 'zpl' 或 'line_print'（CPCL 模式）
+async function setLanguage(lang) {
+	ensureConnected()
+	if (lang !== 'zpl' && lang !== 'line_print') {
+		throw new Error('不支持的语言: ' + lang + '，仅支持 zpl / line_print')
+	}
+	const pnp = lang === 'line_print' ? 'cpcl' : 'zpl'
+	const cmds = [
+		'! U1 setvar "device.languages" "' + lang + '"',
+		'! U1 setvar "device.pnp_option" "' + pnp + '"',
+		'! U1 do "device.reset" ""'
+	]
+	// 发送后打印机会重启，连接会断，不用读回复
+	sendRaw(cmds.join('\r\n'), 'UTF-8')
+}
+
 // 默认打印机，供其他页面直接调用
 function savePrinter(printer) {
 	uni.setStorageSync(STORAGE_KEY, printer)
+}
+
+// 中文字体检测结果缓存：null=未检测, true=有, false=无
+// zplTemplate.js 读这个判断中文走 ^A@ 还是位图
+let _hasCjkFont = null
+// TTF 中文字体检测结果
+let _hasTtfFont = null
+// 检测到的 TTF 字体文件名（不含扩展名）
+// Zebra 打印机自带 HANS.TTF（简体中文）、HANT.TTF（繁体）；也可能是用户上传的 NOTOMRJ.TTF
+let _ttfFontName = ''
+// 已知中文字体名列表（优先级从高到低）
+const CJK_TTF_NAMES = ['HANS', 'HANT', 'NOTOMRJ']
+
+// 异步检测打印机是否有中文字体（连接后自动调用）
+// 同时检测 .FNT 位图字体和 .TTF TrueType 字体
+async function checkCjkFont() {
+	try {
+		const fonts = await listPrinterFonts()
+		const all = fonts.join('\n')
+		_hasCjkFont = /GB18030|SIMSUN|SIMGU|SIMKAI|FANGSONG|SIMLI/i.test(all)
+		console.log('[zebraPrinter] CJK font check:', _hasCjkFont, 'fonts:', fonts.length)
+	} catch (e) {
+		_hasCjkFont = null
+		console.warn('[zebraPrinter] CJK font check failed:', e.message)
+	}
+	// 同时检测 TTF 字体
+	await checkTtfFont()
+	return _hasCjkFont
+}
+
+// 检测 TTF 中文字体是否存在
+// Zebra 打印机自带 HANS.TTF（简体中文），也可能有用户上传的 NOTOMRJ.TTF
+async function checkTtfFont() {
+	try {
+		const fonts = await listTtfFonts()
+		const all = fonts.join('\n')
+		console.log('[zebraPrinter] TTF list raw:', JSON.stringify(fonts))
+
+		// 优先级匹配：HANS > HANT > NOTOMRJ
+		_ttfFontName = ''
+		for (const name of CJK_TTF_NAMES) {
+			if (new RegExp(name, 'i').test(all)) {
+				_ttfFontName = name
+				break
+			}
+		}
+		_hasTtfFont = _ttfFontName !== ''
+		console.log('[zebraPrinter] TTF font check:', _hasTtfFont, 'matched:', _ttfFontName, 'files:', fonts.length)
+	} catch (e) {
+		_hasTtfFont = null
+		_ttfFontName = ''
+		console.warn('[zebraPrinter] TTF font check failed:', e.message)
+	}
+	return _hasTtfFont
+}
+
+// 列出 E: 盘上的 TTF 字体文件
+async function listTtfFonts() {
+	ensureConnected()
+	readAvailable()
+	sendZpl('^XA^HWE:*.TTF^XZ')
+	const raw = await readResponse(3000)
+	if (!raw) throw new Error('打印机无响应')
+	return raw
+		.replace(/[\x00-\x09\x0b\x0c\x0e-\x1f]/g, '')
+		.split(/[\r\n]+/)
+		.map((l) => l.trim())
+		.filter((l) => l.length > 0)
+}
+
+// ~HD 列出打印机上所有文件（全盘），用于 ^HW 通配符查不到时的兜底
+async function listAllFiles() {
+	ensureConnected()
+	readAvailable()
+	sendZpl('~HD\r\n')
+	const raw = await readResponse(5000)
+	if (!raw) throw new Error('打印机无响应（~HD）')
+	return raw
+		.replace(/[\x00-\x09\x0b\x0c\x0e-\x1f]/g, '')
+		.split(/[\r\n]+/)
+		.map((l) => l.trim())
+		.filter((l) => l.length > 0)
+}
+
+// 同步读取缓存：true=有中文字体，false/null=无或未检测（走位图）
+function hasCjkFont() {
+	return _hasCjkFont === true
+}
+
+// 同步读取缓存：true=有 TTF 中文字体
+// 优先检查手动强制开关，其次看自动检测结果
+function hasTtfFont() {
+	if (uni.getStorageSync('force_ttf_font')) return true
+	return _hasTtfFont === true
+}
+
+// 手动设置/取消强制 TTF 字体
+function setForceTtf(on) {
+	uni.setStorageSync('force_ttf_font', on)
+	_hasTtfFont = on === true
+}
+function getForceTtf() {
+	return uni.getStorageSync('force_ttf_font') === true
+}
+
+// 获取最佳 CJK 字体路径
+// 优先使用自动检测到的 TTF 字体名，其次回退 HANS（最常见），最后 GB18030.FNT
+function getCjkFontPath() {
+	if (hasTtfFont()) {
+		// 自动检测到的字体名优先，否则用 HANS（Zebra 自带简体中文字体）
+		const name = _ttfFontName || 'HANS'
+		return 'E:' + name + '.TTF'
+	}
+	return 'E:GB18030.FNT'
 }
 
 function loadPrinter() {
@@ -410,10 +559,20 @@ export default {
 	clearBuffer,
 	calibrate,
 	listPrinterFonts,
+	hasCjkFont,
+	checkCjkFont,
+	hasTtfFont,
+	checkTtfFont,
+	setForceTtf,
+	getForceTtf,
+	getCjkFontPath,
+	listTtfFonts,
 	buildZplTestLabel,
 	buildCpclTestLabel,
 	printZplTest,
 	printCpclTest,
+	queryLanguage,
+	setLanguage,
 	savePrinter,
 	loadPrinter,
 	clearPrinter,

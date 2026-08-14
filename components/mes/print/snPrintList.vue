@@ -1,6 +1,6 @@
 <template>
 	<view class="page">
-		<!-- 筛选 + 工具条吸顶，列表用页面级滚动，底栏 fixed 贴底（同 docOpt.vue） -->
+		<!-- 筛选 + 工具条吸顶，列表用页面级滚动，底栏 fixed 贴底 -->
 		<view class="top-bar">
 			<!-- ===== 筛选区，查询后自动折起，给列表留屏幕 ===== -->
 			<view class="filter-card">
@@ -51,7 +51,7 @@
 			</view>
 		</view>
 
-		<!-- ===== 列表，滚动交给页面，触底由所在页面的 onReachBottom 转发 ===== -->
+		<!-- ===== 列表 ===== -->
 		<view class="list">
 			<view v-for="item in list" :key="rowKey(item)" class="item" :class="{ on: isSel(item) }"
 				@click="toggle(item)">
@@ -68,7 +68,6 @@
 					</view>
 					<view class="line2">
 						<text class="name">{{ item[config.nameKey] || '' }}</text>
-						<!-- 展开要和选中分开，不然点详情会顺手勾上一条 -->
 						<text class="more" @click.stop="toggleExpand(item)">{{ isExp(item) ? '收起 ▴' : '详情 ▾' }}</text>
 					</view>
 					<view class="detail" v-if="isExp(item)">
@@ -87,7 +86,6 @@
 			<view v-if="loading" class="tip">加载中...</view>
 			<view v-if="!loading && list.length === 0" class="tip">没有数据，换个条件试试</view>
 			<view v-if="!loading && !hasMore && list.length > 0" class="tip">没有更多了</view>
-			<!-- 给 fixed 底栏留位置，否则最后一条被压住点不到 -->
 			<view class="bottom-spacer"></view>
 		</view>
 
@@ -124,11 +122,20 @@
 						<text class="flabel">默认打印机</text>
 						<text class="fvalue">{{ printerName }}</text>
 					</view>
+					<!-- 修改后的批次显示区域，增加了物料信息 -->
 					<view v-if="lotMode" class="lot-box">
 						<text class="lot-title">由 {{ lotSourceCount }} 条记录归并成 {{ lotRows.length }} 个批次SN</text>
 						<view class="lot-row" v-for="(g, i) in lotRows" :key="i">
-							<text class="lot-code">{{ g.itemLotSn || '(无批次SN)' }}</text>
-							<text class="lot-n">{{ g.count }} 条</text>
+							<view class="lot-line1">
+								<text class="lot-code">{{ g.itemLotSn || '(无批次SN)' }}</text>
+								<text class="lot-n">{{ g.count }} 条</text>
+							</view>
+							<view class="lot-line2">
+								<text class="lot-info-text">品名：{{ g.record.itemName || '-' }}</text>
+								<text class="lot-info-text">代码：{{ g.record.itemCode || '-' }}</text>
+								<text class="lot-info-text">规格：{{ g.record.itemSpec || '-' }}</text>
+								<text class="lot-info-text">批次：{{ g.record.itemLot || '-' }}</text>
+							</view>
 						</view>
 					</view>
 					<view class="pp-hint" v-if="missingVars.length > 0">
@@ -233,7 +240,9 @@
 				okList: [],
 				failList: [],
 				canceled: false,
-				writebackMsg: ''
+				writebackMsg: '',
+
+				autoSelectAll: false
 			}
 		},
 		computed: {
@@ -260,7 +269,7 @@
 				const p = this.printBadge
 				return (this.config.badges || []).filter((b) => b !== p)
 			},
-			// 选中的记录按 itemLotSn 去重，每个唯一的 itemLotSn 只出一张标签
+			// 修改后的 lotGroups，确保打印数据中包含物料字段
 			lotGroups() {
 				if (!this.config.lotPrint) return []
 				const seen = {}
@@ -272,13 +281,17 @@
 						seen[lotSn].count++
 						return
 					}
-					// 批次标签不该带某一条的 SN，清掉避免印出一个任意 SN
 					const g = {
 						itemLotSn: lotSn,
 						count: 1,
 						record: {
 							...r,
-							[this.config.snKey]: ''
+							// 显式添加打印需要的物料字段
+							itemName: r.itemName || '',
+							itemCode: r.itemCode || '',
+							itemSpec: r.itemSpec || '',
+							itemLot: r.itemLot || '',
+							[this.config.snKey]: ''   // 批次标签不带 SN
 						}
 					}
 					seen[lotSn] = g
@@ -312,6 +325,7 @@
 			if (this.initDocNo) {
 				this.doc = { docNo: this.initDocNo }
 				this.allMode = true
+				this.autoSelectAll = true
 			}
 			this.query()
 		},
@@ -417,12 +431,14 @@
 			onDocSelect(row) {
 				this.doc = row
 				this.allMode = true
+				this.autoSelectAll = true
 				this.query()
 			},
 
 			clearDoc() {
 				this.doc = null
 				this.allMode = false
+				this.autoSelectAll = false
 				this.query()
 			},
 
@@ -441,11 +457,13 @@
 
 			queryNormal() {
 				this.allMode = false
+				this.autoSelectAll = false
 				this.query()
 			},
 
 			queryAll() {
 				this.allMode = true
+				this.autoSelectAll = false
 				this.query()
 			},
 
@@ -453,6 +471,7 @@
 				this.form = {}
 				this.doc = null
 				this.allMode = false
+				this.autoSelectAll = false
 				this.query()
 				this.filterOpen = true
 			},
@@ -484,6 +503,11 @@
 							if (this.total > this.list.length) {
 								this.toast('共 ' + this.total + ' 条，超出上限，只取了前 ' + this.list.length + ' 条')
 							}
+						}
+
+						if (!this.hasMore && this.autoSelectAll) {
+							this.selected = this.list.slice()
+							this.autoSelectAll = false
 						}
 					} else {
 						this.hasMore = false
@@ -1009,11 +1033,30 @@
 		padding-bottom: 10rpx;
 	}
 
+	/* 修改后的批次行样式 */
 	.lot-row {
+		display: flex;
+		flex-direction: column;
+		padding: 12rpx 0;
+		border-bottom: 1rpx solid #f0f0f0;
+	}
+
+	.lot-line1 {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding: 8rpx 0;
+	}
+
+	.lot-line2 {
+		display: flex;
+		flex-wrap: wrap;
+		font-size: 22rpx;
+		color: #666;
+		margin-top: 6rpx;
+	}
+
+	.lot-info-text {
+		margin-right: 24rpx;
 	}
 
 	.lot-code {

@@ -61,6 +61,12 @@
 				<button size="mini" type="primary" @click="testCpcl">CPCL 测试</button>
 				<button size="mini" @click="queryStatus">查询状态</button>
 			</view>
+			<view class="btn-row">
+				<button size="mini" @click="queryLang">查询语言</button>
+				<button size="mini" @click="switchToCpcl">切换到 CPCL</button>
+				<button size="mini" @click="switchToZpl">切换到 ZPL</button>
+			</view>
+			<text class="hint" v-if="printerLang">当前语言：{{ printerLang }}</text>
 			<textarea class="zpl-input" v-model="customZpl" maxlength="-1" placeholder="可粘贴 ZPL/CPCL 指令；若只填纯文字会自动包装成一张标签" />
 			<view class="btn-row">
 				<button size="mini" @click="sendCustom('zpl')">发送 ZPL</button>
@@ -77,10 +83,43 @@
 			<view class="btn-row">
 				<button size="mini" type="warn" @click="clearBuffer">清除打印缓存</button>
 				<button size="mini" @click="calibrate">介质校准</button>
-				<button size="mini" @click="queryFonts">查询打印机字体</button>
+				<button size="mini" @click="queryFonts">查询FNT字体</button>
+				<button size="mini" @click="queryTtfFonts">查询TTF字体</button>
+			</view>
+			<view class="btn-row">
+				<button size="mini" @click="checkAllFonts">检测中文字体</button>
+			</view>
+			<text class="hint" v-if="cjkFontStatus">{{ cjkFontStatus }}</text>
+			<text class="hint" v-if="ttfFontStatus">{{ ttfFontStatus }}</text>
+			<view class="btn-row" style="margin-top: 12rpx;">
+				<button size="mini" :type="forceTtf ? 'primary' : 'default'" @click="toggleForceTtf">
+					{{ forceTtf ? '✓ 已强制TTF字体' : '强制TTF字体' }}
+				</button>
+			</view>
+			<view class="tip-inline" v-if="forceTtf">
+				已开启强制 TTF 字体：中文将直接走 ^A@ 原生渲染，跳过蓝牙字体检测。
+				适用于已通过 USB 灌入字体但蓝牙查询不到的情况。
 			</view>
 			<view class="tip-inline">
 				清除打印缓存会取消打印机里所有排队和正在打印的任务（ZPL ~JX / ~JA），卡纸或误发大批量任务时用。
+			</view>
+		</view>
+
+		<view class="card" v-if="connected">
+			<text class="card-title">中文渲染方式</text>
+			<view class="tip-inline ok" v-if="printerHasTtfFont">
+				当前使用 TTF 中文字体，原生渲染，速度快、清晰度高。位图渲染设置仅在 TTF 字体不可用时生效。
+			</view>
+			<view v-if="!printerHasTtfFont">
+				<view class="btn-row">
+					<button size="mini" :type="bitmapQuality === 'speed' ? 'primary' : 'default'" @click="setBitmapQuality('speed')">性能优先</button>
+					<button size="mini" :type="bitmapQuality === 'clear' ? 'primary' : 'default'" @click="setBitmapQuality('clear')">清晰优先</button>
+				</view>
+				<view class="tip-inline">
+					性能优先：关闭超采样，打印最快，小字号中文可能有锯齿/断笔。
+					清晰优先：2x 超采样，小字号更清晰，但每次打印会慢 3-5 倍。
+					仅对没有中文字体的打印机走位图渲染时生效。
+				</view>
 			</view>
 		</view>
 
@@ -103,7 +142,7 @@
 
 <script>
 	import printer from '@/utils/zebraPrinter.js'
-	import { buildTextLabel } from '@/utils/zplTemplate.js'
+	import { buildTextLabel, getBitmapQuality, setBitmapQuality as setBitmapQualityFn } from '@/utils/zplTemplate.js'
 
 	export default {
 		data() {
@@ -116,7 +155,13 @@
 				statusText: '',
 				manualAddress: '',
 				permError: '',
-				verified: false
+				verified: false,
+				printerLang: '',
+				cjkFontStatus: '',
+				ttfFontStatus: '',
+				bitmapQuality: 'speed',
+				forceTtf: false,
+				printerHasTtfFont: false
 			}
 		},
 		computed: {
@@ -138,6 +183,9 @@
 		},
 		onShow() {
 			this.refresh()
+			this.bitmapQuality = getBitmapQuality()
+			this.forceTtf = printer.getForceTtf()
+			this.printerHasTtfFont = printer.hasTtfFont()
 		},
 		onUnload() {
 			// 页面退出时保留连接，供业务页面复用；如需释放可调用 printer.disconnect()
@@ -147,12 +195,19 @@
 				uni.showToast({ title, icon: 'none', duration: 2500 })
 			},
 
-			syncConnection() {
-				const cur = printer.getCurrentPrinter()
-				this.connectedAddress = cur ? cur.address : ''
-				this.connectedName = cur ? cur.name || cur.address : ''
-				this.verified = !!(cur && cur.verified)
+			setBitmapQuality(mode) {
+				setBitmapQualityFn(mode)
+				this.bitmapQuality = mode
+				this.toast(mode === 'clear' ? '已切换到清晰优先（打印会变慢）' : '已切换到性能优先')
 			},
+
+		syncConnection() {
+			const cur = printer.getCurrentPrinter()
+			this.connectedAddress = cur ? cur.address : ''
+			this.connectedName = cur ? cur.name || cur.address : ''
+			this.verified = !!(cur && cur.verified)
+			this.printerHasTtfFont = printer.hasTtfFont()
+		},
 
 			async refresh() {
 				// Android 12+ 没先拿到 BLUETOOTH_CONNECT 的话，getBondedDevices 直接抛 SecurityException，
@@ -252,14 +307,65 @@
 				}
 			},
 
-			testCpcl() {
-				try {
-					printer.printCpclTest()
-					this.toast('CPCL 指令已发送')
-				} catch (e) {
-					this.toast(e.message)
+		testCpcl() {
+			try {
+				printer.printCpclTest()
+				this.toast('CPCL 指令已发送（含中文，需打印机在 CPCL 模式）')
+			} catch (e) {
+				this.toast(e.message)
+			}
+		},
+
+		async queryLang() {
+			uni.showLoading({ title: '查询中...', mask: true })
+			try {
+				const lang = await printer.queryLanguage()
+				this.printerLang = lang || '（无回复）'
+				uni.hideLoading()
+				this.toast('当前语言: ' + (lang || '无回复'))
+			} catch (e) {
+				uni.hideLoading()
+				this.toast(e.message)
+			}
+		},
+
+		switchToCpcl() {
+			uni.showModal({
+				title: '切换到 CPCL 模式',
+				content: '切换后打印机会重启，蓝牙连接会断开。重启完成后请重新连接打印机。ZR668 在 CPCL 模式下可打印中文（内置 GB18030 字库）。',
+				success: (res) => {
+					if (!res.confirm) return
+					uni.showLoading({ title: '切换中...', mask: true })
+					printer.setLanguage('line_print').then(() => {
+						uni.hideLoading()
+						this.printerLang = 'line_print（切换中，等待重启）'
+						this.toast('指令已发送，打印机重启中，请等待后重新连接')
+					}).catch((e) => {
+						uni.hideLoading()
+						this.toast('切换失败: ' + e.message)
+					})
 				}
-			},
+			})
+		},
+
+		switchToZpl() {
+			uni.showModal({
+				title: '切换到 ZPL 模式',
+				content: '切换后打印机会重启，蓝牙连接会断开。重启完成后请重新连接打印机。',
+				success: (res) => {
+					if (!res.confirm) return
+					uni.showLoading({ title: '切换中...', mask: true })
+					printer.setLanguage('zpl').then(() => {
+						uni.hideLoading()
+						this.printerLang = 'zpl（切换中，等待重启）'
+						this.toast('指令已发送，打印机重启中，请等待后重新连接')
+					}).catch((e) => {
+						uni.hideLoading()
+						this.toast('切换失败: ' + e.message)
+					})
+				}
+			})
+		},
 
 			sendCustom(lang) {
 				const text = this.customZpl.trim()
@@ -299,17 +405,56 @@
 				}
 			},
 
-			async queryFonts() {
-				uni.showLoading({ title: '查询中...', mask: true })
-				try {
-					const fonts = await printer.listPrinterFonts()
-					uni.hideLoading()
-					this.statusText = '打印机字体文件:\n' + fonts.join('\n')
-				} catch (e) {
-					uni.hideLoading()
-					this.toast(e.message)
-				}
-			},
+		async queryFonts() {
+			uni.showLoading({ title: '查询中...', mask: true })
+			try {
+				const fonts = await printer.listPrinterFonts()
+				uni.hideLoading()
+				this.statusText = '打印机字体文件:\n' + fonts.join('\n')
+			} catch (e) {
+				uni.hideLoading()
+				this.toast(e.message)
+			}
+		},
+	async checkAllFonts() {
+		uni.showLoading({ title: '检测中...', mask: true })
+		try {
+			await printer.checkCjkFont()
+			const hasCjk = printer.hasCjkFont()
+			const hasTtf = printer.hasTtfFont()
+			this.printerHasTtfFont = hasTtf
+			uni.hideLoading()
+			this.cjkFontStatus = hasCjk
+				? 'CJK 位图字体：有（GB18030.FNT 等）'
+				: 'CJK 位图字体：无'
+			this.ttfFontStatus = hasTtf
+				? 'TTF 中文字体：有（HANS.TTF 等）→ 中文走 ^A@ 原生渲染'
+				: 'TTF 字体：无 → 中文走位图渲染'
+		} catch (e) {
+			uni.hideLoading()
+			this.cjkFontStatus = '检测失败：' + e.message
+		}
+	},
+
+	toggleForceTtf() {
+		const newVal = !this.forceTtf
+		printer.setForceTtf(newVal)
+		this.forceTtf = newVal
+		this.printerHasTtfFont = printer.hasTtfFont()
+		this.toast(newVal ? '已开启强制 TTF 字体' : '已关闭强制 TTF 字体')
+	},
+
+	async queryTtfFonts() {
+		uni.showLoading({ title: '查询中...', mask: true })
+		try {
+			const fonts = await printer.listTtfFonts()
+			uni.hideLoading()
+			this.statusText = 'TTF 字体文件:\n' + (fonts.length ? fonts.join('\n') : '（无 TTF 文件）')
+		} catch (e) {
+			uni.hideLoading()
+			this.toast(e.message)
+		}
+	},
 
 			goTemplate() {
 				uni.navigateTo({ url: '/pages/print/labelTemplate' })
@@ -377,6 +522,13 @@
 		margin-bottom: 16rpx;
 	}
 
+	.hint {
+		font-size: 24rpx;
+		color: #888;
+		display: block;
+		margin: 8rpx 0;
+	}
+
 	.row {
 		display: flex;
 		justify-content: space-between;
@@ -420,6 +572,10 @@
 		color: #999;
 		line-height: 1.6;
 		margin-top: 14rpx;
+	}
+
+	.tip-inline.ok {
+		color: #07c160;
 	}
 
 	.empty {
