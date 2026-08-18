@@ -1,5 +1,10 @@
 <template>
 	<view class="container">
+		<!-- dothan-lpapi-ble 需要页面里有一个隐藏 canvas 用于绘制标签（所见即所得）。官方示例要求 type="2d"。
+		     本页测试打印（printTemplate）走 LPAPI 时需要它，否则出纸空白/无反应。 -->
+		<canvas type="2d" canvas-id="lpapi-canvas-import" id="lpapi-canvas-import"
+			:style="{ width: lpapiCanvasW + 'px', height: lpapiCanvasH + 'px' }"
+			style="position: fixed; left: -999999rpx; top: -999999rpx;"></canvas>
 		<view class="card">
 			<text class="card-title">从 CodeSoft 导入</text>
 			<view class="hint">
@@ -64,7 +69,7 @@
 				</view>
 				<view class="row">
 					<text class="label">打印机 DPI</text>
-					<text class="value">{{ tpl.page.dpi }} dpi</text>
+					<text class="value">{{ printerDpiText }}</text>
 				</view>
 				<view class="row">
 					<text class="label">纸张类型</text>
@@ -101,15 +106,14 @@
 			</view>
 
 			<view class="card">
-				<text class="card-title">ZPL 预览</text>
+				<text class="card-title">{{ isLpapi ? '标签预览' : 'ZPL 预览' }}</text>
 				<textarea class="zpl-preview" :value="zplPreview" maxlength="-1" disabled />
 			</view>
 
 			<view class="card">
 				<text class="card-title">保存后必做</text>
 				<view class="hint">
-					新模板的尺寸和之前的不一样时，必须点一次「写入打印机并校准」，
-					否则打印机还按上一次量到的长度走纸，标签会印得偏长或跨张。
+					{{ applyMediaHint }}
 				</view>
 				<view class="btn-row">
 					<button size="mini" @click="applyMedia">写入打印机并校准</button>
@@ -126,11 +130,11 @@
 </template>
 
 <script>
-	import printer from '@/utils/zebraPrinter.js'
+	import printer from '@/utils/printerManager.js'
+	import lpapiPlugin from '@/utils/lpapi-uniplugin.js'
 	import { decodePayload, fetchViaWs, toZplTemplate, templateVariables } from '@/utils/labTemplate.js'
 	import {
 		buildZpl,
-		buildApplyMediaCommand,
 		labelDots,
 		loadTemplates,
 		saveTemplates,
@@ -146,18 +150,69 @@
 				scanning: false,
 				online: null,
 				error: '',
-				tpl: null,
-				warnings: []
+			tpl: null,
+			warnings: [],
+			rawInput: '',
+			// 隐藏 canvas 的像素尺寸；初始给默认 50x30mm@300dpi，打印前适配器会按任务尺寸 resize 成任务像素
+			lpapiCanvasW: 590,
+			lpapiCanvasH: 354
+		}
+	},
+	onLoad() {
+		try {
+			if (lpapiPlugin && lpapiPlugin.isReady && lpapiPlugin.isReady() && lpapiPlugin.initDrawContext) {
+				lpapiPlugin.initDrawContext('lpapi-canvas-import')
 			}
-		},
-		beforeDestroy() {
-			if (this.autoTimer) clearTimeout(this.autoTimer)
-		},
+			if (lpapiPlugin && lpapiPlugin.onCanvasSize) {
+				this._offCanvasSize = lpapiPlugin.onCanvasSize((w, h) => {
+					// 只同步 :style 显示尺寸（官方示例 updateCanvas）。绝不直接改 canvas 节点
+					// 位图：SDK 已在 startJob 内把节点位图设成任务像素，直接改 node.width 会清空
+					// SDK 的位图导致出纸空白。
+					this.lpapiCanvasW = w
+					this.lpapiCanvasH = h
+				})
+			}
+		} catch (e) {
+			console.log('[labelImport] lpapi initDrawContext skipped:', e.message)
+		}
+	},
+	onUnload() {
+		if (this._offCanvasSize) {
+			this._offCanvasSize()
+			this._offCanvasSize = null
+		}
+	},
+	onShow() {
+		try {
+			if (lpapiPlugin && lpapiPlugin.setActiveCanvas) lpapiPlugin.setActiveCanvas('lpapi-canvas-import')
+		} catch (e) {}
+	},
+	beforeDestroy() {
+		if (this.autoTimer) clearTimeout(this.autoTimer)
+		if (this._offCanvasSize) {
+			this._offCanvasSize()
+			this._offCanvasSize = null
+		}
+	},
 		computed: {
+			isLpapi() {
+				return printer.getProtocol() === 'lpapi'
+			},
 			sizeInfo() {
-				const d = labelDots(this.tpl)
+				// 点数尺寸随连接打印机的真实 dpi 变化（模板不再记录 dpi）
+				const d = labelDots(this.tpl, printer.getPrinterDpi())
 				return this.tpl.page.widthMm + ' × ' + this.tpl.page.heightMm + ' mm（' +
-					d.widthDots + ' × ' + d.heightDots + ' 点）'
+					d.widthDots + ' × ' + d.heightDots + ' 点' + (d.dpi ? ' @ ' + d.dpi + 'dpi' : '') + '）'
+			},
+			printerDpiText() {
+				const d = printer.getPrinterDpi()
+				return d ? d + ' dpi（由连接的打印机自动匹配）' : '未连接，将按打印机真实分辨率自动匹配'
+			},
+			applyMediaHint() {
+				if (printer.getProtocol() === 'lpapi') {
+					return '新模板尺寸和上一张不一样时，建议点一次「写入打印机并校准」：它会打印一张当前尺寸的校准标签，让打印机走纸并测量间隙、确认尺寸/对齐。换纸后也建议连点两三次让传感器重新学习。LPAPI 没有持久化介质指令，尺寸每次打印随任务下发，DPI 由打印机实测（300）自动匹配。'
+				}
+				return '新模板的尺寸和之前的不一样时，必须点一次「写入打印机并校准」：ZPL 会写入纸张类型并触发 ~JC 校准（间隙/黑标纸由传感器量长度，^LL 被忽略），否则打印机还按上一次量到的长度走纸，标签会印得偏长或跨张。只有连续纸才按 ^LL 定长走纸。DPI 由连接的打印机自动匹配（Zebra 203 / 道臻 300），无需手动设置。'
 			},
 			mediaLabel() {
 				const m = MEDIA_TYPES.find((x) => x.value === this.tpl.page.mediaType)
@@ -189,6 +244,16 @@
 			},
 			zplPreview() {
 				try {
+					// LPAPI 不用 ZPL，改成中性预览（尺寸 + 元素清单），避免显示无意义的 ZPL 指令。
+					if (printer.getProtocol() === 'lpapi') {
+						const els = this.tpl.elements.map((el, i) => {
+							const t = ELEMENT_TYPES.find((x) => x.value === el.type)
+							return (i + 1) + '. ' + (t ? t.label : el.type) + ' @(' + (el.x || 0) + ',' + (el.y || 0) + ')'
+						}).join('\n')
+						const pd = printer.getPrinterDpi()
+						return 'LPAPI 标签（打印时按此尺寸生成位图）\n尺寸: ' + this.tpl.page.widthMm + ' x ' +
+							this.tpl.page.heightMm + ' mm' + (pd ? ' @ ' + pd + 'dpi' : '') + '\n元素:\n' + els
+					}
 					return buildZpl(this.tpl, this.sampleData)
 				} catch (e) {
 					return '生成失败: ' + e.message
@@ -240,27 +305,28 @@
 				this.handleRaw(this.pasted)
 			},
 
-			handleRaw(raw) {
-				this.error = ''
-				this.online = null
-				this.tpl = null
-				this.warnings = []
-				let decoded
-				try {
-					decoded = decodePayload(raw)
-				} catch (e) {
-					this.error = e.message
-					return
-				}
-				// 解析成了就把软键盘收掉，不然预览全被挡住
-				this.scanFocus = false
-				uni.hideKeyboard()
-				if (decoded.kind === 'online') {
-					this.online = decoded
-					return
-				}
-				this.applyResult(decoded.result)
-			},
+	handleRaw(raw) {
+		this.error = ''
+		this.online = null
+		this.tpl = null
+		this.warnings = []
+		this.rawInput = raw
+		let decoded
+		try {
+			decoded = decodePayload(raw)
+		} catch (e) {
+			this.error = e.message
+			return
+		}
+		// 解析成了就把软键盘收掉，不然预览全被挡住
+		this.scanFocus = false
+		uni.hideKeyboard()
+		if (decoded.kind === 'online') {
+			this.online = decoded
+			return
+		}
+		this.applyResult(decoded.result)
+	},
 
 			async fetchOnline() {
 				uni.showLoading({ title: '连接中...', mask: true })
@@ -274,19 +340,19 @@
 				}
 			},
 
-			// result 是 CSPrintService 的 LabParseResult，它自己的 warnings 也要一起显示
-			applyResult(result) {
-				try {
-					const out = toZplTemplate(result.pdaTemplate)
-					this.tpl = out.template
-					const fromCs = (result.warnings || []).map((w) => 'CodeSoft：' + w)
-					this.warnings = fromCs.concat(out.warnings)
-					this.online = null
-					this.error = ''
-				} catch (e) {
-					this.error = e.message
-				}
-			},
+	// result 是 CSPrintService 的 LabParseResult（含 pdaTemplate 或 detail 任一），
+	// toZplTemplate 内部自动选择可用来源；CSPrintService 的 warnings 已在 out.warnings 里合并。
+	applyResult(result) {
+		try {
+			const out = toZplTemplate(result, this.rawInput)
+			this.tpl = out.template
+			this.warnings = out.warnings
+			this.online = null
+			this.error = ''
+		} catch (e) {
+			this.error = e.message
+		}
+	},
 
 			save() {
 				const name = String(this.tpl.name || '').trim()
@@ -321,24 +387,29 @@
 				this.toast('已保存，模板 id: ' + tpl.id)
 			},
 
-			async applyMedia() {
-				uni.showLoading({ title: '写入中...', mask: true })
-				try {
-					await printer.printWithSaved(buildApplyMediaCommand(this.tpl))
-					uni.hideLoading()
+		async applyMedia() {
+			uni.showLoading({ title: '写入中...', mask: true })
+			try {
+				// 用协议感知的写入/校准（LPAPI 打印一张当前尺寸校准标签，ZPL 走 ^LL/^JU 校准指令）
+				await printer.applyMedia(this.tpl)
+				uni.hideLoading()
+				if (printer.getProtocol() === 'lpapi') {
+					this.toast('已打印一张校准标签（LPAPI 按任务设定尺寸，无独立校准指令）')
+				} else {
 					this.toast(this.tpl.page.mediaType === 'continuous'
 						? '定长已写入打印机'
 						: '已发送校准，打印机会走 2-3 张标签测量长度')
-				} catch (e) {
-					uni.hideLoading()
-					this.toast(e.message)
 				}
-			},
+			} catch (e) {
+				uni.hideLoading()
+				this.toast(e.message)
+			}
+		},
 
 			async testPrint() {
 				uni.showLoading({ title: '发送中...', mask: true })
 				try {
-					await printer.printWithSaved(buildZpl(this.tpl, this.sampleData))
+					await printer.printTemplate(this.tpl, this.sampleData)
 					uni.hideLoading()
 					// 蓝牙写完即返回，纸有没有出来只能看打印机
 					this.toast('指令已发出，请看打印机是否出纸')

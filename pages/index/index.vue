@@ -1,7 +1,7 @@
 <template>
 	<view class="page" :class="[sizeClass, darkClass, themeClass]">
 		<!-- ════ 出入库 ════ -->
-		<view class="card" v-if="hasAnyPermission(['DJ02', 'DJ11', 'DJ05', 'DJ12'])">
+		<view class="card" v-if="hasAnyPermission(['DJ02', 'DJ11', 'DJ05', 'DJ12', 'DJ03'])">
 			<view class="card-header">
 				<text class="card-title">出入库</text>
 			</view>
@@ -20,6 +20,13 @@
 					</view>
 					<text class="func-name">生产领料</text>
 				</view>
+				<!-- 生产退料 - DJ03（新增） -->
+				<view class="func-item" v-if="hasPermission('DJ03')" @click="goToDocOpt('prodReturn')">
+					<view class="func-icon" style="background: #F5A623;">
+						<uni-icons type="back" size="32" color="#fff"></uni-icons>
+					</view>
+					<text class="func-name">生产退料</text>
+				</view>
 				<!-- 生产入库 - DJ05 -->
 				<view class="func-item" v-if="hasPermission('DJ05')" @click="goToDocOpt('prodComplete')">
 					<view class="func-icon" style="background: #3BA37F;">
@@ -34,6 +41,7 @@
 					</view>
 					<text class="func-name">销售出货</text>
 				</view>
+
 			</view>
 		</view>
 
@@ -113,7 +121,8 @@
 		</view>
 
 		<!-- ════ 🖨️ 打印管理（新增权限控制） ════ -->
-		<view class="card" v-if="hasAnyPermission(['printBluetooth', 'printKeySn', 'printPackageSn', 'printProductSn'])">
+		<view class="card"
+			v-if="hasAnyPermission(['printBluetooth', 'printKeySn', 'printPackageSn', 'printProductSn'])">
 			<view class="card-header">
 				<text class="card-title">打印管理</text>
 			</view>
@@ -146,7 +155,8 @@
 		</view>
 
 		<!-- 无权限提示（已同步加入打印权限判断） -->
-		<view class="no-permission" v-if="!hasAnyPermission(['DJ02', 'DJ11', 'DJ05', 'DJ12', 'packagBind', 'packagUnBind', 'keyUnBind', 'productSnQuery', 'keySnQuery', 'productRepair', 'partSend', 'partReplace', 'printBluetooth', 'printKeySn', 'printPackageSn', 'printProductSn'])">
+		<view class="no-permission"
+			v-if="!hasAnyPermission(['DJ02', 'DJ11', 'DJ05', 'DJ12', 'DJ03', 'packagBind', 'packagUnBind', 'keyUnBind', 'productSnQuery', 'keySnQuery', 'productRepair', 'partSend', 'partReplace', 'printBluetooth', 'printKeySn', 'printPackageSn', 'printProductSn'])">
 			<uni-icons type="info" size="48" color="#999"></uni-icons>
 			<text class="no-permission-text">暂无任何功能权限，请联系管理员</text>
 		</view>
@@ -164,7 +174,7 @@
 				// 权限列表（从存储中读取）
 				permissions: [],
 				// 单据类型配置：区分哪些是载具条码模式
-				containerDocTypes: ['DJ02', 'DJ05', 'DJ11'],
+				containerDocTypes: ['DJ02', 'DJ05', 'DJ11', 'DJ03'],
 				docTypeMap: {
 					purchaseReceipt: {
 						typeSn: 'DJ02',
@@ -185,25 +195,31 @@
 						typeSn: 'DJ05',
 						operateType: '1',
 						typeName: '生产入库单'
+					},
+					// 新增生产退料
+					prodReturn: {
+						typeSn: 'DJ03',
+						operateType: '1', // 退料入库
+						typeName: '生产退料单'
 					}
 				}
 			};
 		},
-		
+
 		onLoad() {
 			// 从存储中读取权限
 			this.loadPermissions();
 		},
-		
+
 		onShow() {
 			// 每次显示时重新加载权限
 			this.loadPermissions();
 		},
-		
+
 		onNavigationBarButtonTap() {
 			uni.$toPath('/pages/wms/scanOpt/scanOpt');
 		},
-		
+
 		methods: {
 			// 加载权限
 			loadPermissions() {
@@ -220,18 +236,18 @@
 					this.permissions = [];
 				}
 			},
-			
+
 			// 检查是否有指定权限
 			hasPermission(perm) {
 				return this.permissions.includes(perm);
 			},
-			
+
 			// 检查是否有任一权限
 			hasAnyPermission(perms) {
 				if (!perms || perms.length === 0) return false;
 				return perms.some(p => this.hasPermission(p));
 			},
-			
+
 			// 四个核心模块：直接跳转 docOpt
 			goToDocOpt(module) {
 				const config = this.docTypeMap[module];
@@ -368,7 +384,7 @@
 		align-items: center;
 		justify-content: center;
 		gap: 20rpx;
-		
+
 		.no-permission-text {
 			font-size: 26rpx;
 			color: #999;
@@ -417,10 +433,10 @@
 		.func-name {
 			font-size: 18rpx;
 		}
-		
+
 		.no-permission {
 			padding: 40rpx 24rpx;
-			
+
 			.no-permission-text {
 				font-size: 22rpx;
 			}
@@ -467,10 +483,10 @@
 		.func-name {
 			font-size: 28rpx;
 		}
-		
+
 		.no-permission {
 			padding: 80rpx 40rpx;
-			
+
 			.no-permission-text {
 				font-size: 30rpx;
 			}
@@ -504,10 +520,10 @@
 		.func-name {
 			color: #e0e0e0;
 		}
-		
+
 		.no-permission {
 			background: #1a1a2e;
-			
+
 			.no-permission-text {
 				color: #666;
 			}

@@ -10,8 +10,10 @@
 //   离线码 = gzip + base64 的紧凑 JSON，上限 2331 字节；
 //   回连码 = 明文 JSON {ws, cmd:"ParseLab", labelFile, view}，由 PDA 自己连回去取最新结果。
 
-import pako from 'pako'
-import { ANCHORS, DPI_OPTIONS, MEDIA_TYPES, QR_ECC, mmToDots } from './zplTemplate.js'
+// pako 3.x 是纯 ESM，只导出命名成员（ungzip/inflate/...），没有 default 导出。
+// 用命名空间导入，避免 `import pako from 'pako'` 在 ESM 构建下拿到 undefined 而 pako.ungzip 报错。
+import * as pako from 'pako'
+import { ANCHORS, MEDIA_TYPES, QR_ECC } from './zplTemplate.js'
 
 const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
 
@@ -245,9 +247,8 @@ function anchorOf(el, label, warn) {
 	return null
 }
 
-function convertElement(el, dpi, warn) {
+function convertElement(el, warn) {
 	const label = elementLabel(el)
-	const toDots = (mm) => mmToDots(mm, dpi)
 	const rot = degToRotation(el.rotation)
 	if (!rot.exact) {
 		warn(label + ' 旋转 ' + el.rotation + '° 不是 90° 的整数倍，已按 ' + rot.snapped + '° 处理')
@@ -264,9 +265,10 @@ function convertElement(el, dpi, warn) {
 	const frameH = Number(el.heightMm) > 0 ? round2(el.heightMm) : 0
 
 	if (el.type === 'text') {
+		// 字号统一转成毫米存入中性模型（与打印机 dpi 无关，渲染时再按实际 dpi 折算成点）
 		const mm = Number(el.fontHeightMm) || (Number(el.fontSizePt) ? (Number(el.fontSizePt) * 25.4) / 72 : 0)
 		if (!mm) warn(label + ' 读不到字号，已按 3mm 高处理')
-		const h = Math.max(8, toDots(mm || 3))
+		const h = Math.max(0.5, round2(mm || 3))
 		const out = { type: 'text', x, y, fontH: h, fontW: h, rotation: rot.rotation, text: el.text || '' }
 		// ^FB 需要知道行宽才能居中/右对齐
 		if ((el.align === 'center' || el.align === 'right') && frameW > 0) out.align = el.align
@@ -276,12 +278,15 @@ function convertElement(el, dpi, warn) {
 	}
 
 	if (el.type === 'qrcode') {
+		// 二维码模块尺寸（毫米）存入中性模型：ZPL 渲染时按打印机 dpi 折算成放大倍数，
+		// LPAPI 直接用 width/height 框定尺寸。不再存写死的 magnification。
+		const modMm = Number(el.moduleWidthMm) > 0 ? el.moduleWidthMm : 0.51
 		const out = {
 			type: 'qrcode',
 			x,
 			y,
 			rotation: rot.rotation,
-			magnification: clamp(Number(el.magnification) || 5, 1, 10),
+			moduleWidthMm: modMm,
 			ecc: QR_ECC.indexOf(el.ec) === -1 ? 'M' : el.ec,
 			data: el.data || ''
 		}
@@ -310,7 +315,7 @@ function convertElement(el, dpi, warn) {
 			rotation: rot.rotation,
 			codeType: codeType || 'code128',
 			heightMm: round2(hasFrame ? el.barHeightMm : el.heightMm) || 10,
-			moduleWidth: Math.max(1, toDots(el.moduleWidthMm) || 2),
+			moduleWidth: Number(el.moduleWidthMm) > 0 ? el.moduleWidthMm : 0.2,
 			showText: el.showText !== false,
 			textAbove: el.textPosition === 'above',
 			data: el.data || ''
@@ -320,16 +325,23 @@ function convertElement(el, dpi, warn) {
 		return withAnchor(out)
 	}
 
-	// CodeSoft 的线和矩形都用 ^GB 画：高为 0 是横线，宽为 0 是竖线
-	if (el.type === 'line' || el.type === 'rect') {
-		return withAnchor({
-			type: 'box',
-			x,
-			y,
-			width: round2(el.widthMm),
-			height: round2(el.heightMm),
-			thickness: Math.max(1, toDots(el.thicknessMm) || 2)
-		})
+	// CodeSoft 的线和矩形都用 ^GB 画：高为 0 是横线，宽为 0 是竖线。
+	// pdaTemplate 用 'rectangle'，detail 归一化后用 'rect'/'line'，三种写法都要接住。
+	// 关键：横线(height≈0)必须映射成中性模型的 'line'，否则 LPAPI 渲染器按 box 处理会因
+	// h<=0 直接跳过（ZPL 的 ^GB w,0 能画，LPAPI 的 drawRectangle 画不了）→ 横线在 LPAPI 下丢失。
+	if (el.type === 'line' || el.type === 'rect' || el.type === 'rectangle') {
+		const w = round2(el.widthMm)
+		const h = round2(el.heightMm)
+		const thickness = Number(el.thicknessMm) > 0 ? el.thicknessMm : 0.3
+		// 横线：宽>0 且高=0（或缺失）
+		if (w > 0 && h <= 0) {
+			return withAnchor({ type: 'line', x, y, width: w, thickness })
+		}
+		// 竖线：高>0 且宽=0 → 降级为极窄矩形（ZPL/LPAPI 都没有原生竖线，用窄框近似）
+		if (h > 0 && w <= 0) {
+			return withAnchor({ type: 'box', x, y, width: Math.max(thickness, 0.3), height: h, thickness })
+		}
+		return withAnchor({ type: 'box', x, y, width: w, height: h, thickness })
 	}
 
 	warn('已跳过 ' + label + '：' + (SKIP_REASON[el.type] || '类型 ' + el.type + ' 无法转换'))
@@ -337,20 +349,42 @@ function convertElement(el, dpi, warn) {
 }
 
 /**
- * pdaTemplate -> 本机模板结构。返回 {template, warnings}
+ * pdaTemplate / detail -> 本机中性模板结构。返回 {template, warnings}
+ * 同时兼容 CSPrintService 输出的两种格式：
+ *   - pdaTemplate：CodeSoft 的精简派生视图（字段名已贴近本机元素模型）
+ *   - detail：LabDetail 全量解析结果（含 label 页信息、variables、objects）
+ * 两者都可能是 LabParseResult 的顶层字段；也兼容直接传入 pdaTemplate 对象。
+ *
+ * rawInput 是扫码/粘贴进来的原始二维码串（离线码 gzip+base64 或回连码 JSON），
+ * 一并存进 template.source，便于追溯与按需重解析。
  */
-export function toZplTemplate(pdaTemplate) {
+export function toZplTemplate(input, rawInput) {
+	if (!input || typeof input !== 'object') {
+		throw new Error('解析结果不是合法对象')
+	}
+	// 整个 LabParseResult（含 pdaTemplate / detail 任一顶层字段）
+	if (input.detail || input.pdaTemplate) {
+		const r = input
+		const csWarns = Array.isArray(r.warnings) ? r.warnings.slice() : []
+		// 优先用 detail（用户明确：detail 信息最全，是 .Lab 的忠实反映）；
+		// 仅当没有 detail 时才用 pdaTemplate（服务端为 PDA 整理的精简视图）。
+		if (r.detail) return convertDetail(r.detail, rawInput, csWarns)
+		if (r.pdaTemplate) return convertPdaTemplate(r.pdaTemplate, rawInput, csWarns)
+	}
+	// 直接传进来的 pdaTemplate 对象（离线码解码路径 / 旧调用）
+	return convertPdaTemplate(input, rawInput, [])
+}
+
+/**
+ * pdaTemplate -> 本机中性模板结构。
+ * csWarnings 是 CSPrintService 在 result.warnings 里给的转换提示，一并带出。
+ */
+function convertPdaTemplate(pdaTemplate, rawInput, csWarnings) {
 	if (!pdaTemplate) {
 		throw new Error('这份解析结果里没有 pdaTemplate。请在 CSPrintService 把格式切成 pdaTemplate 再生成二维码')
 	}
-	const warnings = []
+	const warnings = (csWarnings || []).slice()
 	const warn = (m) => warnings.push(m)
-
-	let dpi = Number(pdaTemplate.dpi)
-	if (DPI_OPTIONS.indexOf(dpi) === -1) {
-		warn('模板 dpi 是 ' + pdaTemplate.dpi + '，本机只支持 ' + DPI_OPTIONS.join(' / ') + '，已按 203 处理。dpi 不对会让整张标签按比例缩放')
-		dpi = 203
-	}
 
 	let mediaType = pdaTemplate.mediaType
 	if (MEDIA_TYPES.findIndex((m) => m.value === mediaType) === -1) {
@@ -361,7 +395,7 @@ export function toZplTemplate(pdaTemplate) {
 	const elements = []
 	const source = pdaTemplate.elements || []
 	source.forEach((el) => {
-		const out = convertElement(el, dpi, warn)
+		const out = convertElement(el, warn)
 		if (out) elements.push(out)
 	})
 
@@ -383,18 +417,170 @@ export function toZplTemplate(pdaTemplate) {
 			page: {
 				widthMm: round2(pdaTemplate.widthMm),
 				heightMm: round2(pdaTemplate.heightMm),
-				dpi,
 				mediaType
 			},
 			// CodeSoft 不记录打印浓度/速度/走纸模式，沿用本机默认值
 			print: { darkness: 15, speed: 4, copies: 1, invert180: false, mode: 'T' },
-			cjkFont: 'E:GB18030.FNT',
+			cjkFont: 'E:HANS.TTF',
 			source: {
 				from: 'codesoft',
 				labFile: pdaTemplate.name || '',
 				importedAt: new Date().toLocaleString(),
 				variables: (pdaTemplate.variables || []).slice(),
-				computedVariables: computed.map((v) => v.name)
+				computedVariables: computed.map((v) => v.name),
+				// 原始数据：离线码/回连码的原始串 + 解码后的 pdaTemplate，按需可追溯/重解析
+				rawQr: rawInput || '',
+				raw: pdaTemplate
+			},
+			elements
+		}
+	}
+}
+
+// detail.objects 的定位基点名（anchorPointName）是帕斯卡命名，转成中性模型的 anchor 值
+const ANCHOR_DETAIL_MAP = {
+	TopLeft: 'topLeft', TopCenter: 'topCenter', TopRight: 'topRight',
+	CenterLeft: 'centerLeft', Center: 'center', CenterRight: 'centerRight',
+	BottomLeft: 'bottomLeft', BottomCenter: 'bottomCenter', BottomRight: 'bottomRight'
+}
+
+// 把 LabDetail 的一个 object 归一成 convertElement 期望的元素字段形状（与 pdaTemplate.elements 对齐），
+// 之后直接复用 convertElement，避免两套解析逻辑。返回 null 表示类型不支持、需跳过。
+function normalizeDetailObject(obj) {
+	const typeName = String(obj.typeName || '').trim().toLowerCase()
+	const is2D = obj.is2D === true
+	let type = null
+	if (typeName === 'text') type = 'text'
+	else if (typeName === 'barcode') type = is2D ? 'qrcode' : 'barcode'
+	else if (typeName === 'qrcode') type = 'qrcode'
+	else if (typeName === 'line') type = 'line'
+	else if (typeName === 'rectangle' || typeName === 'box' || typeName === 'roundrect') type = 'rect'
+	if (!type) return null
+
+	const out = {
+		type,
+		xMm: obj.xMm,
+		yMm: obj.yMm,
+		widthMm: obj.widthMm,
+		heightMm: obj.heightMm,
+		rotation: obj.rotationDeg != null ? obj.rotationDeg : 0
+	}
+	const anchor = ANCHOR_DETAIL_MAP[obj.anchorPointName]
+	if (anchor) out.anchor = anchor
+
+	if (type === 'text') {
+		out.text = obj.template != null ? obj.template : (obj.raw != null ? obj.raw : '')
+		if (obj.font) {
+			out.fontSizePt = obj.font.sizePt
+			out.bold = !!obj.font.bold
+			out.italic = !!obj.font.italic
+		}
+		if (obj.alignmentName) out.align = obj.alignmentName.toLowerCase()
+	} else if (type === 'qrcode') {
+		out.data = obj.template != null ? obj.template : ''
+		out.ec = obj.ecc || 'M'
+		// 模块尺寸（毫米）存入中性模型，渲染时再按打印机 dpi 折算；
+		// ZPL 用它算放大倍数，LPAPI 直接用 width/height 框定尺寸。
+		const modMm = Number(obj.moduleXMm) > 0 ? obj.moduleXMm : 0.51
+		out.moduleWidthMm = modMm
+		out.width = obj.widthMm
+		out.height = obj.heightMm
+	} else if (type === 'barcode') {
+		out.data = obj.template != null ? obj.template : ''
+		out.subtype = String(obj.symbologyName || '').toLowerCase() || 'code128'
+		out.moduleWidthMm = obj.narrowBarWidthMm || 0.2
+		out.barHeightMm = obj.barHeightMm || obj.heightMm || 10
+		out.showText = obj.hrPosition !== 0 && obj.hrPositionName !== 'none'
+	} else if (type === 'line' || type === 'rect') {
+		// 注意：detail 的线宽字段是 lineWidthMm（LabObject），不是 pdaTemplate 的 thicknessMm。
+		// 若错读 thicknessMm 会恒为 undefined，永远回落到 0.3mm，丢掉真实线宽。
+		out.thicknessMm = Number(obj.lineWidthMm) > 0 ? obj.lineWidthMm : 0.3
+	}
+	return out
+}
+
+/**
+ * detail(LabDetail 全量) -> 本机中性模板结构。
+ * 与 convertPdaTemplate 的区别：detail 含大量"页面/纸张排版"设置，这些设置若原样带入模板，
+ * 会让实际打印尺寸/对齐与模板设计稿不一致（典型就是用户说的"页边距信息导致打印偏移"）。
+ * 因此只保留关键页信息（实际可打印区域 widthMm/heightMm + mediaType），其余全部剥离：
+ *   pageWidthMm / pageHeightMm / marginLeftMm / marginTopMm / horizontalGapMm / verticalGapMm /
+ *   columns / rows / portrait / stockName / stockType
+ * detail 没有单独的设计 dpi 字段；templatePrinter.dpiX(600) 是 Windows 那台 PDF 打印机的分辨率，
+ * 与 PDA 打印机无关。物理尺寸是 mm，中性模型全部以毫米存储，渲染时由对应适配器
+ * 按打印机真实 dpi 折算（ZPL 折算成点，LPAPI 直接以 mm 绘制）——模板本身不再记录任何 dpi。
+ */
+function convertDetail(detail, rawInput, csWarnings) {
+	const warnings = (csWarnings || []).slice()
+	const warn = (m) => warnings.push(m)
+	const label = detail.label || {}
+
+	let mediaType = label.mediaType
+	if (MEDIA_TYPES.findIndex((m) => m.value === mediaType) === -1) {
+		warn('detail.label 没有明确记录纸张类型（读到 ' + (label.mediaType || '空') + '），已按间隙纸处理。实际是黑标/连续纸要到模板页改')
+		mediaType = 'gap'
+	}
+	const widthMm = round2(label.widthMm)
+	const heightMm = round2(label.heightMm)
+	if (!widthMm || !heightMm) warn('detail.label 没有可用的标签尺寸，模板可能打印异常')
+
+	const elements = []
+	;(detail.objects || []).forEach((obj) => {
+		const tname = String(obj.typeName || '').trim().toLowerCase()
+		// 与 CSPrintService PdaTemplateMapper 一致：printable===false 的对象不打印，直接跳过
+		if (obj.printable === false) {
+			warn('对象 ' + (obj.name || tname || obj.type) + ' 标记为不打印，已跳过')
+			return
+		}
+		// 圆角矩形 COM 读不到圆角半径，按普通矩形输出（与 PdaTemplateMapper case 9 一致）
+		if (tname === 'roundrect') {
+			warn('对象 ' + (obj.name || 'roundrect') + ' 是圆角矩形，COM 读不到圆角半径，已按普通矩形输出')
+		}
+		const norm = normalizeDetailObject(obj)
+		if (!norm) {
+			warn('已跳过对象 ' + (obj.name || tname || obj.type) + '：暂不支持的类型 ' + (obj.typeName || obj.type))
+			return
+		}
+		const out = convertElement(norm, warn)
+		if (out) elements.push(out)
+	})
+
+	if (elements.length === 0) warn('转换后一个元素都不剩，这个模板印出来是空白的')
+	if ((detail.objects || []).some((e) => Number(e.rotationDeg))) {
+		warn('模板里有旋转元素。CodeSoft 和 LPAPI 对旋转方向的定义可能相反，第一次打印请核对方向')
+	}
+
+	// 变量：只保留关键字段 name。
+	// computed = 模板自己算、PDA 取不到值的变量。只有 Free(5)/Form(6) 是用户能填的，
+	// 其余（Counter/1、TableLookup/2、Date/3、Formula/4、DataBase/7）都算 computed ——
+	// 与 CSPrintService PdaTemplateMapper.IsUserInput 完全一致。
+	const isUserInput = (ds) => ds === 5 || ds === 6
+	const variables = (detail.variables || []).map((v) => v.name)
+	const computed = (detail.variables || [])
+		.filter((v) => !isUserInput(v.dataSource))
+		.map((v) => v.name)
+	if (computed.length > 0) {
+		warn('这些变量是 CodeSoft 自己算出来的（' + computed.join('、') + '），PDA 取不到值，会印成空白')
+	}
+
+	const name = String(detail.file || 'CodeSoft 模板').replace(/\.lab$/i, '')
+
+	return {
+		warnings,
+		template: {
+			id: 'tpl_' + Date.now(),
+			name,
+		page: { widthMm, heightMm, mediaType },
+		print: { darkness: 15, speed: 4, copies: 1, invert180: false, mode: 'T' },
+			cjkFont: 'E:HANS.TTF',
+			source: {
+				from: 'codesoft',
+				labFile: detail.file || '',
+				importedAt: new Date().toLocaleString(),
+				variables,
+				computedVariables: computed,
+				rawQr: rawInput || '',
+				raw: detail
 			},
 			elements
 		}

@@ -374,7 +374,7 @@ public class ZebraPrinterModule extends UniModule {
         }).start();
     }
 
-    // 发送 CPCL
+    // 发送 CPCL（已弃用：App 现仅支持 ZPL，CPCL 不再使用）
     @UniJSMethod(uiThread = true)
     public void sendCpcl(String cpcl, UniJSCallback callback) {
         sendZpl(cpcl, callback); // CPCL 本质也是字节流

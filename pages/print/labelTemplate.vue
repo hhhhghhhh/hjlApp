@@ -1,5 +1,10 @@
 <template>
 	<view class="container">
+		<!-- dothan-lpapi-ble 需要页面里有一个隐藏 canvas 用于绘制标签（所见即所得）。
+		     官方示例要求 type="2d"，否则 createDrawContext 拿不到 2d 绘制上下文。LPAPI 打印（打印测试 / 写入打印机并校准）必须它。 -->
+		<canvas type="2d" canvas-id="lpapi-canvas-label" id="lpapi-canvas-label"
+			:style="{ width: lpapiCanvasW + 'px', height: lpapiCanvasH + 'px' }"
+			style="position: fixed; left: -999999rpx; top: -999999rpx;"></canvas>
 		<view class="card">
 			<view class="row">
 				<text class="label">模板</text>
@@ -28,16 +33,15 @@
 				<text class="label">标签高度 (mm)</text>
 				<input class="ipt" type="digit" v-model="tpl.page.heightMm" />
 			</view>
+			<view class="row" v-if="isLpapi">
+				<text class="label">水平偏移微调 (mm)</text>
+				<input class="ipt" type="digit" v-model="tpl.page.offsetXMm" placeholder="0=自动居中" />
+			</view>
+			<view class="hint" v-if="isLpapi">微调量，0=自动居中（标签居中在纸上）。实测整体偏右就填负值（如 -1.5）、偏左填正值；换不同尺寸纸时自动居中会随尺寸重算、微调量保持不变，无需每次重调。</view>
 			<view class="row">
 				<text class="label">纸张类型</text>
 				<picker :range="mediaLabels" :value="mediaIndex" @change="onMediaChange">
 					<text class="picker">{{ mediaLabel }} ▾</text>
-				</picker>
-			</view>
-			<view class="row">
-				<text class="label">打印机 DPI</text>
-				<picker :range="dpiOptions" :value="dpiIndex" @change="onDpiChange">
-					<text class="picker">{{ tpl.page.dpi }} dpi ▾</text>
 				</picker>
 			</view>
 			<view class="row">
@@ -48,39 +52,48 @@
 				<button size="mini" type="primary" @click="applyMedia">写入打印机并校准</button>
 			</view>
 			<view class="hint">
-				打印出来比标签长，几乎都是纸张类型/长度没生效：间隙纸和黑标纸的长度是打印机用传感器量出来的，ZPL 的 ^LL 会被忽略，换纸或改尺寸后必须点上面的按钮校准一次；只有连续纸才按 ^LL 定长走纸。另外 DPI 填错也会让实际尺寸成比例放大，203dpi 的机器填成 300 会长约 1.5 倍。
+				{{ mediaHint }}
 			</view>
 		</view>
 
 		<view class="card">
 			<text class="card-title">打印参数</text>
 			<view class="row">
-				<text class="label">浓度 (0-30)</text>
-				<input class="ipt" type="number" v-model="tpl.print.darkness" />
-			</view>
-			<view class="row">
-				<text class="label">速度 (1-14)</text>
-				<input class="ipt" type="number" v-model="tpl.print.speed" />
-			</view>
-			<view class="row">
 				<text class="label">份数</text>
-				<input class="ipt" type="number" v-model="tpl.print.copies" />
+				<view class="stepper">
+					<view class="step-btn" @click="changeCopies(-1)">−</view>
+					<input class="ipt stepper-num" type="number" v-model="tpl.print.copies"
+						:selection-start="copiesSelStart" :selection-end="copiesSelEnd"
+						@focus="onCopiesFocus" @blur="onCopiesBlur" @confirm="onCopiesConfirm" />
+					<view class="step-btn" @click="changeCopies(1)">+</view>
+				</view>
 			</view>
-			<view class="row">
-				<text class="label">出纸方式</text>
-				<picker :range="printModeLabels" :value="printModeIndex" @change="onPrintModeChange">
-					<text class="picker">{{ printModeLabel }} ▾</text>
-				</picker>
+			<view v-if="isLpapi" class="hint">LPAPI（道臻）打印浓度、速度、走纸方式由打印组件在打印时自动设置——间隙纸/黑标纸由传感器定位、连续纸按标签高度定长；中文走位图渲染、无需字体文件。这里只需设置份数。</view>
+			<view v-else>
+				<view class="row">
+					<text class="label">浓度 (0-30)</text>
+					<input class="ipt" type="number" v-model="tpl.print.darkness" />
+				</view>
+				<view class="row">
+					<text class="label">速度 (1-14)</text>
+					<input class="ipt" type="number" v-model="tpl.print.speed" />
+				</view>
+				<view class="row">
+					<text class="label">出纸方式</text>
+					<picker :range="printModeLabels" :value="printModeIndex" @change="onPrintModeChange">
+						<text class="picker">{{ printModeLabel }} ▾</text>
+					</picker>
+				</view>
+				<view class="row">
+					<text class="label">整体旋转 180°</text>
+					<switch :checked="tpl.print.invert180" @change="e => tpl.print.invert180 = e.detail.value" />
+				</view>
+				<view class="row">
+					<text class="label">中文字体文件</text>
+					<input class="ipt" v-model="tpl.cjkFont" placeholder="E:HANS.TTF" />
+				</view>
+				<view class="hint">中文走 HANS.TTF 原生渲染；若打不出中文，可在「蓝牙打印」页点「查询打印机字体」看实际有哪些 .TTF，或确认位图渲染兜底已开启。</view>
 			</view>
-			<view class="row">
-				<text class="label">整体旋转 180°</text>
-				<switch :checked="tpl.print.invert180" @change="e => tpl.print.invert180 = e.detail.value" />
-			</view>
-			<view class="row">
-				<text class="label">中文字体文件</text>
-				<input class="ipt" v-model="tpl.cjkFont" placeholder="E:GB18030.FNT" />
-			</view>
-			<view class="hint">中文打不出来时改这里，可在「蓝牙打印」页点「查询打印机字体」看实际有哪些 .FNT。</view>
 		</view>
 
 		<view class="card">
@@ -134,11 +147,11 @@
 						<input class="ipt wide" v-model="el.text" :placeholder="varHint" />
 					</view>
 					<view class="row">
-						<text class="label">字高 (点)</text>
+						<text class="label">字高 (mm)</text>
 						<input class="ipt" type="number" v-model="el.fontH" />
 					</view>
 					<view class="row">
-						<text class="label">字宽 (点)</text>
+						<text class="label">字宽 (mm)</text>
 						<input class="ipt" type="number" v-model="el.fontW" />
 					</view>
 				</template>
@@ -149,8 +162,8 @@
 						<input class="ipt wide" v-model="el.data" :placeholder="varHint" />
 					</view>
 					<view class="row">
-						<text class="label">放大倍数 (1-10)</text>
-						<input class="ipt" type="number" v-model="el.magnification" />
+						<text class="label">模块尺寸 (mm)</text>
+						<input class="ipt" type="digit" v-model="el.moduleWidthMm" />
 					</view>
 					<view class="row">
 						<text class="label">纠错等级</text>
@@ -176,7 +189,7 @@
 						<input class="ipt" type="digit" v-model="el.heightMm" />
 					</view>
 					<view class="row">
-						<text class="label">窄条宽度 (点)</text>
+						<text class="label">窄条宽度 (mm)</text>
 						<input class="ipt" type="number" v-model="el.moduleWidth" />
 					</view>
 					<view class="row">
@@ -195,7 +208,7 @@
 						<input class="ipt" type="digit" v-model="el.height" />
 					</view>
 					<view class="row">
-						<text class="label">线粗 (点)</text>
+						<text class="label">线粗 (mm)</text>
 						<input class="ipt" type="number" v-model="el.thickness" />
 					</view>
 				</template>
@@ -224,7 +237,7 @@
 		</view>
 
 		<view class="card">
-			<text class="card-title">ZPL 预览</text>
+			<text class="card-title">标签预览</text>
 			<textarea class="zpl-preview" :value="zplPreview" maxlength="-1" disabled />
 		</view>
 
@@ -236,7 +249,8 @@
 </template>
 
 <script>
-	import printer from '@/utils/zebraPrinter.js'
+	import printer from '@/utils/printerManager.js'
+	import lpapiPlugin from '@/utils/lpapi-uniplugin.js'
 	import {
 		buildZpl,
 		defaultTemplate,
@@ -244,9 +258,7 @@
 		saveTemplates,
 		newElement,
 		labelDots,
-		buildApplyMediaCommand,
 		ANCHORS,
-		DPI_OPTIONS,
 		ROTATIONS,
 		BARCODE_TYPES,
 		QR_ECC,
@@ -262,22 +274,25 @@
 				varExample: '{{sn}}',
 				templates: [],
 				templateIndex: 0,
-				tpl: defaultTemplate(),
-				previewData: {},
-				dpiOptions: DPI_OPTIONS,
-				rotations: ROTATIONS,
+			tpl: defaultTemplate(),
+			previewData: {},
+			// 隐藏 canvas 的像素尺寸；初始给默认 50x30mm@300dpi，打印前适配器会按任务尺寸 resize 成任务像素
+		lpapiCanvasW: 590,
+		lpapiCanvasH: 354,
+			rotations: ROTATIONS,
 				barcodeTypes: BARCODE_TYPES,
 				qrEcc: QR_ECC,
-				elementTypes: ELEMENT_TYPES
+				elementTypes: ELEMENT_TYPES,
+				copiesSelStart: -1,
+				copiesSelEnd: -1
 			}
 		},
 		computed: {
+			isLpapi() {
+				return printer.getProtocol() === 'lpapi'
+			},
 			templateNames() {
 				return this.templates.map((t) => t.name || '未命名')
-			},
-			dpiIndex() {
-				const i = DPI_OPTIONS.indexOf(Number(this.tpl.page.dpi))
-				return i === -1 ? 0 : i
 			},
 			mediaLabels() {
 				return MEDIA_TYPES.map((m) => m.label)
@@ -300,8 +315,24 @@
 				return PRINT_MODES[this.printModeIndex].label
 			},
 			dotsInfo() {
-				const d = labelDots(this.tpl)
-				return d.widthDots + ' × ' + d.heightDots + ' 点'
+				// 点数尺寸随连接打印机的真实 dpi 变化（模板本身不记录 dpi）。
+				// 未连接时按协议给估算值：LPAPI/道臻 300，ZPL/Zebra 203。
+				const printerDpi = printer.getPrinterDpi()
+				if (!printerDpi) {
+					const fallback = this.isLpapi ? 300 : 203
+					const d = labelDots(this.tpl, fallback)
+					return d.widthDots + ' × ' + d.heightDots + ' 点（未连接，按 ' + fallback + ' 估算）'
+				}
+				const d = labelDots(this.tpl, printerDpi)
+				return d.widthDots + ' × ' + d.heightDots + ' 点 @ ' + printerDpi + 'dpi'
+			},
+			mediaHint() {
+				// 同一段说明按协议给出不同版本：ZPL 走 ^MN/^LL/^JUS/~JC，LPAPI 没有持久化介质指令。
+				const lpapi = printer.getProtocol() === 'lpapi'
+				if (lpapi) {
+					return 'LPAPI（道臻）没有 ZPL 那种「把介质参数写进打印机永久保存」的指令，标签尺寸在每次打印时随任务下发，所以不会因 ^LL 残留而出错。这里的「写入打印机并校准」= 打印一张当前尺寸的校准标签，让打印机走纸并测量间隙、确认尺寸/对齐；换纸或改尺寸后也建议连点两三次，让传感器重新学习。DPI 由打印机实测（300）自动匹配，无需手动设置，也不会因填错而把标签成比例放大。'
+				}
+				return '打印出来比标签长，几乎都是纸张类型/长度没生效：间隙纸和黑标纸的长度是打印机用传感器量出来的，ZPL 的 ^LL 会被忽略，换纸或改尺寸后必须点上面的「写入打印机并校准」一次；只有连续纸才按 ^LL 定长走纸。DPI 已不再由模板设置，而是连接打印机后由打印机真实分辨率自动匹配（Zebra 203、道臻/IB-PTM7330 300），不会因填错而把标签成比例放大（203 机器被当成 300 会长约 1.5 倍）。'
 			},
 			rotationLabels() {
 				return ROTATIONS.map((r) => r.label)
@@ -326,6 +357,15 @@
 			},
 			zplPreview() {
 				try {
+					// LPAPI 不用 ZPL，改用中性预览（尺寸 + 元素清单），避免显示无意义的 ZPL
+					if (printer.getProtocol() === 'lpapi') {
+						const els = this.tpl.elements.map((el, i) =>
+							(i + 1) + '. ' + this.typeLabel(el.type) + ' @(' + (el.x || 0) + ',' + (el.y || 0) + ')'
+						).join('\n')
+					const pd = printer.getPrinterDpi()
+					return 'LPAPI 标签（按此尺寸生成位图）\n尺寸: ' + this.tpl.page.widthMm + ' x ' +
+						this.tpl.page.heightMm + ' mm' + (pd ? ' @ ' + pd + 'dpi' : '') + '\n元素:\n' + els
+					}
 					return buildZpl(this.tpl, this.previewData)
 				} catch (e) {
 					return '生成失败: ' + e.message
@@ -344,10 +384,73 @@
 		onLoad() {
 			this.templates = loadTemplates()
 			this.selectTemplate(0)
+			// LPAPI 打印需要本页隐藏 canvas 作为绘制缓冲区。提前创建绘制上下文（官方示例在 onLoad 中调用），
+			// 并订阅尺寸同步事件：适配器 startJob 后会把任务像素尺寸发过来，这里改 :style 让 canvas 真正 resize。
+			try {
+				if (lpapiPlugin && lpapiPlugin.isReady && lpapiPlugin.isReady() && lpapiPlugin.initDrawContext) {
+					lpapiPlugin.initDrawContext('lpapi-canvas-label')
+				}
+			if (lpapiPlugin && lpapiPlugin.onCanvasSize) {
+				this._offCanvasSize = lpapiPlugin.onCanvasSize((w, h) => {
+					// 只同步 :style 显示尺寸（官方示例 updateCanvas 做法）。绝不直接改 canvas
+					// 节点的 width/height 位图——SDK 已在 startJob 内把节点位图设成任务像素，
+					// 直接改 node.width 会清空 SDK 的位图，导致出纸空白。
+					this.lpapiCanvasW = w
+					this.lpapiCanvasH = h
+				})
+			}
+			} catch (e) {
+				console.log('[labelTemplate] lpapi initDrawContext skipped:', e.message)
+			}
+		},
+		onUnload() {
+			if (this._offCanvasSize) {
+				this._offCanvasSize()
+				this._offCanvasSize = null
+			}
+		},
+		onShow() {
+			// 每次页面可见（含从下层 navigateBack 回来）都把"当前画布"切回本页，
+			// 避免其它打印页的上下文仍占着全局 active，导致本页打印画到错的 canvas 上。
+			try {
+				if (lpapiPlugin && lpapiPlugin.setActiveCanvas) lpapiPlugin.setActiveCanvas('lpapi-canvas-label')
+			} catch (e) {}
 		},
 		methods: {
 			toast(title) {
 				uni.showToast({ title, icon: 'none', duration: 2500 })
+			},
+
+			// 份数步进：最小 1
+			changeCopies(delta) {
+				const cur = Math.round(Number(this.tpl.print.copies)) || 1
+				this.tpl.print.copies = Math.max(1, cur + delta)
+			},
+
+			// 聚焦份数输入框时全选，方便直接输入新数字覆盖（避免手动删"1"再改）
+			onCopiesFocus() {
+				this.$nextTick(() => {
+					this.copiesSelStart = 0
+					this.copiesSelEnd = 99
+				})
+			},
+
+			onCopiesBlur() {
+				this.copiesSelStart = -1
+				this.copiesSelEnd = -1
+				this.normalizeCopies()
+			},
+
+			onCopiesConfirm() {
+				this.copiesSelStart = -1
+				this.copiesSelEnd = -1
+				this.normalizeCopies()
+			},
+
+			// 空/非法值回落到 1
+			normalizeCopies() {
+				const n = Math.round(Number(this.tpl.print.copies))
+				if (!isFinite(n) || n < 1) this.tpl.print.copies = 1
 			},
 
 			clone(obj) {
@@ -372,10 +475,6 @@
 				this.selectTemplate(Number(e.detail.value))
 			},
 
-			onDpiChange(e) {
-				this.tpl.page.dpi = DPI_OPTIONS[Number(e.detail.value)]
-			},
-
 			onMediaChange(e) {
 				this.$set(this.tpl.page, 'mediaType', MEDIA_TYPES[Number(e.detail.value)].value)
 			},
@@ -387,10 +486,14 @@
 			async applyMedia() {
 				uni.showLoading({ title: '写入中...', mask: true })
 				try {
-					await printer.printWithSaved(buildApplyMediaCommand(this.tpl))
+					await printer.applyMedia(this.tpl)
 					uni.hideLoading()
-					const continuous = this.tpl.page.mediaType === 'continuous'
-					this.toast(continuous ? '定长已写入打印机' : '已发送校准，打印机会走 2-3 张标签测量长度')
+					if (printer.getProtocol() === 'lpapi') {
+						this.toast('已打印一张校准标签（LPAPI 按任务设定尺寸，无独立校准指令）')
+					} else {
+						const continuous = this.tpl.page.mediaType === 'continuous'
+						this.toast(continuous ? '定长已写入打印机' : '已发送校准，打印机会走 2-3 张标签测量长度')
+					}
 				} catch (e) {
 					uni.hideLoading()
 					this.toast(e.message)
@@ -500,7 +603,7 @@
 			async print() {
 				uni.showLoading({ title: '打印中...', mask: true })
 				try {
-					await printer.printWithSaved(buildZpl(this.tpl, this.previewData))
+					await printer.printTemplate(this.tpl, this.previewData)
 					uni.hideLoading()
 					this.toast('已发送到打印机')
 				} catch (e) {
@@ -559,6 +662,32 @@
 
 	.ipt.wide {
 		width: 380rpx;
+	}
+
+	.stepper {
+		display: flex;
+		align-items: center;
+		gap: 8rpx;
+	}
+
+	.step-btn {
+		width: 56rpx;
+		height: 56rpx;
+		line-height: 52rpx;
+		text-align: center;
+		font-size: 40rpx;
+		color: #333;
+		border: 1rpx solid #ddd;
+		border-radius: 10rpx;
+		background: #f5f5f5;
+	}
+
+	.stepper-num {
+		width: 120rpx;
+		text-align: center;
+		border: 1rpx solid #ddd;
+		border-radius: 10rpx;
+		padding: 6rpx 0;
 	}
 
 	.picker {

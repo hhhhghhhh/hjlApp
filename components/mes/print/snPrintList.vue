@@ -1,5 +1,11 @@
 <template>
 	<view class="page">
+		<!-- dothan-lpapi-ble 需要页面里有一个隐藏 canvas 用于绘制标签（所见即所得）。
+		     官方示例要求 type="2d"。本组件被关键件/业务打印页共用，必须自带该 canvas，
+		     否则 LPAPI 打印（printTemplate）会因找不到 canvas 而无反应。 -->
+		<canvas type="2d" canvas-id="lpapi-canvas-sn" id="lpapi-canvas-sn"
+			:style="{ width: lpapiCanvasW + 'px', height: lpapiCanvasH + 'px' }"
+			style="position: fixed; left: -999999rpx; top: -999999rpx;"></canvas>
 		<!-- 筛选 + 工具条吸顶，列表用页面级滚动，底栏 fixed 贴底 -->
 		<view class="top-bar">
 			<!-- ===== 筛选区，查询后自动折起，给列表留屏幕 ===== -->
@@ -90,11 +96,11 @@
 		</view>
 
 		<view class="bottom">
-			<button class="bt" type="primary" :disabled="selected.length === 0" @click="openPrint(false)">
-				打印（{{ selected.length }}）
-			</button>
-			<button class="bt" v-if="config.lotPrint" :disabled="selected.length === 0" @click="openPrint(true)">
+			<button class="bt" type="primary" v-if="config.lotPrint" :disabled="selected.length === 0" @click="openPrint(true)">
 				按批次打印（{{ lotGroups.length }}）
+			</button>
+			<button class="bt" :disabled="selected.length === 0" @click="openPrint(false)">
+				打印（{{ selected.length }}）
 			</button>
 		</view>
 
@@ -116,7 +122,13 @@
 					</view>
 					<view class="frow">
 						<text class="flabel">每条份数</text>
-						<input class="fipt" type="number" v-model="copies" />
+						<view class="stepper">
+							<view class="step-btn" @click="changeCopies(-1)">−</view>
+							<input class="fipt stepper-num" type="number" v-model="copies"
+								:selection-start="copiesSelStart" :selection-end="copiesSelEnd"
+								@focus="onCopiesFocus" @blur="onCopiesBlur" @confirm="onCopiesConfirm" />
+							<view class="step-btn" @click="changeCopies(1)">+</view>
+						</view>
 					</view>
 					<view class="frow">
 						<text class="flabel">默认打印机</text>
@@ -180,12 +192,12 @@
 </template>
 
 <script>
-	import printer from '@/utils/zebraPrinter.js'
+	import printer from '@/utils/printerManager.js'
+	import lpapiPlugin from '@/utils/lpapi-uniplugin.js'
 	import {
 		getDictItems
 	} from '@/api/printApi.js'
 	import {
-		buildZpl,
 		loadTemplates
 	} from '@/utils/zplTemplate.js'
 	import {
@@ -232,6 +244,8 @@
 				templates: [],
 				templateIndex: 0,
 				copies: 1,
+				copiesSelStart: -1,
+				copiesSelEnd: -1,
 
 				printState: 'idle',
 				jobs: [],
@@ -242,9 +256,13 @@
 				canceled: false,
 				writebackMsg: '',
 
-				autoSelectAll: false
-			}
-		},
+			autoSelectAll: false,
+
+			// 隐藏 canvas 的像素尺寸；初始给默认 50x30mm@300dpi，打印前适配器会按任务尺寸 resize 成任务像素
+			lpapiCanvasW: 590,
+			lpapiCanvasH: 354
+		}
+	},
 		computed: {
 			templateNames() {
 				return this.templates.map((t) => t.name || '未命名')
@@ -327,7 +345,38 @@
 				this.allMode = true
 				this.autoSelectAll = true
 			}
+			// LPAPI 打印（关键件/业务打印）需要本组件自带隐藏 canvas。订阅尺寸同步事件：
+			// 适配器 startJob 后会把任务像素尺寸发过来，这里更新 :style 并把 canvas 节点位图同步成任务像素。
+			try {
+			if (lpapiPlugin && lpapiPlugin.onCanvasSize) {
+				this._offCanvasSize = lpapiPlugin.onCanvasSize((w, h) => {
+					// 只同步 :style 显示尺寸（官方示例 updateCanvas）。绝不直接改 canvas 节点
+					// 位图：SDK 已在 startJob 内把节点位图设成任务像素，直接改 node.width 会清空
+					// SDK 的位图导致出纸空白。
+					this.lpapiCanvasW = w
+					this.lpapiCanvasH = h
+				})
+			}
+			} catch (e) {
+				console.log('[snPrintList] onCanvasSize skipped:', e.message)
+			}
 			this.query()
+		},
+		mounted() {
+			// DOM 就绪后创建绘制上下文（官方示例在 onLoad/mounted 中调用），供 LPAPI 绘制标签
+			try {
+				if (lpapiPlugin && lpapiPlugin.isReady && lpapiPlugin.isReady() && lpapiPlugin.initDrawContext) {
+					lpapiPlugin.initDrawContext('lpapi-canvas-sn')
+				}
+			} catch (e) {
+				console.log('[snPrintList] initDrawContext skipped:', e.message)
+			}
+		},
+		beforeDestroy() {
+			if (this._offCanvasSize) {
+				this._offCanvasSize()
+				this._offCanvasSize = null
+			}
 		},
 		methods: {
 			toast(title) {
@@ -336,6 +385,38 @@
 					icon: 'none',
 					duration: 3000
 				})
+			},
+
+			// 每条份数步进：最小 1
+			changeCopies(delta) {
+				const cur = Math.round(Number(this.copies)) || 1
+				this.copies = Math.max(1, cur + delta)
+			},
+
+			// 聚焦份数输入框时全选，方便直接输入新数字覆盖（避免手动删"1"再改）
+			onCopiesFocus() {
+				this.$nextTick(() => {
+					this.copiesSelStart = 0
+					this.copiesSelEnd = 99
+				})
+			},
+
+			onCopiesBlur() {
+				this.copiesSelStart = -1
+				this.copiesSelEnd = -1
+				this.normalizeCopies()
+			},
+
+			onCopiesConfirm() {
+				this.copiesSelStart = -1
+				this.copiesSelEnd = -1
+				this.normalizeCopies()
+			},
+
+			// 空/非法值回落到 1
+			normalizeCopies() {
+				const n = Math.round(Number(this.copies))
+				if (!isFinite(n) || n < 1) this.copies = 1
 			},
 
 			tplKey() {
@@ -583,10 +664,18 @@
 				if (st.isPaused) throw new Error('打印机处于暂停状态，请到「蓝牙打印」页点「清除打印机缓存」')
 			},
 
-			async startPrint() {
-				const tpl = this.currentTemplate
-				if (!tpl) return this.toast('先选一个标签模板')
-				if (this.jobs.length === 0) return this.toast('没有要打印的记录')
+		async startPrint() {
+			const tpl = this.currentTemplate
+			if (!tpl) return this.toast('先选一个标签模板')
+			if (this.jobs.length === 0) return this.toast('没有要打印的记录')
+			// 关键件/业务打印走本组件自带的隐藏 canvas：打印前把"当前画布"切回本组件，
+			// 避免从别的打印页返回后全局 active 还指向旧页，导致画到错的 canvas 出纸空白。
+			try {
+				if (lpapiPlugin && lpapiPlugin.setActiveCanvas) lpapiPlugin.setActiveCanvas('lpapi-canvas-sn')
+				if (lpapiPlugin && lpapiPlugin.isReady && lpapiPlugin.isReady() && lpapiPlugin.initDrawContext) {
+					lpapiPlugin.initDrawContext('lpapi-canvas-sn')
+				}
+			} catch (e) {}
 
 				uni.showLoading({
 					title: '检查打印机...',
@@ -621,7 +710,7 @@
 					if (this.canceled) break
 					this.currentSn = record[this.config.snKey] || ''
 					try {
-						await printer.printWithSaved(buildZpl(job, record))
+						await printer.printTemplate(job, record)
 						this.okList.push(record)
 					} catch (e) {
 						this.failList.push({
@@ -751,6 +840,34 @@
 		color: #333;
 		text-align: right;
 		flex: 1;
+	}
+
+	.stepper {
+		display: flex;
+		align-items: center;
+		gap: 8rpx;
+		flex: 1;
+		justify-content: flex-end;
+	}
+
+	.step-btn {
+		width: 56rpx;
+		height: 56rpx;
+		line-height: 52rpx;
+		text-align: center;
+		font-size: 40rpx;
+		color: #333;
+		border: 1rpx solid #ddd;
+		border-radius: 10rpx;
+		background: #f5f5f5;
+	}
+
+	.stepper-num {
+		flex: none;
+		width: 120rpx;
+		text-align: center;
+		border: 1rpx solid #ddd;
+		border-radius: 10rpx;
 	}
 
 	.fpicker {

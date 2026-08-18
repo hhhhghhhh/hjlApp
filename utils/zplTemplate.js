@@ -1,8 +1,12 @@
 // utils/zplTemplate.js
-// 标签模板 -> ZPL 指令。坐标与尺寸统一用毫米，内部按 DPI 换算成点(dot)。
-// 字号(fontH/fontW)与二维码放大倍数沿用 ZPL 原生单位。
+// 标签模板 -> ZPL 指令。坐标与尺寸统一用毫米，内部按打印机实际 DPI 换算成点(dot)。
+// 中性模型的字号(fontH/fontW)/二维码模块(moduleWidthMm)/线宽(thickness) 均以毫米存储，
+// 与打印机无关；本模块在"打印时"再按 opts.dpi（Zebra 适配器传入的实际 dpi）折算成点，
+// 实现"按打印机自动匹配 dpi"——模板本身不再记录任何 dpi。
+//
+// 为了适配多指令集架构，本模块不再直接读取 zebraPrinter.js 的字体状态，
+// 而是通过 opts 传入；未传入时默认从 storage 读取 force_ttf_font 作为降级。
 
-import printer from './zebraPrinter.js'
 import { renderTextToGfa, isBitmapSupported } from './cjkBitmap.js'
 
 const TEMPLATE_KEY = 'zebra_templates'
@@ -190,14 +194,16 @@ function templateDpi(tpl) {
 	return DPI_OPTIONS.indexOf(dpi) === -1 ? 203 : dpi
 }
 
-// 标签的点数尺寸，写入打印机长度或排版核对时用
-export function labelDots(tpl) {
-	const dpi = templateDpi(tpl)
+// 标签的点数尺寸，写入打印机长度或排版核对时用。
+// dpi 优先用连接打印机的真实分辨率（由调用方传入）；模板本身不再记录 dpi，
+// 故 templateDpi(tpl) 仅作为未连接时的兜底（传统 ZPL 便携机常见 203）。
+export function labelDots(tpl, dpi) {
+	const d = num(dpi, templateDpi(tpl))
 	const page = tpl.page || {}
 	return {
-		dpi,
-		widthDots: mmToDots(page.widthMm, dpi),
-		heightDots: mmToDots(page.heightMm, dpi)
+		dpi: d,
+		widthDots: mmToDots(page.widthMm, d),
+		heightDots: mmToDots(page.heightMm, d)
 	}
 }
 
@@ -225,8 +231,13 @@ function sanitizeCode(text) {
 	return String(text).replace(/[\^~]/g, '')
 }
 
-function renderElement(el, data, tpl, toDots) {
+function renderElement(el, data, tpl, toDots, fontOpts = {}) {
 	const rot = el.rotation || 'N'
+	const {
+		hasTtfFont = uni.getStorageSync('force_ttf_font') === true,
+		ttfFontPath = '',
+		hasCjkFont = false
+	} = fontOpts
 
 	// 把基点坐标换算成 ^FO 要的左上角。boxW/boxH 是这次实际占的框（点）。
 	const place = (boxW, boxH) => {
@@ -245,18 +256,21 @@ function renderElement(el, data, tpl, toDots) {
 	if (el.type === 'text') {
 		const text = fillVars(el.text, data)
 		if (!text) return ''
-		const h = num(el.fontH, 30)
-		const w = num(el.fontW, h)
+		// 中性模型的 fontH/fontW 是毫米，打印时按实际 dpi 折算成 ZPL 点
+		const fontHmm = num(el.fontH, 3)
+		const fontWmm = num(el.fontW, fontHmm)
+		const h = Math.max(1, Math.round(toDots(fontHmm)))
+		const w = Math.max(1, Math.round(toDots(fontWmm)))
 		const cjk = hasCjk(text)
 		const frameW = num(el.width, 0)
 
 		// CJK 文本渲染策略（按优先级）：
 		// 1. 有 TTF 中文字体（HANS.TTF 等）→ ^A@ 原生渲染，速度快、清晰
 		// 2. 无 TTF 但有位图渲染能力 且 打印机无 CJK 字体 → ^GFA 位图渲染
-		// 3. 降级：^A@ E:GB18030.FNT（仅在有内置 CJK 字体的打印机上有效）
-		if (cjk && printer.hasTtfFont()) {
+		// 3. 兜底：^A@ E:HANS.TTF（无 HANS.TTF 且无法位图时才会空白，属极端情况）
+		if (cjk && hasTtfFont) {
 			// TTF 字体路径：原生渲染，支持 ^FB 自动换行
-			const fontPath = printer.getCjkFontPath()
+			const fontPath = ttfFontPath || 'E:HANS.TTF'
 			const font = `^A@${rot},${h},${w},${fontPath}`
 			const block = frameW > 0
 				? `^FB${toDots(el.width)},99,0,${el.align === 'center' ? 'C' : el.align === 'right' ? 'R' : 'L'}`
@@ -266,7 +280,7 @@ function renderElement(el, data, tpl, toDots) {
 			return `${place(boxW, boxH)}${font}${block}^FH^FD${escapeText(text)}^FS`
 		}
 
-		if (cjk && isBitmapSupported() && !printer.hasCjkFont()) {
+		if (cjk && isBitmapSupported() && !hasCjkFont) {
 			const maxW = frameW > 0
 				? toDots(el.width)
 				: toDots((tpl.page || {}).widthMm || 60)
@@ -297,7 +311,7 @@ function renderElement(el, data, tpl, toDots) {
 		// ASCII 文本 或 CJK 降级：走 ZPL 原生字体路径
 		// 内置 ^A0 字体没有汉字，cjk 但无位图支持（H5 预览）时会印空白
 		const font = cjk
-			? `^A@${rot},${h},${w},${tpl.cjkFont || 'E:GB18030.FNT'}`
+			? `^A@${rot},${h},${w},${tpl.cjkFont || 'E:HANS.TTF'}`
 			: `^A0${rot},${h},${w}`
 		// ^FB 支持自动换行：有框宽时让 ZPL 按行宽断行，最多 99 行
 		// 第二参数原为 1（单行），改为 99 允许多行；左对齐也加 ^FB 以触发换行
@@ -315,7 +329,9 @@ function renderElement(el, data, tpl, toDots) {
 		const value = sanitizeCode(fillVars(el.data, data))
 		if (!value) return ''
 		const ecc = QR_ECC.indexOf(el.ecc) === -1 ? 'M' : el.ecc
-		const mag = num(el.magnification, 5)
+		// 中性模型存的是模块尺寸（毫米），按实际 dpi 折算成 ZPL 放大倍数（1~10）
+		const modMm = num(el.moduleWidthMm, 0.51)
+		const mag = Math.max(1, Math.min(10, Math.round(toDots(modMm))))
 		const modules = qrModules(value, ecc)
 		// QR 是正方形，宽高同一个数
 		const box = modules > 0
@@ -328,7 +344,7 @@ function renderElement(el, data, tpl, toDots) {
 		const value = sanitizeCode(fillVars(el.data, data))
 		if (!value) return ''
 		const h = toDots(el.heightMm)
-		const mw = num(el.moduleWidth, 2)
+		const mw = Math.max(1, Math.round(toDots(num(el.moduleWidth, 0.2))))
 		const show = el.showText === false ? 'N' : 'Y'
 		const above = el.textAbove ? 'Y' : 'N'
 		// 宽度一律按当次数据算，不用设计框宽 —— 设计框是照某个样例 SN 定的，换个长度就不对了
@@ -342,22 +358,26 @@ function renderElement(el, data, tpl, toDots) {
 	}
 
 	if (el.type === 'line') {
-		const thickness = num(el.thickness, 2)
+		const thickness = Math.max(1, Math.round(toDots(num(el.thickness, 0.3))))
 		return `${place(toDots(el.width), thickness)}^GB${toDots(el.width)},0,${thickness},B,0^FS`
 	}
 
 	if (el.type === 'box') {
-		return `${place(toDots(el.width), toDots(el.height))}^GB${toDots(el.width)},${toDots(el.height)},${num(el.thickness, 2)},B,0^FS`
+		const thickness = Math.max(1, Math.round(toDots(num(el.thickness, 0.3))))
+		return `${place(toDots(el.width), toDots(el.height))}^GB${toDots(el.width)},${toDots(el.height)},${thickness},B,0^FS`
 	}
 
 	return ''
 }
 
-export function buildZpl(tpl, data = {}) {
+export function buildZpl(tpl, data = {}, opts = {}) {
 	const page = tpl.page || {}
 	const print = tpl.print || {}
-	const dpi = templateDpi(tpl)
+	// 打印机实际 dpi：优先用适配器传入（ZebraAdapter 按机型/查询得到），
+	// 否则回落到模板记录的设计 dpi，再不行用 203 兜底（传统 ZPL 便携机常见值）。
+	const dpi = num(opts.dpi, templateDpi(tpl))
 	const toDots = (mm) => mmToDots(mm, dpi)
+	const fontOpts = opts.font || {}
 	const media = MEDIA_TYPES.find((m) => m.value === mediaTypeOf(tpl)) || MEDIA_TYPES[0]
 
 	const lines = []
@@ -378,7 +398,7 @@ export function buildZpl(tpl, data = {}) {
 	lines.push(print.invert180 ? '^POI' : '^PON')
 
 	;(tpl.elements || []).forEach((el) => {
-		const zpl = renderElement(el, data, tpl, toDots)
+		const zpl = renderElement(el, data, tpl, toDots, fontOpts)
 		if (zpl) lines.push(zpl)
 	})
 
@@ -387,8 +407,11 @@ export function buildZpl(tpl, data = {}) {
 	return lines.join('\n')
 }
 
-// 把标签长度写进打印机并用 ^JUS 存到非易失内存。
+// 把介质参数写进打印机并用 ^JUS 存到非易失内存。
 // 连续纸走定长(^MNN + ^LL)；间隙纸/黑标纸改用 ~JC 校准让传感器重新量。
+// 注意：间隙/黑标纸的走纸长度由传感器量出来，^LL 对"走纸"无效；但 ^LL 仍决定可打印区
+// 的上限——若 NVRAM 里残留的旧 ^LL 比实际标签长，内容会被裁到下一格之外。所以这里对
+// 间隙/黑标纸也显式写一次 ^LL=标签高度，保证可打印区与传感器量到的长度一致。
 export function buildApplyMediaCommand(tpl) {
 	const { heightDots } = labelDots(tpl)
 	const mediaType = mediaTypeOf(tpl)
@@ -396,20 +419,25 @@ export function buildApplyMediaCommand(tpl) {
 		return '^XA^MNN^LL' + heightDots + '^JUS^XZ'
 	}
 	const media = MEDIA_TYPES.find((m) => m.value === mediaType) || MEDIA_TYPES[0]
-	return '^XA' + media.zpl + '^JUS^XZ\n~JC'
+	return '^XA' + media.zpl + '^LL' + heightDots + '^JUS^XZ\n~JC'
 }
 
 // 把一段纯文本包成可打印的标签，用于自定义输入框里直接敲文字的场景
-export function buildTextLabel(text, cjkFont) {
-	// CJK 渲染策略：TTF 字体 > 位图渲染 > ^A@ GB18030.FNT
-	if (hasCjk(text) && printer.hasTtfFont()) {
+export function buildTextLabel(text, cjkFont, opts = {}) {
+	const {
+		hasTtfFont = uni.getStorageSync('force_ttf_font') === true,
+		ttfFontPath = '',
+		hasCjkFont = false
+	} = opts
+	// CJK 渲染策略：TTF 字体(HANS.TTF) > 位图渲染 ^GFA（不再依赖 GB18030.FNT）
+	if (hasCjk(text) && hasTtfFont) {
 		// 有下载的 TTF 字体，原生渲染最快最清晰
-		const fontPath = printer.getCjkFontPath()
+		const fontPath = ttfFontPath || 'E:HANS.TTF'
 		const body = `^A@N,40,40,${fontPath}`
 		return ['^XA', '^CI28', `^FO30,30${body}^FH^FD${escapeText(text)}^FS`, '^XZ'].join('\n')
 	}
 	// 无 TTF 字体，走位图渲染（便携机无中文字体时）
-	if (hasCjk(text) && isBitmapSupported() && !printer.hasCjkFont()) {
+	if (hasCjk(text) && isBitmapSupported() && !hasCjkFont) {
 		const ss = getBitmapQuality() === 'clear' ? 2 : 1
 		const rendered = renderTextToGfa(text, {
 			fontHeightDots: 40,
@@ -424,21 +452,21 @@ export function buildTextLabel(text, cjkFont) {
 		}
 	}
 	const body = hasCjk(text)
-		? `^A@N,40,40,${cjkFont || 'E:GB18030.FNT'}`
+		? `^A@N,40,40,${cjkFont || 'E:HANS.TTF'}`
 		: '^A0N,40,40'
 	return ['^XA', '^CI28', `^FO30,30${body}^FH^FD${escapeText(text)}^FS`, '^XZ'].join('\n')
 }
 
 export function newElement(type) {
 	const base = {
-		text: { type: 'text', x: 3, y: 3, fontH: 30, fontW: 30, rotation: 'N', text: '文本内容' },
-		qrcode: { type: 'qrcode', x: 3, y: 14, rotation: 'N', magnification: 5, ecc: 'M', data: '{{sn}}' },
+		text: { type: 'text', x: 3, y: 3, fontH: 4, fontW: 4, rotation: 'N', text: '文本内容' },
+		qrcode: { type: 'qrcode', x: 3, y: 14, rotation: 'N', moduleWidthMm: 0.51, ecc: 'M', width: 15, height: 15, data: '{{sn}}' },
 		barcode: {
 			type: 'barcode', x: 25, y: 14, rotation: 'N', codeType: 'code128',
-			heightMm: 10, moduleWidth: 2, showText: true, data: '{{sn}}'
+			heightMm: 10, moduleWidth: 0.25, showText: true, data: '{{sn}}'
 		},
-		line: { type: 'line', x: 3, y: 12, width: 60, thickness: 2 },
-		box: { type: 'box', x: 2, y: 2, width: 66, height: 36, thickness: 2 }
+		line: { type: 'line', x: 3, y: 12, width: 60, thickness: 0.3 },
+		box: { type: 'box', x: 2, y: 2, width: 66, height: 36, thickness: 0.3 }
 	}[type]
 	return JSON.parse(JSON.stringify(base))
 }
@@ -447,24 +475,63 @@ export function defaultTemplate() {
 	return {
 		id: 'tpl_' + Date.now(),
 		name: '默认标签',
-		page: { widthMm: 70, heightMm: 40, dpi: 203, mediaType: 'gap' },
+		page: { widthMm: 70, heightMm: 40, mediaType: 'gap' },
 		print: { darkness: 15, speed: 4, copies: 1, invert180: false, mode: 'T' },
-		cjkFont: 'E:GB18030.FNT',
+		cjkFont: 'E:HANS.TTF',
 		elements: [
-			{ type: 'text', x: 3, y: 3, fontH: 32, fontW: 32, rotation: 'N', text: '{{name}}' },
-			{ type: 'text', x: 3, y: 9, fontH: 24, fontW: 24, rotation: 'N', text: 'SN: {{sn}}' },
-			{ type: 'qrcode', x: 3, y: 15, rotation: 'N', magnification: 5, ecc: 'M', data: '{{sn}}' },
+			{ type: 'text', x: 3, y: 3, fontH: 4, fontW: 4, rotation: 'N', text: '{{name}}' },
+			{ type: 'text', x: 3, y: 9, fontH: 3, fontW: 3, rotation: 'N', text: 'SN: {{sn}}' },
+			{ type: 'qrcode', x: 3, y: 15, rotation: 'N', moduleWidthMm: 0.51, ecc: 'M', width: 20, height: 20, data: '{{sn}}' },
 			{
 				type: 'barcode', x: 28, y: 16, rotation: 'N', codeType: 'code128',
-				heightMm: 12, moduleWidth: 2, showText: true, data: '{{sn}}'
+				heightMm: 12, moduleWidth: 0.25, showText: true, data: '{{sn}}'
 			}
 		]
 	}
 }
 
+// 旧模板以"点(dot)"存储字号/线宽并带 page.dpi；新模型统一用毫米存储。
+// 加载时一次性把旧模板点值折算成毫米并删除 page.dpi，保证模型一致、不再依赖写死的 203。
+const r2 = (v) => Math.round(Number(v) * 100) / 100
+function migrateTemplate(tpl) {
+	if (!tpl || !tpl.page) return false
+	const legacyDpi = num(tpl.page.dpi, 0)
+	if (!legacyDpi) {
+		// 无 dpi 的新模板：仅兜底把残留的 magnification 折算成 moduleWidthMm
+		let touched = false
+		;(tpl.elements || []).forEach((el) => {
+			if (el.type === 'qrcode' && el.magnification != null && el.moduleWidthMm == null) {
+				el.moduleWidthMm = r2(num(el.magnification, 5) / 8)
+				delete el.magnification
+				touched = true
+			}
+		})
+		return touched
+	}
+	const dpm = DOTS_PER_MM[legacyDpi] || DOTS_PER_MM[203]
+	;(tpl.elements || []).forEach((el) => {
+		if (el.fontH != null) el.fontH = r2(el.fontH / dpm)
+		if (el.fontW != null) el.fontW = r2(el.fontW / dpm)
+		if (el.moduleWidth != null) el.moduleWidth = r2(el.moduleWidth / dpm)
+		if (el.thickness != null) el.thickness = r2(el.thickness / dpm)
+		if (el.type === 'qrcode') {
+			if (el.magnification != null && el.moduleWidthMm == null) {
+				el.moduleWidthMm = r2(el.magnification / dpm)
+			}
+			delete el.magnification
+		}
+	})
+	delete tpl.page.dpi
+	return true
+}
+
 export function loadTemplates() {
 	const list = uni.getStorageSync(TEMPLATE_KEY)
-	return Array.isArray(list) && list.length > 0 ? list : [defaultTemplate()]
+	if (!Array.isArray(list) || list.length === 0) return [defaultTemplate()]
+	let mutated = false
+	const out = list.map((t) => { if (migrateTemplate(t)) mutated = true; return t })
+	if (mutated) saveTemplates(out)
+	return out
 }
 
 export function saveTemplates(list) {
@@ -476,9 +543,14 @@ export function findTemplate(id) {
 }
 
 // 业务页面入口：按模板 id 填充数据并打印，自动连接默认打印机
-// 例: printTemplate('tpl_1730000000000', { name: '前门总成', sn: 'HJL20260728001' })
+// 例: const { printTemplate } = await import('@/utils/printerManager.js')
+//     await printTemplate('tpl_1730000000000', { name: '前门总总', sn: 'HJL20260728001' })
+// 注意：此函数已迁移到 printerManager.printTemplate(tpl, data)，请优先使用新 API。
+// 为保持兼容保留此导出，内部转发到 printerManager。
 export async function printTemplate(templateId, data = {}) {
 	const tpl = findTemplate(templateId)
 	if (!tpl) throw new Error('模板不存在: ' + templateId)
-	await printer.printWithSaved(buildZpl(tpl, data))
+	// 动态导入避免循环依赖
+	const { default: printerManager } = await import('./printerManager.js')
+	await printerManager.printWithSaved(buildZpl(tpl, data))
 }
