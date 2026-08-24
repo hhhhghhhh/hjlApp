@@ -190,16 +190,16 @@
 <style lang="scss" scoped>
 @import '@/common/page-theme-mixins.scss';
 
-$bg: #f0f2f5; $card: #fff; $text: #1a1a2e; $sub: #6b7280; $hint: #9ca3af;
+$bg: var(--color-bg-page); $card: var(--color-bg-card); $text: var(--color-text); $sub: var(--color-text-secondary); $hint: var(--color-text-hint);
 
 .page { @include p-page; background: $bg; min-height: 100vh; padding-bottom: 100rpx; }
 
 .swiper { width: 100%; }
 .tab-page { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; }
 
-.filter-row { flex-shrink: 0; padding: 20rpx 24rpx; background: $card; border-bottom: 1rpx solid #e5e7eb; transition: background .25s; }
+.filter-row { flex-shrink: 0; padding: 20rpx 24rpx; background: $card; border-bottom: 1rpx solid var(--color-border); transition: background .25s; }
 .filter-scroll { white-space: nowrap; display: flex; }
-.filter-tag { display: inline-flex; align-items: center; justify-content: center; padding: 12rpx 28rpx; margin-right: 12rpx; border-radius: 20rpx; background: #f3f4f6; font-size: 26rpx; color: $sub; transition: all .15s; flex-shrink: 0;
+.filter-tag { display: inline-flex; align-items: center; justify-content: center; padding: 12rpx 28rpx; margin-right: 12rpx; border-radius: 20rpx; background: var(--color-bg-page); font-size: var(--font-md); color: $sub; transition: all .15s; flex-shrink: 0;
 	&.on { font-weight: 600; }
 }
 
@@ -210,18 +210,18 @@ $bg: #f0f2f5; $card: #fff; $text: #1a1a2e; $sub: #6b7280; $hint: #9ca3af;
 .g-item { flex: 1; min-width: 0; overflow: hidden; }
 .g-card { @include p-card; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 36rpx 8rpx; min-height: 200rpx; gap: 18rpx; width: 100%; box-sizing: border-box; &:active { opacity: .88; transform: scale(.98); } }
 .g-icon { width: 72rpx; height: 72rpx; border-radius: 18rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background .25s;
-	.iconfont { font-size: 40rpx; transition: color .25s; }
+	.iconfont { font-size: var(--font-xl); transition: color .25s; }
 }
-.g-text { font-size: 26rpx; font-weight: 600; color: $text; text-align: center; transition: color .25s; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.g-text { font-size: var(--font-md); font-weight: 600; color: $text; text-align: center; transition: color .25s; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .g-item.empty { visibility: hidden; }
 
 .cmd-list { display: flex; flex-direction: column; gap: 16rpx; width: 100%; }
 .cmd-item { @include p-card; display: flex; align-items: center; padding: 28rpx; width: 100%; box-sizing: border-box; overflow: hidden; &:active { opacity: .88; } }
-.cmd-icon { width: 72rpx; height: 72rpx; border-radius: 16rpx; display: flex; align-items: center; justify-content: center; margin-right: 20rpx; flex-shrink: 0; .iconfont { font-size: 36rpx; color: #fff; } }
+.cmd-icon { width: 72rpx; height: 72rpx; border-radius: 16rpx; display: flex; align-items: center; justify-content: center; margin-right: 20rpx; flex-shrink: 0; .iconfont { font-size: var(--font-xl); color: #fff; } }
 .cmd-body { flex: 1; min-width: 0; overflow: hidden; }
-.cmd-title { display: block; font-size: 28rpx; font-weight: 600; color: $text; margin-bottom: 4rpx; transition: color .25s; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cmd-desc { display: block; font-size: 22rpx; color: $hint; transition: color .25s; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.empty-state { text-align: center; padding: 80rpx 0; color: $hint; font-size: 26rpx; }
+.cmd-title { display: block; font-size: var(--font-lg); font-weight: 600; color: $text; margin-bottom: 4rpx; transition: color .25s; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmd-desc { display: block; font-size: var(--font-xs); color: $hint; transition: color .25s; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.empty-state { text-align: center; padding: 80rpx 0; color: $hint; font-size: var(--font-md); }
 
 .tab-bar {
 	position: fixed; bottom: 0; left: 0; right: 0;
@@ -231,47 +231,47 @@ $bg: #f0f2f5; $card: #fff; $text: #1a1a2e; $sub: #6b7280; $hint: #9ca3af;
 	transition: background .25s;
 	padding-bottom: env(safe-area-inset-bottom);
 }
-.tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; position: relative; font-size: 28rpx; color: $sub; transition: color .2s; min-width: 0;
+.tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; position: relative; font-size: var(--font-lg); color: $sub; transition: color .2s; min-width: 0;
 	&.on { color: $text; font-weight: 600; }
 }
 .tab-line { position: absolute; bottom: 0; width: 48rpx; height: 6rpx; border-radius: 3rpx; transition: background .25s; }
 
 .size-small {
 	.tab-bar { height: 80rpx; }
-	.tab-item { font-size: 24rpx; }
+	.tab-item { font-size: var(--font-sm); }
 	.filter-row { padding: 14rpx 16rpx; }
-	.filter-tag { padding: 8rpx 20rpx; font-size: 22rpx; }
+	.filter-tag { padding: 8rpx 20rpx; font-size: var(--font-xs); }
 	.page-scroll { padding: 14rpx 16rpx; }
 	.g-card { padding: 28rpx 6rpx; min-height: 160rpx; }
-	.g-icon { width: 56rpx; height: 56rpx; .iconfont { font-size: 32rpx; } }
-	.g-text { font-size: 22rpx; }
+	.g-icon { width: 56rpx; height: 56rpx; .iconfont { font-size: var(--font-xl); } }
+	.g-text { font-size: var(--font-xs); }
 	.cmd-item { padding: 22rpx; }
-	.cmd-icon { width: 56rpx; height: 56rpx; .iconfont { font-size: 28rpx; } }
-	.cmd-title { font-size: 24rpx; }
+	.cmd-icon { width: 56rpx; height: 56rpx; .iconfont { font-size: var(--font-lg); } }
+	.cmd-title { font-size: var(--font-sm); }
 }
 
 .size-large {
 	.tab-bar { height: 120rpx; }
-	.tab-item { font-size: 32rpx; }
+	.tab-item { font-size: var(--font-xl); }
 	.filter-row { padding: 28rpx 32rpx; }
-	.filter-tag { padding: 16rpx 36rpx; font-size: 30rpx; }
+	.filter-tag { padding: 16rpx 36rpx; font-size: var(--font-lg); }
 	.page-scroll { padding: 28rpx 32rpx; }
 	.g-card { padding: 48rpx 12rpx; min-height: 250rpx; }
 	.g-icon { width: 88rpx; height: 88rpx; .iconfont { font-size: 48rpx; } }
-	.g-text { font-size: 30rpx; }
+	.g-text { font-size: var(--font-lg); }
 	.cmd-item { padding: 36rpx; }
 	.cmd-icon { width: 88rpx; height: 88rpx; .iconfont { font-size: 44rpx; } }
-	.cmd-title { font-size: 32rpx; }
+	.cmd-title { font-size: var(--font-xl); }
 }
 
 .theme-dark {
 	&.page { background: #0f0f1a; }
-	.tab-bar { background: #1a1a2e; }
+	.tab-bar { background: var(--color-bg-card); }
 	.tab-item { color: #888; &.on { color: #e0e0e0; } }
-	.filter-row { background: #1a1a2e; border-color: #2a2a45; }
+	.filter-row { background: var(--color-bg-card); border-color: #2a2a45; }
 	.filter-tag { background: #1e1e36; color: #888; }
-	.g-card, .cmd-item { background: #1a1a2e; box-shadow: 0 2rpx 16rpx rgba(0,0,0,.25); }
+	.g-card, .cmd-item { background: var(--color-bg-card); box-shadow: 0 2rpx 16rpx rgba(0,0,0,.25); }
 	.g-text, .cmd-title { color: #e0e0e0; }
-	.cmd-desc { color: #666; }
+	.cmd-desc { color: var(--color-text-secondary); }
 }
 </style>

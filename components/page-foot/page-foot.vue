@@ -20,7 +20,7 @@
 <style>
 	.page-share-title {
 		text-align: center;
-		font-size: 30rpx;
+		font-size: var(--font-lg);
 		color: #BEBEBE;
 		padding: 20rpx 0;
 	}

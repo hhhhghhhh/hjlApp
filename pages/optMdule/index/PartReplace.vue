@@ -727,11 +727,11 @@
 	$danger: #D9726A;
 	$success: #3BA37F;
 	$warning: #E8833A;
-	$text: #1a1a2e;
-	$sub: #6b7280;
-	$hint: #9ca3af;
+	$text: var(--color-text);
+	$sub: var(--color-text-secondary);
+	$hint: var(--color-text-hint);
 	$bg: #f7f8fa;
-	$border: #e5e7eb;
+	$border: var(--color-border);
 
 	.part-replace {
 		padding: 16rpx 0 160rpx;
@@ -741,7 +741,7 @@
 	.message-box {
 		padding: 12rpx 20rpx;
 		border-radius: 8rpx;
-		font-size: 24rpx;
+		font-size: var(--font-sm);
 		text-align: center;
 		opacity: 0;
 		transform: translateY(-8rpx);
@@ -776,7 +776,7 @@
 
 	/* 头部卡片 */
 	.header-card {
-		background: #fff;
+		background: var(--color-bg-card);
 		border-radius: 16rpx;
 		padding: 24rpx;
 		margin-bottom: 16rpx;
@@ -789,7 +789,7 @@
 	}
 
 	.title {
-		font-size: 32rpx;
+		font-size: var(--font-xl);
 		font-weight: 700;
 		color: $text;
 	}
@@ -803,7 +803,7 @@
 		display: flex;
 		align-items: center;
 		gap: 6rpx;
-		font-size: 24rpx;
+		font-size: var(--font-sm);
 		color: $sub;
 		padding: 8rpx 16rpx;
 		background: $bg;
@@ -816,7 +816,7 @@
 
 	/* 输入卡片 */
 	.input-card {
-		background: #fff;
+		background: var(--color-bg-card);
 		border-radius: 16rpx;
 		padding: 24rpx;
 		margin-bottom: 16rpx;
@@ -838,7 +838,7 @@
 	}
 
 	.input-label {
-		font-size: 26rpx;
+		font-size: var(--font-md);
 		font-weight: 600;
 		color: $text;
 	}
@@ -858,7 +858,7 @@
 	.input-value-input {
 		flex: 1;
 		text-align: left;
-		font-size: 24rpx;
+		font-size: var(--font-sm);
 		color: $text;
 		border: none;
 		border-bottom: 1rpx solid transparent;
@@ -872,7 +872,7 @@
 
 		&::placeholder {
 			color: $hint;
-			font-size: 22rpx;
+			font-size: var(--font-xs);
 		}
 	}
 
@@ -901,14 +901,14 @@
 
 	/* 信息卡片 */
 	.info-card {
-		background: #fff;
+		background: var(--color-bg-card);
 		border-radius: 16rpx;
 		padding: 24rpx;
 		margin-bottom: 16rpx;
 	}
 
 	.card-title {
-		font-size: 28rpx;
+		font-size: var(--font-lg);
 		font-weight: 600;
 		color: $text;
 		margin-bottom: 16rpx;
@@ -919,7 +919,7 @@
 	}
 
 	.list-count {
-		font-size: 24rpx;
+		font-size: var(--font-sm);
 		color: $hint;
 		margin-left: 8rpx;
 		font-weight: 400;
@@ -938,19 +938,19 @@
 	}
 
 	.info-label {
-		font-size: 22rpx;
+		font-size: var(--font-xs);
 		color: $hint;
 	}
 
 	.info-value {
-		font-size: 24rpx;
+		font-size: var(--font-sm);
 		font-weight: 500;
 		color: $text;
 	}
 
 	/* 列表卡片 */
 	.list-card {
-		background: #fff;
+		background: var(--color-bg-card);
 		border-radius: 16rpx;
 		padding: 24rpx;
 		margin-bottom: 16rpx;
@@ -963,7 +963,7 @@
 		padding: 40rpx 0;
 		gap: 16rpx;
 		color: $hint;
-		font-size: 24rpx;
+		font-size: var(--font-sm);
 	}
 
 	.item-list {
@@ -996,7 +996,7 @@
 		background: $primary;
 		color: #fff;
 		border-radius: 50%;
-		font-size: 22rpx;
+		font-size: var(--font-xs);
 		font-weight: 600;
 		flex-shrink: 0;
 		margin-top: 4rpx;
@@ -1010,7 +1010,7 @@
 	.item-row {
 		display: flex;
 		gap: 16rpx;
-		font-size: 22rpx;
+		font-size: var(--font-xs);
 		padding: 2rpx 0;
 	}
 
@@ -1038,7 +1038,7 @@
 
 	/* 表单卡片 */
 	.form-card {
-		background: #fff;
+		background: var(--color-bg-card);
 		border-radius: 16rpx;
 		padding: 24rpx;
 		margin-bottom: 16rpx;
@@ -1054,7 +1054,7 @@
 
 	.form-label {
 		display: block;
-		font-size: 26rpx;
+		font-size: var(--font-md);
 		font-weight: 500;
 		color: $text;
 		margin-bottom: 10rpx;
@@ -1073,14 +1073,14 @@
 	}
 
 	.form-display-value {
-		font-size: 26rpx;
+		font-size: var(--font-md);
 		font-weight: 500;
 		color: $text;
 		display: block;
 	}
 
 	.form-display-desc {
-		font-size: 22rpx;
+		font-size: var(--font-xs);
 		color: $hint;
 		margin-top: 4rpx;
 		display: block;
@@ -1093,7 +1093,7 @@
 		background: $bg;
 		border-radius: 12rpx;
 		border: 1rpx solid $border;
-		font-size: 24rpx;
+		font-size: var(--font-sm);
 		color: $text;
 		box-sizing: border-box;
 		transition: border-color .25s ease;
@@ -1106,7 +1106,7 @@
 	.char-count {
 		display: block;
 		text-align: right;
-		font-size: 20rpx;
+		font-size: var(--font-xs);
 		color: $hint;
 		margin-top: 6rpx;
 	}
@@ -1124,7 +1124,7 @@
 		display: flex;
 		justify-content: space-between;
 		padding: 4rpx 0;
-		font-size: 24rpx;
+		font-size: var(--font-sm);
 	}
 
 	.preview-label {
@@ -1149,7 +1149,7 @@
 		padding: 80rpx 0;
 		gap: 20rpx;
 		color: $hint;
-		font-size: 28rpx;
+		font-size: var(--font-lg);
 	}
 
 	.loading-state {
@@ -1166,7 +1166,7 @@
 		right: 0;
 		padding: 20rpx 24rpx;
 		padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
-		background: #fff;
+		background: var(--color-bg-card);
 		box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.06);
 		z-index: 100;
 	}
@@ -1179,7 +1179,7 @@
 
 		text {
 			color: #fff;
-			font-size: 30rpx;
+			font-size: var(--font-lg);
 			font-weight: 600;
 		}
 
@@ -1194,7 +1194,7 @@
 
 	/* 寄件列表弹窗 */
 	.send-list-popup {
-		background: #fff;
+		background: var(--color-bg-card);
 		border-top-left-radius: 24rpx;
 		border-top-right-radius: 24rpx;
 		padding: 24rpx 24rpx 0;
@@ -1214,7 +1214,7 @@
 	}
 
 	.popup-title {
-		font-size: 30rpx;
+		font-size: var(--font-lg);
 		font-weight: 600;
 		color: $text;
 	}
@@ -1231,7 +1231,7 @@
 		padding: 16rpx 20rpx;
 		background: $bg;
 		border-radius: 10rpx;
-		font-size: 24rpx;
+		font-size: var(--font-sm);
 		color: $text;
 		border: 1rpx solid $border;
 	}
@@ -1267,7 +1267,7 @@
 		padding: 40rpx 0;
 		gap: 16rpx;
 		color: $hint;
-		font-size: 24rpx;
+		font-size: var(--font-sm);
 	}
 
 	.popup-item {
@@ -1292,13 +1292,13 @@
 	}
 
 	.popup-item-sn {
-		font-size: 26rpx;
+		font-size: var(--font-md);
 		font-weight: 500;
 		color: $text;
 	}
 
 	.popup-item-desc {
-		font-size: 22rpx;
+		font-size: var(--font-xs);
 		color: $hint;
 	}
 
@@ -1308,7 +1308,7 @@
 			background: rgba(74, 144, 217, .12);
 			color: $primary;
 			border-radius: 20rpx;
-			font-size: 20rpx;
+			font-size: var(--font-xs);
 		}
 	}
 
@@ -1316,7 +1316,7 @@
 		padding: 20rpx 0;
 		text-align: center;
 		color: $primary;
-		font-size: 24rpx;
+		font-size: var(--font-sm);
 
 		&:active {
 			opacity: 0.7;
@@ -1327,7 +1327,7 @@
 		padding: 20rpx 0;
 		text-align: center;
 		color: $hint;
-		font-size: 22rpx;
+		font-size: var(--font-xs);
 	}
 
 	/* 弹窗底部内边距 - 避开底部按钮 */
@@ -1346,7 +1346,7 @@
 		.form-card,
 		.bottom-bar,
 		.send-list-popup {
-			background: #1a1a2e;
+			background: var(--color-bg-card);
 		}
 
 		.title {
@@ -1370,7 +1370,7 @@
 			}
 
 			&::placeholder {
-				color: #666;
+				color: var(--color-text-secondary);
 			}
 		}
 
@@ -1388,7 +1388,7 @@
 		}
 
 		.list-count {
-			color: #666;
+			color: var(--color-text-secondary);
 		}
 
 		.list-item {
@@ -1422,7 +1422,7 @@
 		}
 
 		.form-display-desc {
-			color: #666;
+			color: var(--color-text-secondary);
 		}
 
 		.form-textarea {
@@ -1449,11 +1449,11 @@
 		}
 
 		.empty-state {
-			color: #666;
+			color: var(--color-text-secondary);
 		}
 
 		.empty-result {
-			color: #666;
+			color: var(--color-text-secondary);
 		}
 
 		.bottom-bar {
@@ -1484,11 +1484,11 @@
 		}
 
 		.popup-item-desc {
-			color: #666;
+			color: var(--color-text-secondary);
 		}
 
 		.load-more-end {
-			color: #666;
+			color: var(--color-text-secondary);
 		}
 
 		.message-box {

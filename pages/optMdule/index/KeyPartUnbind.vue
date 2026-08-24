@@ -532,11 +532,11 @@
 	$danger: #D9726A;
 	$success: #3BA37F;
 	$warning: #E8833A;
-	$text: #1a1a2e;
-	$sub: #6b7280;
-	$hint: #9ca3af;
+	$text: var(--color-text);
+	$sub: var(--color-text-secondary);
+	$hint: var(--color-text-hint);
 	$bg: #f7f8fa;
-	$border: #e5e7eb;
+	$border: var(--color-border);
 
 	.key-part-unbind {
 		padding: 16rpx 0 160rpx;
@@ -546,7 +546,7 @@
 	.message-box {
 		padding: 12rpx 20rpx;
 		border-radius: 8rpx;
-		font-size: 24rpx;
+		font-size: var(--font-sm);
 		text-align: center;
 		opacity: 0;
 		transform: translateY(-8rpx);
@@ -581,7 +581,7 @@
 
 	/* 头部卡片 */
 	.header-card {
-		background: #fff;
+		background: var(--color-bg-card);
 		border-radius: 16rpx;
 		padding: 24rpx;
 		margin-bottom: 16rpx;
@@ -594,7 +594,7 @@
 	}
 
 	.title {
-		font-size: 32rpx;
+		font-size: var(--font-xl);
 		font-weight: 700;
 		color: $text;
 	}
@@ -608,7 +608,7 @@
 		display: flex;
 		align-items: center;
 		gap: 6rpx;
-		font-size: 24rpx;
+		font-size: var(--font-sm);
 		color: $sub;
 		padding: 8rpx 16rpx;
 		background: $bg;
@@ -621,7 +621,7 @@
 
 	/* 输入卡片 */
 	.input-card {
-		background: #fff;
+		background: var(--color-bg-card);
 		border-radius: 16rpx;
 		padding: 24rpx;
 		margin-bottom: 16rpx;
@@ -643,7 +643,7 @@
 	}
 
 	.input-label {
-		font-size: 26rpx;
+		font-size: var(--font-md);
 		font-weight: 600;
 		color: $text;
 	}
@@ -659,7 +659,7 @@
 	.input-value-input {
 		flex: 1;
 		text-align: left;
-		font-size: 24rpx;
+		font-size: var(--font-sm);
 		color: $text;
 		border: none;
 		border-bottom: 1rpx solid transparent;
@@ -673,7 +673,7 @@
 
 		&::placeholder {
 			color: $hint;
-			font-size: 22rpx;
+			font-size: var(--font-xs);
 		}
 	}
 
@@ -695,14 +695,14 @@
 
 	/* 信息卡片 */
 	.info-card {
-		background: #fff;
+		background: var(--color-bg-card);
 		border-radius: 16rpx;
 		padding: 24rpx;
 		margin-bottom: 16rpx;
 	}
 
 	.card-title {
-		font-size: 28rpx;
+		font-size: var(--font-lg);
 		font-weight: 600;
 		color: $text;
 		margin-bottom: 16rpx;
@@ -723,19 +723,19 @@
 	}
 
 	.info-label {
-		font-size: 22rpx;
+		font-size: var(--font-xs);
 		color: $hint;
 	}
 
 	.info-value {
-		font-size: 24rpx;
+		font-size: var(--font-sm);
 		font-weight: 500;
 		color: $text;
 	}
 
 	/* 标签页 */
 	.tabs-container {
-		background: #fff;
+		background: var(--color-bg-card);
 		border-radius: 16rpx;
 		overflow: hidden;
 		margin-bottom: 16rpx;
@@ -750,7 +750,7 @@
 		flex: 1;
 		text-align: center;
 		padding: 20rpx 0;
-		font-size: 26rpx;
+		font-size: var(--font-md);
 		color: $sub;
 		position: relative;
 
@@ -784,7 +784,7 @@
 		padding: 40rpx 0;
 		gap: 16rpx;
 		color: $hint;
-		font-size: 24rpx;
+		font-size: var(--font-sm);
 	}
 
 	.item-list {
@@ -819,7 +819,7 @@
 		background: $primary;
 		color: #fff;
 		border-radius: 50%;
-		font-size: 22rpx;
+		font-size: var(--font-xs);
 		font-weight: 600;
 		flex-shrink: 0;
 		margin-top: 4rpx;
@@ -833,7 +833,7 @@
 	.item-row {
 		display: flex;
 		gap: 16rpx;
-		font-size: 22rpx;
+		font-size: var(--font-xs);
 		padding: 2rpx 0;
 	}
 
@@ -880,7 +880,7 @@
 		padding: 80rpx 0;
 		gap: 20rpx;
 		color: $hint;
-		font-size: 28rpx;
+		font-size: var(--font-lg);
 	}
 
 	.loading-state {
@@ -897,7 +897,7 @@
 		right: 0;
 		padding: 20rpx 24rpx;
 		padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
-		background: #fff;
+		background: var(--color-bg-card);
 		box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.06);
 		z-index: 100;
 	}
@@ -910,7 +910,7 @@
 
 		text {
 			color: #fff;
-			font-size: 30rpx;
+			font-size: var(--font-lg);
 			font-weight: 600;
 		}
 
@@ -927,7 +927,7 @@
 		.info-card,
 		.tabs-container,
 		.bottom-bar {
-			background: #1a1a2e;
+			background: var(--color-bg-card);
 		}
 
 		.title {
@@ -951,7 +951,7 @@
 			}
 
 			&::placeholder {
-				color: #666;
+				color: var(--color-text-secondary);
 			}
 		}
 
@@ -994,11 +994,11 @@
 		}
 
 		.empty-state {
-			color: #666;
+			color: var(--color-text-secondary);
 		}
 
 		.empty-result {
-			color: #666;
+			color: var(--color-text-secondary);
 		}
 
 		.bottom-bar {

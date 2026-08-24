@@ -128,77 +128,77 @@ export default {
 <style lang="scss" scoped>
 @import '@/common/page-theme-mixins.scss';
 
-$bg: #f0f2f5; $card: #fff; $text: #1a1a2e; $sub: #6b7280; $hint: #9ca3af; $line: #e5e7eb;
+$bg: var(--color-bg-page); $card: var(--color-bg-card); $text: var(--color-text); $sub: var(--color-text-secondary); $hint: var(--color-text-hint); $line: var(--color-border);
 
 .page { @include p-page; background: $bg; padding-bottom: 120rpx; }
 
 .top-bar { position: sticky; top: 0; z-index: 10; background: $card; padding: 20rpx 24rpx; padding-top: calc(20rpx + env(safe-area-inset-top)); box-shadow: 0 1rpx 8rpx rgba(0,0,0,.03); transition: background .25s; }
 .search-box { display: flex; align-items: center; background: #f4f5f7; border-radius: 12rpx; padding: 18rpx 20rpx; border: 1rpx solid $line; transition: background .25s, border .25s; }
-.search-input { flex: 1; font-size: 28rpx; color: $text; margin: 0 16rpx; background: transparent; border: none; outline: none; }
-.ph { color: $hint; font-size: 28rpx; }
+.search-input { flex: 1; font-size: var(--font-lg); color: $text; margin: 0 16rpx; background: transparent; border: none; outline: none; }
+.ph { color: $hint; font-size: var(--font-lg); }
 .search-clear { padding: 8rpx; border-radius: 50%; background: rgba(0,0,0,.05); }
 .content { padding: 20rpx 24rpx; }
 .list-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16rpx; }
-.head-title { font-size: 30rpx; font-weight: 700; color: $text; }
-.head-count { font-size: 22rpx; color: $hint; }
+.head-title { font-size: var(--font-lg); font-weight: 700; color: $text; }
+.head-count { font-size: var(--font-xs); color: $hint; }
 .loading { text-align: center; padding: 80rpx 0; }
 .list { display: flex; flex-direction: column; gap: 16rpx; }
 
 .t-card { @include p-card; padding: 28rpx; position: relative; &:active { opacity: .95; } }
 .tc-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18rpx; }
-.tc-type { font-size: 28rpx; font-weight: 600; color: $text; }
-.tc-tag { padding: 6rpx 18rpx; border-radius: 16rpx; font-size: 20rpx; font-weight: 500;
+.tc-type { font-size: var(--font-lg); font-weight: 600; color: $text; }
+.tc-tag { padding: 6rpx 18rpx; border-radius: 16rpx; font-size: var(--font-xs); font-weight: 500;
 	&.t-1 { background: #fff3e0; color: #e65100; }
 	&.t-2 { background: #e3f2fd; color: #1565c0; }
 	&.t-3 { background: #e8f5e9; color: #2e7d32; }
 }
 .tc-row { display: flex; margin-bottom: 12rpx; }
-.tc-l { width: 140rpx; font-size: 24rpx; color: $sub; flex-shrink: 0; }
-.tc-v { flex: 1; font-size: 24rpx; color: $text; }
-.tc-time { color: $hint; font-size: 22rpx; }
+.tc-l { width: 140rpx; font-size: var(--font-sm); color: $sub; flex-shrink: 0; }
+.tc-v { flex: 1; font-size: var(--font-sm); color: $text; }
+.tc-time { color: $hint; font-size: var(--font-xs); }
 .tc-arrow { position: absolute; right: 28rpx; top: 50%; transform: translateY(-50%); }
-.empty { text-align: center; padding: 100rpx 0; font-size: 28rpx; color: $hint; }
+.empty { text-align: center; padding: 100rpx 0; font-size: var(--font-lg); color: $hint; }
 
 .go-top { position: fixed; right: 30rpx; bottom: 140rpx; width: 72rpx; height: 72rpx; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4rpx 16rpx rgba(0,0,0,.15); z-index: 20; }
 .bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; background: $card; padding: 20rpx 24rpx; padding-bottom: calc(20rpx + env(safe-area-inset-bottom)); box-shadow: 0 -1rpx 8rpx rgba(0,0,0,.04); transition: background .25s; }
-.btn-back { background: #f4f5f7; color: $sub; text-align: center; height: 80rpx; line-height: 80rpx; border-radius: 12rpx; font-size: 28rpx; &:active { background: $line; } }
+.btn-back { background: #f4f5f7; color: $sub; text-align: center; height: 80rpx; line-height: 80rpx; border-radius: 12rpx; font-size: var(--font-lg); &:active { background: $line; } }
 
 /* ═════════════════ 尺寸 / 深色 ═════════════════ */
 .size-small {
 	.top-bar { padding: 14rpx 16rpx; }
 	.search-box { padding: 12rpx 16rpx; }
-	.search-input, .ph { font-size: 24rpx; }
+	.search-input, .ph { font-size: var(--font-sm); }
 	.content { padding: 14rpx 16rpx; }
-	.head-title { font-size: 26rpx; }
+	.head-title { font-size: var(--font-md); }
 	.t-card { padding: 20rpx; }
-	.tc-type { font-size: 24rpx; }
-	.tc-l, .tc-v { font-size: 20rpx; }
-	.btn-back { height: 66rpx; line-height: 66rpx; font-size: 24rpx; }
+	.tc-type { font-size: var(--font-sm); }
+	.tc-l, .tc-v { font-size: var(--font-xs); }
+	.btn-back { height: 66rpx; line-height: 66rpx; font-size: var(--font-sm); }
 	.go-top { width: 56rpx; height: 56rpx; bottom: 120rpx; }
 }
 
 .size-large {
 	.top-bar { padding: 28rpx 32rpx; }
 	.search-box { padding: 24rpx 28rpx; }
-	.search-input, .ph { font-size: 32rpx; }
+	.search-input, .ph { font-size: var(--font-xl); }
 	.content { padding: 28rpx 32rpx; }
-	.head-title { font-size: 36rpx; }
+	.head-title { font-size: var(--font-xl); }
 	.t-card { padding: 36rpx; }
-	.tc-type { font-size: 32rpx; }
-	.tc-l, .tc-v { font-size: 28rpx; }
-	.btn-back { height: 96rpx; line-height: 96rpx; font-size: 32rpx; }
+	.tc-type { font-size: var(--font-xl); }
+	.tc-l, .tc-v { font-size: var(--font-lg); }
+	.btn-back { height: 96rpx; line-height: 96rpx; font-size: var(--font-xl); }
 	.go-top { width: 88rpx; height: 88rpx; bottom: 160rpx; }
 }
 
 .theme-dark {
 	&.page { background: #0f0f1a; }
-	.top-bar, .bottom-bar { background: #1a1a2e; }
+	.top-bar, .bottom-bar { background: var(--color-bg-card); }
 	.search-box { background: #1e1e36; border-color: #2a2a45; }
 	.search-input { color: #e0e0e0; }
 	.ph { color: #555; }
 	.head-title, .tc-type, .tc-v { color: #e0e0e0; }
 	.tc-l { color: #888; }
-	.t-card { background: #1a1a2e; box-shadow: 0 2rpx 16rpx rgba(0,0,0,.25); }
+	.t-card { background: var(--color-bg-card); box-shadow: 0 2rpx 16rpx rgba(0,0,0,.25); }
 	.tc-tag.t-1 { background: rgba(230,81,0,.15); color: #ffa76e; }
 	.tc-tag.t-2 { background: rgba(21,101,192,.15); color: #7cadff; }
 	.tc-tag.t-3 { background: rgba(46,125,50,.15); color: #81c784; }

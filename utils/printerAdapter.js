@@ -26,10 +26,10 @@ export const PROTOCOL_OPTIONS = [
 ]
 
 // 已知机型 → 指令集 的默认映射（仅用于"首次连接、无 MAC 记忆"时自动预选，不强制路由）。
-// IB-PTM7330 系列走 LPAPI；Zebra 走 ZPL。
+// IB-PTM7330 / DT-270 / PTM230X 系列走 LPAPI；Zebra 走 ZPL。
 const KNOWN_PROTOCOL_BY_NAME = [
 	{ re: /ZEBRA|ZQ|ZD|ZT|QLN|IMZ|ZR|RW|MZ/i, proto: PROTOCOLS.ZEBRA },
-	{ re: /IB-PTM|PTM7330|IBPTM|PTM|DT7330|DETONG|德佟|DOTHAN|LPAPI/i, proto: PROTOCOLS.LPAPI }
+	{ re: /IB-PTM|PTM7330|IBPTM|PTM|PTM230X|DT7330|DT-?270|DETONG|德佟|DOTHAN|LPAPI/i, proto: PROTOCOLS.LPAPI }
 ]
 
 // 默认标签尺寸 50x30mm @ 300dpi，供 IB-PTM7330 等以位图方式打印的机型使用。

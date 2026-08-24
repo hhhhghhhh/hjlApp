@@ -113,7 +113,7 @@ $shadow-card: 0 4rpx 24rpx rgba(0, 0, 0, 0.06);
 
 // ═══════════ 尺寸预设 ═══════════
 
-body.size-small {
+.size-small {
   --spacing-xs: 6rpx;
   --spacing-sm: 12rpx;
   --spacing-md: 16rpx;
@@ -127,7 +127,7 @@ body.size-small {
   --button-height: 64rpx;
 }
 
-body.size-large {
+.size-large {
   --spacing-xs: 12rpx;
   --spacing-sm: 20rpx;
   --spacing-md: 28rpx;
@@ -143,21 +143,21 @@ body.size-large {
 
 // ═══════════ 主题色预设 ═══════════
 
-body.theme-green {
+.theme-green {
   --color-primary: #52c41a;
   --color-primary-light: rgba(82, 196, 26, 0.08);
   --color-primary-bg: rgba(82, 196, 26, 0.05);
   --color-primary-active: #389e0d;
 }
 
-body.theme-orange {
+.theme-orange {
   --color-primary: #fa8c16;
   --color-primary-light: rgba(250, 140, 22, 0.08);
   --color-primary-bg: rgba(250, 140, 22, 0.05);
   --color-primary-active: #d46b08;
 }
 
-body.theme-purple {
+.theme-purple {
   --color-primary: #722ed1;
   --color-primary-light: rgba(114, 46, 209, 0.08);
   --color-primary-bg: rgba(114, 46, 209, 0.05);
@@ -166,7 +166,7 @@ body.theme-purple {
 
 // ═══════════ 深色模式 ═══════════
 
-body.theme-dark {
+.theme-dark {
   --color-text: #e8e8e8;
   --color-text-secondary: #a0a0a0;
   --color-text-hint: #666666;

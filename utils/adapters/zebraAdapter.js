@@ -25,9 +25,12 @@ export class ZebraAdapter extends PrinterAdapter {
 		const cur = await super.connect(address, name)
 		// 验证连接：发 ~HS 看打印机是否响应
 		cur.verified = await this._verifyConnection()
-		// 连接成功后查询实际 dpi（按打印机自动匹配，而非写死），再异步检测中文字体
+		// 连接成功后查询实际 dpi（按打印机自动匹配，而非写死）
 		await this._queryDpi().catch(() => {})
-		this.checkCjkFont().catch(() => {})
+		// 等待 TTF 字体检测完成（决定中文走 HANS.TTF 原生渲染还是 ^GFA 位图兜底）。
+		// 之前这里 fire-and-forget，导致连接后立即打印时 hasTtfFont() 仍为 false，
+		// 中文会误走位图渲染（更慢），ZR668 自带的 HANS.TTF 反而没被用上。
+		await this.checkTtfFont().catch(() => {})
 		return cur
 	}
 

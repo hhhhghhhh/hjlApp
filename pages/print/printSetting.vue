@@ -1,5 +1,5 @@
 <template>
-	<view class="container">
+	<view class="container" :class="[sizeClass, darkClass, themeClass]">
 		<!-- dothan-lpapi-ble 需要页面里有一个隐藏 canvas 用于绘制标签（所见即所得）。
 		     官方示例要求 type="2d"，否则 createDrawContext 拿不到 2d 绘制上下文。 -->
 		<canvas type="2d" canvas-id="lpapi-canvas-setting" id="lpapi-canvas-setting"
@@ -190,7 +190,9 @@
 	import lpapiPlugin from '@/utils/lpapi-uniplugin.js'
 	import { buildTextLabel, getBitmapQuality, setBitmapQuality as setBitmapQualityFn } from '@/utils/zplTemplate.js'
 
-	export default {
+	import settingsMixin from '@/common/settingsMixin.js'
+export default {
+	mixins: [settingsMixin],
 		data() {
 			return {
 				btEnabled: false,
@@ -701,27 +703,27 @@
 <style scoped>
 	.container {
 		padding: 20rpx;
-		background: #f5f5f5;
+		background: var(--color-bg-page);
 		min-height: 100vh;
 	}
 
 	.card {
-		background: #fff;
+		background: var(--color-bg-card);
 		border-radius: 12rpx;
 		padding: 24rpx;
 		margin-bottom: 20rpx;
 	}
 
 	.card-title {
-		font-size: 30rpx;
+		font-size: var(--font-lg);
 		font-weight: bold;
-		color: #333;
+		color: var(--color-text);
 		display: block;
 		margin-bottom: 16rpx;
 	}
 
 	.hint {
-		font-size: 24rpx;
+		font-size: var(--font-sm);
 		color: #888;
 		display: block;
 		margin: 8rpx 0;
@@ -735,22 +737,22 @@
 	}
 
 	.label {
-		font-size: 28rpx;
-		color: #666;
+		font-size: var(--font-lg);
+		color: var(--color-text-secondary);
 	}
 
 	.ipt {
 		flex: 1;
 		margin-left: 20rpx;
 		padding: 8rpx 16rpx;
-		font-size: 28rpx;
-		border: 1rpx solid #e0e0e0;
+		font-size: var(--font-lg);
+		border: 1rpx solid var(--color-border);
 		border-radius: 8rpx;
-		background: #fff;
+		background: var(--color-bg-card);
 	}
 
 	.value {
-		font-size: 28rpx;
+		font-size: var(--font-lg);
 	}
 
 	.ok {
@@ -769,15 +771,15 @@
 	}
 
 	.tip {
-		font-size: 24rpx;
-		color: #999;
+		font-size: var(--font-sm);
+		color: var(--color-text-hint);
 		padding: 0 12rpx 20rpx;
 		line-height: 1.6;
 	}
 
 	.tip-inline {
 		font-size: 23rpx;
-		color: #999;
+		color: var(--color-text-hint);
 		line-height: 1.6;
 		margin-top: 14rpx;
 	}
@@ -787,8 +789,8 @@
 	}
 
 	.empty {
-		font-size: 26rpx;
-		color: #999;
+		font-size: var(--font-md);
+		color: var(--color-text-hint);
 		text-align: center;
 		padding: 30rpx 0;
 	}
@@ -811,12 +813,12 @@
 	}
 
 	.device-name {
-		font-size: 30rpx;
-		color: #333;
+		font-size: var(--font-lg);
+		color: var(--color-text);
 	}
 
 	.badge {
-		font-size: 20rpx;
+		font-size: var(--font-xs);
 		color: #fff;
 		background: #E8833A;
 		border-radius: 6rpx;
@@ -825,13 +827,13 @@
 	}
 
 	.device-addr {
-		font-size: 24rpx;
-		color: #999;
+		font-size: var(--font-sm);
+		color: var(--color-text-hint);
 		margin-top: 6rpx;
 	}
 
 	.device-state {
-		font-size: 26rpx;
+		font-size: var(--font-md);
 		color: #576b95;
 	}
 
@@ -847,13 +849,13 @@
 		border: 1rpx solid #ddd;
 		border-radius: 8rpx;
 		padding: 0 16rpx;
-		font-size: 28rpx;
+		font-size: var(--font-lg);
 		box-sizing: border-box;
 	}
 
 	.addr-preview {
 		display: block;
-		font-size: 24rpx;
+		font-size: var(--font-sm);
 		color: #07c160;
 		margin-top: 12rpx;
 	}
@@ -868,14 +870,14 @@
 		border: 1rpx solid #ddd;
 		border-radius: 8rpx;
 		padding: 16rpx;
-		font-size: 24rpx;
+		font-size: var(--font-sm);
 		box-sizing: border-box;
 		margin-top: 16rpx;
 	}
 
 	.status-text {
-		font-size: 26rpx;
-		color: #333;
+		font-size: var(--font-md);
+		color: var(--color-text);
 		line-height: 1.8;
 		white-space: pre-wrap;
 	}

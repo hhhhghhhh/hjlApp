@@ -1,5 +1,5 @@
 <template>
-	<view class="container">
+	<view class="container" :class="[sizeClass, darkClass, themeClass]">
 		<!-- dothan-lpapi-ble 需要页面里有一个隐藏 canvas 用于绘制标签（所见即所得）。官方示例要求 type="2d"。
 		     本页测试打印（printTemplate）走 LPAPI 时需要它，否则出纸空白/无反应。 -->
 		<canvas type="2d" canvas-id="lpapi-canvas-import" id="lpapi-canvas-import"
@@ -142,7 +142,9 @@
 		ELEMENT_TYPES
 	} from '@/utils/zplTemplate.js'
 
-	export default {
+	import settingsMixin from '@/common/settingsMixin.js'
+export default {
+	mixins: [settingsMixin],
 		data() {
 			return {
 				pasted: '',
@@ -426,21 +428,21 @@
 	.container {
 		padding: 20rpx;
 		padding-bottom: 160rpx;
-		background: #f5f5f5;
+		background: var(--color-bg-page);
 		min-height: 100vh;
 	}
 
 	.card {
-		background: #fff;
+		background: var(--color-bg-card);
 		border-radius: 12rpx;
 		padding: 24rpx;
 		margin-bottom: 20rpx;
 	}
 
 	.card-title {
-		font-size: 30rpx;
+		font-size: var(--font-lg);
 		font-weight: bold;
-		color: #333;
+		color: var(--color-text);
 		display: block;
 		margin-bottom: 12rpx;
 	}
@@ -458,19 +460,19 @@
 		justify-content: space-between;
 		align-items: center;
 		padding: 12rpx 0;
-		border-bottom: 1rpx solid #f2f2f2;
+		border-bottom: 1rpx solid var(--color-bg-page);
 	}
 
 	.label {
 		font-size: 27rpx;
-		color: #666;
+		color: var(--color-text-secondary);
 		flex-shrink: 0;
 		margin-right: 20rpx;
 	}
 
 	.value {
-		font-size: 26rpx;
-		color: #333;
+		font-size: var(--font-md);
+		color: var(--color-text);
 		text-align: right;
 		flex: 1;
 		word-break: break-all;
@@ -482,7 +484,7 @@
 
 	.ipt {
 		font-size: 27rpx;
-		color: #333;
+		color: var(--color-text);
 		text-align: right;
 		width: 240rpx;
 		padding: 6rpx 0;
@@ -494,7 +496,7 @@
 
 	.hint {
 		font-size: 23rpx;
-		color: #999;
+		color: var(--color-text-hint);
 		line-height: 1.6;
 		margin-top: 12rpx;
 	}
@@ -511,8 +513,8 @@
 	}
 
 	.empty {
-		font-size: 26rpx;
-		color: #999;
+		font-size: var(--font-md);
+		color: var(--color-text-hint);
 		text-align: center;
 		padding: 24rpx 0;
 	}
@@ -523,8 +525,8 @@
 		border: 1rpx solid #ddd;
 		border-radius: 8rpx;
 		padding: 16rpx;
-		font-size: 24rpx;
-		color: #333;
+		font-size: var(--font-sm);
+		color: var(--color-text);
 		box-sizing: border-box;
 		margin-top: 12rpx;
 	}
@@ -538,7 +540,7 @@
 
 	.count {
 		font-size: 23rpx;
-		color: #999;
+		color: var(--color-text-hint);
 	}
 
 	.count.tip {
@@ -546,7 +548,7 @@
 	}
 
 	.warn-item {
-		font-size: 24rpx;
+		font-size: var(--font-sm);
 		color: #8a6d3b;
 		line-height: 1.6;
 		padding: 10rpx 0;
@@ -559,7 +561,7 @@
 		border: 1rpx solid #ddd;
 		border-radius: 8rpx;
 		padding: 16rpx;
-		font-size: 22rpx;
+		font-size: var(--font-xs);
 		color: #555;
 		box-sizing: border-box;
 	}
@@ -572,7 +574,7 @@
 		display: flex;
 		gap: 20rpx;
 		padding: 16rpx 20rpx;
-		background: #fff;
+		background: var(--color-bg-card);
 		box-shadow: 0 -2rpx 12rpx rgba(0, 0, 0, 0.06);
 	}
 

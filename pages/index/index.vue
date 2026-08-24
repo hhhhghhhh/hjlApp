@@ -20,7 +20,7 @@
 					</view>
 					<text class="func-name">生产领料</text>
 				</view>
-				<!-- 生产退料 - DJ03（新增） -->
+				<!-- 生产退料 - DJ03 -->
 				<view class="func-item" v-if="hasPermission('DJ03')" @click="goToDocOpt('prodReturn')">
 					<view class="func-icon" style="background: #F5A623;">
 						<uni-icons type="back" size="32" color="#fff"></uni-icons>
@@ -41,7 +41,6 @@
 					</view>
 					<text class="func-name">销售出货</text>
 				</view>
-
 			</view>
 		</view>
 
@@ -94,28 +93,38 @@
 		</view>
 
 		<!-- ════ 维修管理 ════ -->
-		<view class="card" v-if="hasAnyPermission(['productRepair', 'partSend', 'partReplace'])">
+		<view class="card" v-if="hasAnyPermission(['productRepair', 'partReplace', 'DJ14', 'DJ06'])">
 			<view class="card-header">
 				<text class="card-title">维修管理</text>
 			</view>
 			<view class="func-grid">
+				<!-- 产品维修 -->
 				<view class="func-item" v-if="hasPermission('productRepair')" @click="goToOptModule('productRepair')">
 					<view class="func-icon" style="background: #D9726A;">
 						<uni-icons type="gear" size="32" color="#fff"></uni-icons>
 					</view>
 					<text class="func-name">产品维修</text>
 				</view>
-				<view class="func-item" v-if="hasPermission('partSend')" @click="goToOptModule('partSend')">
-					<view class="func-icon" style="background: #50B7E0;">
-						<uni-icons type="paperplane" size="32" color="#fff"></uni-icons>
+				<!-- 其他出库 - DJ14 -->
+				<view class="func-item" v-if="hasPermission('DJ14')" @click="goToDocOpt('otherOutbound')">
+					<view class="func-icon" style="background: #FF6B6B;">
+						<uni-icons type="upload" size="32" color="#fff"></uni-icons>
 					</view>
-					<text class="func-name">配件寄出</text>
+					<text class="func-name">其他出库</text>
 				</view>
+				<!-- 配件更换 -->
 				<view class="func-item" v-if="hasPermission('partReplace')" @click="goToOptModule('partReplace')">
 					<view class="func-icon" style="background: #7B6CD9;">
 						<uni-icons type="refresh" size="32" color="#fff"></uni-icons>
 					</view>
 					<text class="func-name">配件更换</text>
+				</view>
+				<!-- 其他入库 - DJ06 -->
+				<view class="func-item" v-if="hasPermission('DJ06')" @click="goToDocOpt('otherInbound')">
+					<view class="func-icon" style="background: #36B37E;">
+						<uni-icons type="download" size="32" color="#fff"></uni-icons>
+					</view>
+					<text class="func-name">其他入库</text>
 				</view>
 			</view>
 		</view>
@@ -156,7 +165,7 @@
 
 		<!-- 无权限提示（已同步加入打印权限判断） -->
 		<view class="no-permission"
-			v-if="!hasAnyPermission(['DJ02', 'DJ11', 'DJ05', 'DJ12', 'DJ03', 'packagBind', 'packagUnBind', 'keyUnBind', 'productSnQuery', 'keySnQuery', 'productRepair', 'partSend', 'partReplace', 'printBluetooth', 'printKeySn', 'printPackageSn', 'printProductSn'])">
+			v-if="!hasAnyPermission(['DJ02', 'DJ11', 'DJ05', 'DJ12', 'DJ03', 'DJ06', 'DJ14', 'packagBind', 'packagUnBind', 'keyUnBind', 'productSnQuery', 'keySnQuery', 'productRepair', 'partReplace', 'printBluetooth', 'printKeySn', 'printPackageSn', 'printProductSn'])">
 			<uni-icons type="info" size="48" color="#999"></uni-icons>
 			<text class="no-permission-text">暂无任何功能权限，请联系管理员</text>
 		</view>
@@ -173,8 +182,11 @@
 			return {
 				// 权限列表（从存储中读取）
 				permissions: [],
-				// 单据类型配置：区分哪些是载具条码模式
-				containerDocTypes: ['DJ02', 'DJ05', 'DJ11', 'DJ03'],
+				// 单据类型配置：区分默认条码模式
+				// 选择分录（原载具条码）：先选明细分录再扫
+				containerDocTypes: ['DJ02', 'DJ05', 'DJ11', 'DJ14'],
+				// 两种模式：进入后由用户在「选择分录 / 扫码输入」间手动选择
+				manualDocTypes: ['DJ12','DJ06', 'DJ03'],
 				docTypeMap: {
 					purchaseReceipt: {
 						typeSn: 'DJ02',
@@ -196,11 +208,23 @@
 						operateType: '1',
 						typeName: '生产入库单'
 					},
-					// 新增生产退料
+					// 生产退料
 					prodReturn: {
 						typeSn: 'DJ03',
 						operateType: '1', // 退料入库
 						typeName: '生产退料单'
+					},
+					// 其他入库（两种模式手动选择）
+					otherInbound: {
+						typeSn: 'DJ06',
+						operateType: '1',
+						typeName: '其他入库单'
+					},
+					// 其他出库
+					otherOutbound: {
+						typeSn: 'DJ14',
+						operateType: '2',
+						typeName: '其他出库单'
 					}
 				}
 			};
@@ -214,6 +238,8 @@
 		onShow() {
 			// 每次显示时重新加载权限
 			this.loadPermissions();
+			// 通知自定义 TabBar 高亮当前项
+			uni.$emit('customTabSelect', 0);
 		},
 
 		onNavigationBarButtonTap() {
@@ -252,8 +278,9 @@
 			goToDocOpt(module) {
 				const config = this.docTypeMap[module];
 				if (config) {
-					const isContainer = this.containerDocTypes.includes(config.typeSn);
-					const codeType = isContainer ? 'container' : 'normal';
+					// 手动选择模式（DJ06）→ both；选择分录（原载具条码）→ container；其余 → 扫码输入（normal）
+					const codeType = this.manualDocTypes.includes(config.typeSn) ? 'both'
+						: (this.containerDocTypes.includes(config.typeSn) ? 'container' : 'normal');
 					uni.navigateTo({
 						url: `/pages/wms/docOpt/docOpt?docType=${config.typeSn}&operateType=${config.operateType}&typeName=${encodeURIComponent(config.typeName)}&codeType=${codeType}`
 					});
@@ -269,8 +296,7 @@
 					snQuery: '产品 SN 查询',
 					keyPartQuery: '关键件查询',
 					productRepair: '产品维修',
-					partReplace: '配件更换',
-					partSend: '配件寄出'
+					partReplace: '配件更换'
 				};
 				uni.navigateTo({
 					url: `/pages/optMdule/index/index?module=${module}&title=${encodeURIComponent(titles[module] || module)}`
@@ -297,9 +323,9 @@
 <style lang="scss" scoped>
 	@import '@/common/page-theme-mixins.scss';
 
-	$bg: #f0f2f5;
-	$text: #1a1a2e;
-	$line: #e5e7eb;
+	$bg: var(--color-bg-page);
+	$text: var(--color-text);
+	$line: var(--color-border);
 
 	.page {
 		@include p-page;
@@ -323,7 +349,7 @@
 	}
 
 	.card-title {
-		font-size: 28rpx;
+		font-size: var(--font-lg);
 		font-weight: 600;
 		color: $text;
 		padding-left: 16rpx;
@@ -341,8 +367,9 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		justify-content: center;
-		padding: 22rpx 8rpx;
+		/* 顶部对齐：图标不被文本行数拖动，长短标签同行图标高度一致 */
+		justify-content: flex-start;
+		padding: 22rpx 8rpx 18rpx;
 		border-radius: 14rpx;
 		background: #f7f8fa;
 		border: 1rpx solid $line;
@@ -368,11 +395,20 @@
 	}
 
 	.func-name {
-		font-size: 24rpx;
+		font-size: var(--font-sm);
 		font-weight: 500;
 		color: $text;
 		text-align: center;
-		line-height: 1.2;
+		line-height: 1.25;
+		width: 100%;
+		/* 长标签（如「关键件解绑」「产品SN打印」）允许换行，最多 2 行截断，
+		   避免单行溢出或与同行 1 行标签高度参差导致样式不统一 */
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+		overflow: hidden;
+		word-break: break-word;
+		overflow-wrap: break-word;
 	}
 
 	/* 无权限提示 */
@@ -386,8 +422,8 @@
 		gap: 20rpx;
 
 		.no-permission-text {
-			font-size: 26rpx;
-			color: #999;
+			font-size: var(--font-md);
+			color: var(--color-text-hint);
 			text-align: center;
 		}
 	}
@@ -408,7 +444,7 @@
 		}
 
 		.card-title {
-			font-size: 22rpx;
+			font-size: var(--font-xs);
 			padding-left: 12rpx;
 			border-left-width: 3rpx;
 		}
@@ -438,7 +474,7 @@
 			padding: 40rpx 24rpx;
 
 			.no-permission-text {
-				font-size: 22rpx;
+				font-size: var(--font-xs);
 			}
 		}
 	}
@@ -458,7 +494,7 @@
 		}
 
 		.card-title {
-			font-size: 34rpx;
+			font-size: var(--font-xl);
 			padding-left: 20rpx;
 			border-left-width: 6rpx;
 		}
@@ -481,14 +517,14 @@
 		}
 
 		.func-name {
-			font-size: 28rpx;
+			font-size: var(--font-lg);
 		}
 
 		.no-permission {
 			padding: 80rpx 40rpx;
 
 			.no-permission-text {
-				font-size: 30rpx;
+				font-size: var(--font-lg);
 			}
 		}
 	}
@@ -499,7 +535,7 @@
 		}
 
 		.card {
-			background: #1a1a2e;
+			background: var(--color-bg-card);
 			box-shadow: 0 2rpx 16rpx rgba(0, 0, 0, .25);
 		}
 
@@ -522,10 +558,10 @@
 		}
 
 		.no-permission {
-			background: #1a1a2e;
+			background: var(--color-bg-card);
 
 			.no-permission-text {
-				color: #666;
+				color: var(--color-text-secondary);
 			}
 		}
 	}

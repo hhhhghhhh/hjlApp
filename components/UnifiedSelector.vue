@@ -328,7 +328,7 @@ export default {
   background: var(--color-bg-hover);
   transition: background var(--transition-fast);
 
-  &:active { background: #e0e0e0; }
+  &:active { background: var(--color-border); }
 }
 
 // ── 弹窗 ────

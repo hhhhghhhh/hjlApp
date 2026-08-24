@@ -49,7 +49,7 @@
 							<text v-if="getItemDesc(item)" class="option-desc">{{ getItemDesc(item) }}</text>
 						</view>
 						<view class="check-icon" v-if="isSelected(item)">
-							<uni-icons type="checkmarkempty" size="16" color="#1677ff"></uni-icons>
+							<uni-icons type="checkmarkempty" size="16" color="var(--color-primary)"></uni-icons>
 						</view>
 					</view>
 
@@ -423,29 +423,29 @@ export default {
 	display: flex;
 	align-items: center;
 	padding: 20rpx 24rpx;
-	background: #f8f9fa;
+	background: var(--color-bg-page);
 	border-radius: 8rpx;
-	border: 1rpx solid #e9ecef;
+	border: 1rpx solid var(--color-border);
 	height: 80rpx;
 	box-sizing: border-box;
 	
 	&.disabled {
 		opacity: 0.5;
-		background: #f0f0f0;
+		background: var(--color-bg-page);
 	}
 }
 
 .trigger-text {
 	flex: 1;
-	font-size: 26rpx;
-	color: #333;
+	font-size: var(--font-md);
+	color: var(--color-text);
 	margin-right: 12rpx;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 
 	&.placeholder {
-		color: #999;
+		color: var(--color-text-hint);
 	}
 }
 
@@ -463,7 +463,7 @@ export default {
 }
 
 .popup-container {
-	background: #fff;
+	background: var(--color-bg-card);
 	border-radius: 24rpx 24rpx 0 0;
 	max-height: 80vh;
 	display: flex;
@@ -475,9 +475,9 @@ export default {
 	border-bottom: 1rpx solid #e5e5e5;
 	
 	.popup-title {
-		font-size: 32rpx;
+		font-size: var(--font-xl);
 		font-weight: 600;
-		color: #333;
+		color: var(--color-text);
 		margin-bottom: 20rpx;
 	}
 	
@@ -491,12 +491,12 @@ export default {
 			display: flex;
 			align-items: center;
 			padding: 16rpx 20rpx;
-			background: #f8f9fa;
+			background: var(--color-bg-page);
 			border-radius: 8rpx;
 			
 			.search-input {
 				flex: 1;
-				font-size: 28rpx;
+				font-size: var(--font-lg);
 				margin: 0 16rpx;
 				height: 40rpx;
 				line-height: 40rpx;
@@ -509,8 +509,8 @@ export default {
 		
 		.close-btn {
 			padding: 16rpx 0;
-			font-size: 28rpx;
-			color: #666;
+			font-size: var(--font-lg);
+			color: var(--color-text-secondary);
 		}
 	}
 }
@@ -525,11 +525,11 @@ export default {
 	align-items: center;
 	justify-content: space-between;
 	padding: 24rpx 0;
-	border-bottom: 1rpx solid #f0f0f0;
+	border-bottom: 1rpx solid var(--color-border);
 	
 	&.selected {
 		.option-name {
-			color: #1677ff;
+			color: var(--color-primary);
 			font-weight: 500;
 		}
 	}
@@ -540,8 +540,8 @@ export default {
 	
 	.option-name {
 		display: block;
-		font-size: 26rpx;
-		color: #333;
+		font-size: var(--font-md);
+		color: var(--color-text);
 		margin-bottom: 4rpx;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -549,8 +549,8 @@ export default {
 	}
 	
 	.option-desc {
-		font-size: 24rpx;
-		color: #999;
+		font-size: var(--font-sm);
+		color: var(--color-text-hint);
 	}
 }
 
@@ -561,8 +561,8 @@ export default {
 	.empty-text {
 		display: block;
 		margin-top: 16rpx;
-		font-size: 26rpx;
-		color: #999;
+		font-size: var(--font-md);
+		color: var(--color-text-hint);
 	}
 }
 
@@ -571,8 +571,8 @@ export default {
 	text-align: center;
 	
 	.no-more-text {
-		font-size: 24rpx;
-		color: #999;
+		font-size: var(--font-sm);
+		color: var(--color-text-hint);
 	}
 }
 
@@ -587,21 +587,21 @@ export default {
 		flex: 1;
 		height: 80rpx;
 		border-radius: 8rpx;
-		font-size: 28rpx;
+		font-size: var(--font-lg);
 		
 		&.cancel-btn {
-			background: #f8f9fa;
-			color: #666;
-			border: 1rpx solid #e9ecef;
+			background: var(--color-bg-page);
+			color: var(--color-text-secondary);
+			border: 1rpx solid var(--color-border);
 			margin-right: 16rpx;
 			
 			&:active {
-				background: #e9ecef;
+				background: var(--color-border);
 			}
 		}
 		
 		&.confirm-btn {
-			background: #1677ff;
+			background: var(--color-primary);
 			color: #fff;
 			border: none;
 			

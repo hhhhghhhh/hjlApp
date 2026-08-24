@@ -1188,7 +1188,7 @@
 		position: relative;
 
 		&.active {
-			color: #1677ff;
+			color: var(--color-primary);
 			font-weight: 500;
 
 			&::after {
@@ -1199,7 +1199,7 @@
 				transform: translateX(-50%);
 				width: 60rpx;
 				height: 4rpx;
-				background: #1677ff;
+				background: var(--color-primary);
 				border-radius: 2rpx;
 			}
 		}
@@ -1224,7 +1224,7 @@
 		}
 
 		.retry-btn {
-			background: #1677ff;
+			background: var(--color-primary);
 			color: #fff;
 			border: none;
 			border-radius: 8rpx;
@@ -1543,7 +1543,7 @@
 
 			.item-index {
 				font-size: 26rpx;
-				color: #1677ff;
+				color: var(--color-primary);
 				font-weight: 500;
 			}
 
@@ -1565,7 +1565,7 @@
 
 			.status-in {
 				background: #e6f0ff;
-				color: #1677ff;
+				color: var(--color-primary);
 			}
 
 			.status-inv {
@@ -1620,7 +1620,7 @@
 				padding-left: 20rpx;
 
 				&.highlight-value {
-					color: #1677ff;
+					color: var(--color-primary);
 					font-weight: 500;
 				}
 			}
@@ -1649,8 +1649,8 @@
 			}
 
 			&.edit-btn {
-				color: #1677ff;
-				border: 1rpx solid #1677ff;
+				color: var(--color-primary);
+				border: 1rpx solid var(--color-primary);
 
 				&:active {
 					background: #e6f0ff;
@@ -1744,7 +1744,7 @@
 					border-bottom: 1rpx solid #e0e0e0;
 
 					&:focus {
-						border-bottom-color: #1677ff;
+						border-bottom-color: var(--color-primary);
 					}
 				}
 			}
@@ -1773,7 +1773,7 @@
 			}
 
 			.confirm-btn {
-				color: #1677ff;
+				color: var(--color-primary);
 
 				&[disabled] {
 					color: #ccc;

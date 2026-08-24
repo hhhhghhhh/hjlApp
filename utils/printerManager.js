@@ -148,23 +148,29 @@ export default {
 	},
 
 	// IB-PTM7330 三种测试：PDF位图 / TPCL标准指令 / ESC/POS标准指令
+	// 这些是 ibptm7330Adapter 专属方法，ZebraAdapter/LpapiAdapter 未实现；加守卫避免误调时
+	// "undefined is not a function" 崩溃，改为抛清晰错误。
 	async printTestPdf() {
 		await this._ensureConnected()
+		if (!adapter || typeof adapter.printTestPdf !== 'function') throw new Error('当前协议不支持 PDF 位图测试（仅 IB-PTM7330 的 ESC/POS 适配器支持）')
 		return adapter.printTestPdf()
 	},
 
 	async printTestTpcl() {
 		await this._ensureConnected()
+		if (!adapter || typeof adapter.printTestTpcl !== 'function') throw new Error('当前协议不支持 TPCL 测试（仅 IB-PTM7330 的 ESC/POS 适配器支持）')
 		return adapter.printTestTpcl()
 	},
 
 	async printTestEsc() {
 		await this._ensureConnected()
+		if (!adapter || typeof adapter.printTestEsc !== 'function') throw new Error('当前协议不支持 ESC/POS 测试（仅 IB-PTM7330 的 ESC/POS 适配器支持）')
 		return adapter.printTestEsc()
 	},
 
 	async printTestLpapi() {
 		await this._ensureConnected()
+		if (!adapter || typeof adapter.printTestLpapi !== 'function') throw new Error('当前协议不支持 LPAPI 测试（请选择 LPAPI 指令集）')
 		return adapter.printTestLpapi()
 	},
 

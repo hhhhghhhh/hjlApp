@@ -1,5 +1,5 @@
 <template>
-	<view class="page">
+	<view class="page" :class="[sizeClass, darkClass, themeClass]">
 		<!-- dothan-lpapi-ble 需要页面里有一个隐藏 canvas 用于绘制标签（所见即所得）。
 		     官方示例要求 type="2d"。本组件被关键件/业务打印页共用，必须自带该 canvas，
 		     否则 LPAPI 打印（printTemplate）会因找不到 canvas 而无反应。 -->
@@ -63,7 +63,7 @@
 				@click="toggle(item)">
 				<view class="check">
 					<uni-icons :type="isSel(item) ? 'checkbox-filled' : 'circle'" size="22"
-						:color="isSel(item) ? '#1677ff' : '#c8c8c8'"></uni-icons>
+						:color="isSel(item) ? 'var(--color-primary)' : '#c8c8c8'"></uni-icons>
 				</view>
 				<view class="body">
 					<view class="line1">
@@ -205,7 +205,9 @@
 	} from '@/utils/labTemplate.js'
 	import docSelectPopup from './docSelectPopup.vue'
 
-	export default {
+	import settingsMixin from '@/common/settingsMixin.js'
+export default {
+	mixins: [settingsMixin],
 		components: {
 			docSelectPopup
 		},
@@ -771,38 +773,38 @@
 <style lang="scss" scoped>
 	.page {
 		min-height: 100vh;
-		background: #f5f5f5;
+		background: var(--color-bg-page);
 	}
 
 	.top-bar {
 		position: sticky;
 		top: 0;
 		z-index: 10;
-		background: #fff;
+		background: var(--color-bg-card);
 		box-shadow: 0 1rpx 8rpx rgba(0, 0, 0, .03);
 	}
 
 	.filter-card {
-		background: #fff;
+		background: var(--color-bg-card);
 	}
 
 	.filter-head {
 		display: flex;
 		align-items: center;
 		padding: 20rpx 24rpx;
-		border-bottom: 1rpx solid #f0f0f0;
+		border-bottom: 1rpx solid var(--color-border);
 	}
 
 	.filter-title {
-		font-size: 28rpx;
-		color: #333;
+		font-size: var(--font-lg);
+		color: var(--color-text);
 		font-weight: 500;
 		flex-shrink: 0;
 	}
 
 	.filter-sum {
 		flex: 1;
-		font-size: 24rpx;
+		font-size: var(--font-sm);
 		color: #9c9c9c;
 		margin: 0 16rpx;
 		white-space: nowrap;
@@ -811,8 +813,8 @@
 	}
 
 	.filter-toggle {
-		font-size: 26rpx;
-		color: #1677ff;
+		font-size: var(--font-md);
+		color: var(--color-primary);
 		flex-shrink: 0;
 	}
 
@@ -825,19 +827,19 @@
 		align-items: center;
 		justify-content: space-between;
 		padding: 14rpx 0;
-		border-bottom: 1rpx solid #f5f5f5;
+		border-bottom: 1rpx solid var(--color-border);
 	}
 
 	.flabel {
 		font-size: 27rpx;
-		color: #666;
+		color: var(--color-text-secondary);
 		flex-shrink: 0;
 		margin-right: 20rpx;
 	}
 
 	.fipt {
 		font-size: 27rpx;
-		color: #333;
+		color: var(--color-text);
 		text-align: right;
 		flex: 1;
 	}
@@ -855,11 +857,11 @@
 		height: 56rpx;
 		line-height: 52rpx;
 		text-align: center;
-		font-size: 40rpx;
-		color: #333;
+		font-size: var(--font-xl);
+		color: var(--color-text);
 		border: 1rpx solid #ddd;
 		border-radius: 10rpx;
-		background: #f5f5f5;
+		background: var(--color-bg-page);
 	}
 
 	.stepper-num {
@@ -872,12 +874,12 @@
 
 	.fpicker {
 		font-size: 27rpx;
-		color: #1677ff;
+		color: var(--color-primary);
 	}
 
 	.fvalue {
-		font-size: 26rpx;
-		color: #333;
+		font-size: var(--font-md);
+		color: var(--color-text);
 		text-align: right;
 		flex: 1;
 	}
@@ -894,7 +896,7 @@
 
 	.fhint {
 		display: block;
-		font-size: 22rpx;
+		font-size: var(--font-xs);
 		color: #9c9c9c;
 		margin-top: 12rpx;
 		line-height: 1.6;
@@ -910,7 +912,7 @@
 	.chip {
 		flex: 1;
 		font-size: 25rpx;
-		color: #1677ff;
+		color: var(--color-primary);
 	}
 
 	.chip-x {
@@ -924,17 +926,17 @@
 		align-items: center;
 		justify-content: space-between;
 		padding: 16rpx 24rpx;
-		background: #fff;
-		border-top: 1rpx solid #f0f0f0;
+		background: var(--color-bg-card);
+		border-top: 1rpx solid var(--color-border);
 	}
 
 	.count {
 		font-size: 25rpx;
-		color: #666;
+		color: var(--color-text-secondary);
 	}
 
 	.count-n {
-		color: #1677ff;
+		color: var(--color-primary);
 		font-weight: bold;
 	}
 
@@ -944,8 +946,8 @@
 	}
 
 	.op {
-		font-size: 26rpx;
-		color: #1677ff;
+		font-size: var(--font-md);
+		color: var(--color-primary);
 	}
 
 	.list {
@@ -961,12 +963,12 @@
 		align-items: flex-start;
 		padding: 22rpx 24rpx;
 		margin: 16rpx 20rpx 0;
-		background: #fff;
+		background: var(--color-bg-card);
 		border-radius: 12rpx;
 		border: 2rpx solid transparent;
 
 		&.on {
-			border-color: #1677ff;
+			border-color: var(--color-primary);
 			background: #f7fbff;
 		}
 	}
@@ -990,9 +992,9 @@
 	.sn {
 		flex: 1;
 		min-width: 0;
-		font-size: 34rpx;
+		font-size: var(--font-xl);
 		font-weight: bold;
-		color: #333;
+		color: var(--color-text);
 		word-break: break-all;
 	}
 
@@ -1006,8 +1008,8 @@
 	.name {
 		flex: 1;
 		min-width: 0;
-		font-size: 26rpx;
-		color: #666;
+		font-size: var(--font-md);
+		color: var(--color-text-secondary);
 		overflow: hidden;
 		white-space: nowrap;
 		text-overflow: ellipsis;
@@ -1016,14 +1018,14 @@
 	.more {
 		flex-shrink: 0;
 		font-size: 25rpx;
-		color: #1677ff;
+		color: var(--color-primary);
 		padding: 6rpx 0 6rpx 24rpx;
 	}
 
 	.detail {
 		margin-top: 10rpx;
 		padding-top: 12rpx;
-		border-top: 1rpx solid #f0f0f0;
+		border-top: 1rpx solid var(--color-border);
 	}
 
 	.badges {
@@ -1035,7 +1037,7 @@
 
 	.badge {
 		flex-shrink: 0;
-		font-size: 22rpx;
+		font-size: var(--font-xs);
 		padding: 4rpx 14rpx;
 		border-radius: 20rpx;
 		color: #fff;
@@ -1053,7 +1055,7 @@
 		}
 
 		&.tone-blue {
-			background: #1677ff;
+			background: var(--color-primary);
 		}
 
 		&.tone-red {
@@ -1063,7 +1065,7 @@
 
 	.field {
 		display: block;
-		font-size: 24rpx;
+		font-size: var(--font-sm);
 		color: #9c9c9c;
 		line-height: 1.6;
 		word-break: break-all;
@@ -1073,7 +1075,7 @@
 		padding: 50rpx 0;
 		text-align: center;
 		color: #9c9c9c;
-		font-size: 26rpx;
+		font-size: var(--font-md);
 	}
 
 	.bottom {
@@ -1087,7 +1089,7 @@
 		padding: 16rpx 20rpx;
 		padding-bottom: calc(16rpx + constant(safe-area-inset-bottom));
 		padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
-		background: #fff;
+		background: var(--color-bg-card);
 		box-shadow: 0 -2rpx 12rpx rgba(0, 0, 0, 0.06);
 	}
 
@@ -1097,7 +1099,7 @@
 	}
 
 	.pp {
-		background: #fff;
+		background: var(--color-bg-card);
 		border-radius: 20rpx 20rpx 0 0;
 		max-height: 80vh;
 	}
@@ -1107,18 +1109,18 @@
 		align-items: center;
 		justify-content: space-between;
 		padding: 24rpx;
-		border-bottom: 1rpx solid #f0f0f0;
+		border-bottom: 1rpx solid var(--color-border);
 	}
 
 	.pp-title {
-		font-size: 30rpx;
+		font-size: var(--font-lg);
 		font-weight: bold;
-		color: #333;
+		color: var(--color-text);
 	}
 
 	.pp-close {
-		font-size: 28rpx;
-		color: #666;
+		font-size: var(--font-lg);
+		color: var(--color-text-secondary);
 	}
 
 	.pp-body {
@@ -1128,7 +1130,7 @@
 	.pp-hint {
 		display: block;
 		font-size: 23rpx;
-		color: #999;
+		color: var(--color-text-hint);
 		line-height: 1.6;
 		margin-top: 16rpx;
 	}
@@ -1145,7 +1147,7 @@
 	.lot-title {
 		display: block;
 		font-size: 25rpx;
-		color: #333;
+		color: var(--color-text);
 		font-weight: 500;
 		padding-bottom: 10rpx;
 	}
@@ -1155,7 +1157,7 @@
 		display: flex;
 		flex-direction: column;
 		padding: 12rpx 0;
-		border-bottom: 1rpx solid #f0f0f0;
+		border-bottom: 1rpx solid var(--color-border);
 	}
 
 	.lot-line1 {
@@ -1167,8 +1169,8 @@
 	.lot-line2 {
 		display: flex;
 		flex-wrap: wrap;
-		font-size: 22rpx;
-		color: #666;
+		font-size: var(--font-xs);
+		color: var(--color-text-secondary);
 		margin-top: 6rpx;
 	}
 
@@ -1180,30 +1182,30 @@
 		flex: 1;
 		min-width: 0;
 		font-size: 25rpx;
-		color: #333;
+		color: var(--color-text);
 		word-break: break-all;
 	}
 
 	.lot-n {
 		flex-shrink: 0;
 		font-size: 23rpx;
-		color: #1677ff;
+		color: var(--color-primary);
 		padding-left: 16rpx;
 	}
 
 	.pp-progress {
 		display: block;
-		font-size: 32rpx;
+		font-size: var(--font-xl);
 		font-weight: bold;
-		color: #1677ff;
+		color: var(--color-primary);
 		text-align: center;
 		padding-top: 20rpx;
 	}
 
 	.pp-current {
 		display: block;
-		font-size: 26rpx;
-		color: #666;
+		font-size: var(--font-md);
+		color: var(--color-text-secondary);
 		text-align: center;
 		padding-top: 10rpx;
 		min-height: 40rpx;
@@ -1211,13 +1213,13 @@
 
 	.pp-result {
 		display: block;
-		font-size: 28rpx;
-		color: #333;
+		font-size: var(--font-lg);
+		color: var(--color-text);
 		padding: 16rpx 0;
 	}
 
 	.fail-item {
-		font-size: 24rpx;
+		font-size: var(--font-sm);
 		color: #fa5151;
 		line-height: 1.6;
 		padding: 8rpx 0;

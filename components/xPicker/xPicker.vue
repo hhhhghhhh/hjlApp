@@ -227,7 +227,7 @@ export default {
 .xPicker {
   height: 35px;
   line-height: 35px;
-  border: 1px solid #dcdfe6;
+  border: 1px solid var(--color-border);
   border-radius: 4px;
   padding: 0 20rpx;
   position: relative;
@@ -242,7 +242,7 @@ export default {
 }
 
 .arrow {
-  color: #999;
+  color: var(--color-text-hint);
   font-size: 12px;
 }
 
@@ -250,7 +250,7 @@ export default {
 .fullscreen-popup {
   width: 100vw;
   height: 100vh;
-  background: #fff;
+  background: var(--color-bg-card);
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -263,8 +263,8 @@ export default {
   display: flex;
   align-items: center;
   padding: 30rpx;
-  border-bottom: 1rpx solid #f0f0f0;
-  background: #fff;
+  border-bottom: 1rpx solid var(--color-border);
+  background: var(--color-bg-card);
   flex-shrink: 0;
   height: 100rpx;
   box-sizing: border-box;
@@ -275,7 +275,7 @@ export default {
   position: relative;
   display: flex;
   align-items: center;
-  background: #f5f5f5;
+  background: var(--color-bg-page);
   border-radius: 20rpx;
   padding: 20rpx 30rpx;
   margin-right: 20rpx;
@@ -283,29 +283,29 @@ export default {
 }
 
 .search-icon {
-  font-size: 32rpx;
-  color: #999;
+  font-size: var(--font-xl);
+  color: var(--color-text-hint);
   margin-right: 20rpx;
   line-height: 1;
 }
 
 .search-input {
   flex: 1;
-  font-size: 32rpx;
-  color: #333;
+  font-size: var(--font-xl);
+  color: var(--color-text);
   height: 40rpx;
   line-height: 40rpx;
   background: transparent;
 }
 
 .placeholder-style {
-  color: #999;
-  font-size: 32rpx;
+  color: var(--color-text-hint);
+  font-size: var(--font-xl);
 }
 
 .clear-icon {
-  font-size: 40rpx;
-  color: #999;
+  font-size: var(--font-xl);
+  color: var(--color-text-hint);
   padding: 10rpx;
   margin-left: 10rpx;
   line-height: 1;
@@ -317,8 +317,8 @@ export default {
 }
 
 .popup-close {
-  font-size: 32rpx;
-  color: #666;
+  font-size: var(--font-xl);
+  color: var(--color-text-secondary);
   padding: 15rpx 0;
   white-space: nowrap;
 }
@@ -327,12 +327,12 @@ export default {
 .list-scroll {
   flex: 1;
   height: calc(100vh - 100rpx);
-  background: #fff;
+  background: var(--color-bg-card);
 }
 
 .list-container {
   padding: 0;
-  background: #fff;
+  background: var(--color-bg-card);
 }
 
 .list-item {
@@ -340,8 +340,8 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 30rpx;
-  border-bottom: 1rpx solid #f5f5f5;
-  background: #fff;
+  border-bottom: 1rpx solid var(--color-border);
+  background: var(--color-bg-card);
   min-height: 100rpx;
   box-sizing: border-box;
 }
@@ -355,13 +355,13 @@ export default {
 }
 
 .item-text {
-  font-size: 32rpx;
-  color: #333;
+  font-size: var(--font-xl);
+  color: var(--color-text);
   flex: 1;
 }
 
 .selected-icon {
-  font-size: 32rpx;
+  font-size: var(--font-xl);
   color: #2979ff;
   font-weight: bold;
   margin-left: 20rpx;
@@ -373,12 +373,12 @@ export default {
   justify-content: center;
   align-items: center;
   height: 300rpx;
-  background: #fff;
+  background: var(--color-bg-card);
 }
 
 .empty-text {
-  font-size: 32rpx;
-  color: #999;
+  font-size: var(--font-xl);
+  color: var(--color-text-hint);
 }
 
 /* 强制弹窗在最上层 */

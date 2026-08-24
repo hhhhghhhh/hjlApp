@@ -152,7 +152,7 @@ export default {
     // 主题色
     themePrimary() {
       // 如果父组件传入了 themePrimary，使用父组件的，否则从 settingsMixin 获取
-      return this.$parent?.themePrimary || this.$options?.mixins?.[0]?.computed?.themePrimary?.call(this) || '#1677ff';
+      return this.$parent?.themePrimary || this.$options?.mixins?.[0]?.computed?.themePrimary?.call(this) || 'var(--color-primary)';
     },
     
     // 显示文本
@@ -322,7 +322,7 @@ export default {
   padding: 16rpx 20rpx;
   background: #f4f5f7;
   border-radius: 8rpx;
-  border: 1rpx solid #e5e7eb;
+  border: 1rpx solid var(--color-border);
   transition: all 0.2s ease;
   
   &:active:not(.disabled) {
@@ -330,16 +330,16 @@ export default {
   }
   
   &.disabled {
-    background: #fafafa;
-    border-color: #f0f0f0;
+    background: var(--color-bg-card);
+    border-color: var(--color-border);
     cursor: not-allowed;
   }
 }
 
 .trigger-text {
   flex: 1;
-  font-size: 24rpx;
-  color: #333;
+  font-size: var(--font-sm);
+  color: var(--color-text);
   margin: 0 12rpx;
 
   &.placeholder {
@@ -369,7 +369,7 @@ export default {
 }
 
 .popup-container {
-  background: #fff;
+  background: var(--color-bg-card);
   border-radius: 20rpx 20rpx 0 0;
   max-height: 80vh;
   display: flex;
@@ -379,12 +379,12 @@ export default {
 
 .popup-header {
   padding: 24rpx;
-  border-bottom: 1rpx solid #f0f0f0;
+  border-bottom: 1rpx solid var(--color-border);
   
   .popup-title {
-    font-size: 32rpx;
+    font-size: var(--font-xl);
     font-weight: 600;
-    color: #333;
+    color: var(--color-text);
     margin-bottom: 16rpx;
     transition: color 0.25s ease;
   }
@@ -408,7 +408,7 @@ export default {
       }
       
       &.disabled {
-        background: #fafafa;
+        background: var(--color-bg-card);
         cursor: not-allowed;
         
         .uni-icons {
@@ -418,11 +418,11 @@ export default {
       
       .search-input {
         flex: 1;
-        font-size: 28rpx;
+        font-size: var(--font-lg);
         margin: 0 16rpx;
         background: transparent;
         outline: none;
-        color: #333;
+        color: var(--color-bg-card);
         
         &:disabled {
           color: #8c8c8c;
@@ -445,8 +445,8 @@ export default {
     
     .close-btn {
       padding: 16rpx 0;
-      font-size: 28rpx;
-      color: #666;
+      font-size: var(--font-lg);
+      color: var(--color-text-secondary);
       
       &:active {
         opacity: 0.7;
@@ -464,7 +464,7 @@ export default {
   align-items: center;
   justify-content: space-between;
   padding: 24rpx;
-  border-bottom: 1rpx solid #f5f5f5;
+  border-bottom: 1rpx solid var(--color-border);
   transition: all 0.2s ease;
   position: relative;
   
@@ -478,11 +478,11 @@ export default {
   
   &.disabled {
     cursor: not-allowed;
-    background-color: #fafafa;
+    background-color: var(--color-bg-card);
     
     .option-name,
     .option-desc {
-      color: #bfbfbf !important;
+      color: var(--color-text-hint) !important;
     }
   }
   
@@ -493,8 +493,8 @@ export default {
   
   .option-name {
     display: block;
-    font-size: 28rpx;
-    color: #333;
+    font-size: var(--font-lg);
+    color: var(--color-text);
     margin-bottom: 4rpx;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -508,7 +508,7 @@ export default {
   
   .option-desc {
     display: block;
-    font-size: 24rpx;
+    font-size: var(--font-sm);
     color: #9c9c9c;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -516,7 +516,7 @@ export default {
     transition: color 0.25s ease;
     
     &.disabled {
-      color: #bfbfbf;
+      color: var(--color-text-hint);
     }
   }
   
@@ -526,7 +526,7 @@ export default {
   }
   
   .disabled-icon {
-    color: #bfbfbf;
+    color: var(--color-text-hint);
     margin-left: 16rpx;
     flex-shrink: 0;
   }
@@ -539,7 +539,7 @@ export default {
   .empty-text {
     display: block;
     margin-top: 16rpx;
-    font-size: 28rpx;
+    font-size: var(--font-lg);
     color: #9c9c9c;
   }
 }
@@ -550,7 +550,7 @@ export default {
     padding: 10rpx 14rpx;
     
     .trigger-text {
-      font-size: 20rpx;
+      font-size: var(--font-xs);
     }
   }
   
@@ -558,7 +558,7 @@ export default {
     padding: 16rpx;
     
     .popup-title {
-      font-size: 28rpx;
+      font-size: var(--font-lg);
       margin-bottom: 12rpx;
     }
     
@@ -567,12 +567,12 @@ export default {
         padding: 10rpx 14rpx;
         
         .search-input {
-          font-size: 24rpx;
+          font-size: var(--font-sm);
         }
       }
       
       .close-btn {
-        font-size: 24rpx;
+        font-size: var(--font-sm);
         padding: 10rpx 0;
       }
     }
@@ -582,11 +582,11 @@ export default {
     padding: 16rpx;
     
     .option-name {
-      font-size: 24rpx;
+      font-size: var(--font-sm);
     }
     
     .option-desc {
-      font-size: 20rpx;
+      font-size: var(--font-xs);
     }
   }
   
@@ -594,7 +594,7 @@ export default {
     padding: 80rpx 0;
     
     .empty-text {
-      font-size: 24rpx;
+      font-size: var(--font-sm);
     }
   }
 }
@@ -605,7 +605,7 @@ export default {
     padding: 22rpx 28rpx;
     
     .trigger-text {
-      font-size: 28rpx;
+      font-size: var(--font-lg);
     }
   }
   
@@ -613,7 +613,7 @@ export default {
     padding: 32rpx;
     
     .popup-title {
-      font-size: 36rpx;
+      font-size: var(--font-xl);
       margin-bottom: 20rpx;
     }
     
@@ -622,12 +622,12 @@ export default {
         padding: 22rpx 28rpx;
         
         .search-input {
-          font-size: 32rpx;
+          font-size: var(--font-xl);
         }
       }
       
       .close-btn {
-        font-size: 32rpx;
+        font-size: var(--font-xl);
         padding: 22rpx 0;
       }
     }
@@ -637,11 +637,11 @@ export default {
     padding: 32rpx;
     
     .option-name {
-      font-size: 32rpx;
+      font-size: var(--font-xl);
     }
     
     .option-desc {
-      font-size: 28rpx;
+      font-size: var(--font-lg);
     }
   }
   
@@ -649,7 +649,7 @@ export default {
     padding: 160rpx 0;
     
     .empty-text {
-      font-size: 32rpx;
+      font-size: var(--font-xl);
     }
   }
 }
@@ -665,7 +665,7 @@ export default {
     }
     
     &.disabled {
-      background: #1a1a2e;
+      background: var(--color-bg-card);
       border-color: #2a2a45;
     }
   }
@@ -674,7 +674,7 @@ export default {
     color: #e0e0e0;
     
     &.placeholder {
-      color: #666;
+      color: var(--color-text-secondary);
     }
     
     &.disabled {
@@ -683,7 +683,7 @@ export default {
   }
   
   .popup-container {
-    background: #1a1a2e;
+    background: var(--color-bg-card);
   }
   
   .popup-header {
@@ -702,7 +702,7 @@ export default {
         }
         
         &.disabled {
-          background: #1a1a2e;
+          background: var(--color-bg-card);
         }
         
         .search-input {
@@ -713,7 +713,7 @@ export default {
           }
           
           &::placeholder {
-            color: #666;
+            color: var(--color-text-secondary);
           }
         }
       }
@@ -736,7 +736,7 @@ export default {
     }
     
     &.disabled {
-      background-color: #1a1a2e;
+      background-color: var(--color-bg-card);
     }
     
     .option-name {
@@ -758,7 +758,7 @@ export default {
   
   .empty-state {
     .empty-text {
-      color: #666;
+      color: var(--color-text-secondary);
     }
   }
 }

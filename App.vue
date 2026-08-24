@@ -60,12 +60,22 @@
 					borderStyle: isDark ? 'black' : 'white'
 				});
 
-				// ── 2. 全局页面背景 ──（下拉刷新区域）
+		// ── 2. 全局页面背景 ──（下拉刷新区域）
+		// 仅在原生 App 平台生效：H5 平台的 setBackgroundColor 是空 stub，
+		// 调用只会打印 "[system] API setBackgroundColor is not yet implemented" 且【不抛异常】，
+		// 所以 try/catch 无法拦截；这里用条件编译在 H5 下直接剔除该调用，避免控制台刷屏。
+		// H5 的页面背景已由 .page 的 CSS 变量（--color-bg-page）接管，无需此 API。
+		// #ifndef H5
+		if (typeof uni.setBackgroundColor === 'function') {
+			try {
 				uni.setBackgroundColor({
 					backgroundColor: isDark ? '#0f0f1a' : '#f0f2f5',
 					backgroundColorTop: isDark ? '#0f0f1a' : '#f0f2f5',
 					backgroundColorBottom: isDark ? '#0f0f1a' : '#f0f2f5'
 				});
+			} catch (e) { /* 该平台不支持，忽略 */ }
+		}
+		// #endif
 
 				// ── 3. 当前页导航栏 ──
 				uni.setNavigationBarColor({
@@ -119,6 +129,18 @@
 		box-sizing: border-box;
 		background: var(--color-bg-page);
 		color: var(--color-text);
+	}
+
+	/* uni 主色按钮跟随主题色（覆盖组件内置 primary 蓝） */
+	uni-button[type=primary],
+	button[type=primary] {
+		background-color: var(--color-primary);
+		border-color: var(--color-primary);
+		color: #fff;
+	}
+
+	uni-button[type=primary]:active {
+		background-color: var(--color-primary-active);
 	}
 
 	.uni-card .uni-card__actions[data-v-19622063] {

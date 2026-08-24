@@ -41,7 +41,7 @@
 // ═══════════════════════════════════════════
 
 @mixin pt-size-small {
-  .size-small & {
+  &.size-small {
     // 这些规则被子选择器继承
   }
 }
@@ -51,7 +51,7 @@
 // ═══════════════════════════════════════════
 
 @mixin pt-size-large {
-  .size-large & {
+  &.size-large {
   }
 }
 
@@ -60,44 +60,44 @@
 // ═══════════════════════════════════════════
 
 @mixin pt-dark-base {
-  .theme-dark & {
+  &.theme-dark {
     background: #0f0f1a;
   }
 }
 
 @mixin pt-dark-card {
-  .theme-dark & {
+  &.theme-dark {
     background: #1a1a2e;
     box-shadow: 0 2rpx 16rpx rgba(0,0,0,.25);
   }
 }
 
 @mixin pt-dark-text {
-  .theme-dark & {
+  &.theme-dark {
     color: #e0e0e0;
   }
 }
 
 @mixin pt-dark-sub {
-  .theme-dark & {
+  &.theme-dark {
     color: #888;
   }
 }
 
 @mixin pt-dark-hint {
-  .theme-dark & {
+  &.theme-dark {
     color: #666;
   }
 }
 
 @mixin pt-dark-sep {
-  .theme-dark & {
+  &.theme-dark {
     background: #2a2a45;
   }
 }
 
 @mixin pt-dark-field {
-  .theme-dark & {
+  &.theme-dark {
     background: #1e1e36;
     border-color: #2a2a45;
   }

@@ -34,7 +34,7 @@
 						</view>
 					</view>
 					<view class="check-icon" v-if="selectedValue === item.groupId">
-						<uni-icons type="checkmarkempty" size="16" color="#1677ff"></uni-icons>
+						<uni-icons type="checkmarkempty" size="16" color="var(--color-primary)"></uni-icons>
 					</view>
 				</view>
 
@@ -182,7 +182,7 @@
 
 <style lang="scss" scoped>
 	.popup-container {
-		background: #fff;
+		background: var(--color-bg-card);
 		border-radius: 20rpx 20rpx 0 0;
 		max-height: 80vh;
 	}
@@ -191,8 +191,8 @@
 		display: flex;
 		align-items: center;
 		padding: 24rpx;
-		border-bottom: 1rpx solid #f0f0f0;
-		background: #fafafa;
+		border-bottom: 1rpx solid var(--color-border);
+		background: var(--color-bg-card);
 	}
 
 	.search-box {
@@ -200,29 +200,29 @@
 		display: flex;
 		align-items: center;
 		padding: 16rpx 20rpx;
-		background: #fff;
+		background: var(--color-bg-card);
 		border-radius: 8rpx;
 		margin-right: 20rpx;
-		border: 1rpx solid #e8e8e8;
+		border: 1rpx solid var(--color-border);
 	}
 
 	.search-input {
 		flex: 1;
-		font-size: 28rpx;
+		font-size: var(--font-lg);
 		margin: 0 16rpx;
-		color: #333;
+		color: var(--color-text);
 	}
 
 	.clear-btn {
 		padding: 6rpx;
-		background: #f5f5f5;
+		background: var(--color-bg-page);
 		border-radius: 50%;
 	}
 
 	.close-btn {
 		padding: 12rpx 0;
-		font-size: 30rpx;
-		color: #666;
+		font-size: var(--font-lg);
+		color: var(--color-text-secondary);
 		font-weight: 500;
 	}
 
@@ -235,11 +235,11 @@
 		align-items: center;
 		justify-content: space-between;
 		padding: 28rpx 24rpx;
-		border-bottom: 1rpx solid #f5f5f5;
+		border-bottom: 1rpx solid var(--color-border);
 		transition: all 0.3s;
 
 		&:active {
-			background: #fafafa;
+			background: var(--color-bg-card);
 		}
 
 		&.selected {
@@ -264,8 +264,8 @@
 	}
 
 	.process-name {
-		font-size: 30rpx;
-		color: #333;
+		font-size: var(--font-lg);
+		color: var(--color-text);
 		font-weight: 500;
 		white-space: nowrap;
 		overflow: hidden;
@@ -275,9 +275,9 @@
 	}
 
 	.process-code {
-		font-size: 24rpx;
-		color: #666;
-		background: #f5f5f5;
+		font-size: var(--font-sm);
+		color: var(--color-text-secondary);
+		background: var(--color-bg-page);
 		padding: 4rpx 12rpx;
 		border-radius: 4rpx;
 		margin-left: 12rpx;
@@ -286,8 +286,8 @@
 	}
 
 	.process-type {
-		font-size: 24rpx;
-		color: #666;
+		font-size: var(--font-sm);
+		color: var(--color-text-secondary);
 		background: #f0f7ff;
 		padding: 4rpx 12rpx;
 		border-radius: 4rpx;
@@ -303,7 +303,7 @@
 	}
 
 	.ok-qty {
-		font-size: 24rpx;
+		font-size: var(--font-sm);
 		color: #52c41a;
 		background: rgba(82, 196, 26, 0.1);
 		padding: 4rpx 12rpx;
@@ -312,7 +312,7 @@
 	}
 
 	.ng-qty {
-		font-size: 24rpx;
+		font-size: var(--font-sm);
 		color: #ff4d4f;
 		background: rgba(255, 77, 79, 0.1);
 		padding: 4rpx 12rpx;
@@ -330,6 +330,6 @@
 		padding: 60rpx 0;
 		text-align: center;
 		color: #9c9c9c;
-		font-size: 26rpx;
+		font-size: var(--font-md);
 	}
 </style>

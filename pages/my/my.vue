@@ -2,7 +2,7 @@
 	<view class="page" :class="[sizeClass, darkClass, themeClass]">
 		<!-- ════ 用户信息 ════ -->
 		<view class="user-card">
-			<image class="avatar" :src="avatar || defaultAvatar" mode="aspectFill" @error="avatar = defaultAvatar" />
+		<image class="avatar" :src="avatar || defaultAvatar" mode="aspectFill" @error="avatar = defaultAvatar" />
 			<view class="user-body">
 				<text class="user-name">{{ realname || '未设置' }}</text>
 				<text class="user-meta">{{ username }}<text v-if="factoryName"> · {{ factoryName }}</text></text>
@@ -111,16 +111,16 @@ import settingsMixin from '@/common/settingsMixin.js';
 export default {
 	mixins: [settingsMixin],
 
-	data() {
-		return {
-			factoryName: '',
-			avatar: '',
-			realname: '',
-			username: '',
+		data() {
+			return {
+				factoryName: '',
+				avatar: '',
+				realname: '',
+				username: '',
 			version: '',
 			defaultAvatar: '/static/my_s.png'
-		};
-	},
+			};
+		},
 
 	computed: {
 		colorOpts() { return appSettings.getThemeColorOptions(); },
@@ -131,10 +131,15 @@ export default {
 		chipStyle(){ return { background: this.themePrimary + '18', color: this.themePrimary }; }
 	},
 
-	onLoad() {
-		this.initUserInfo();
-		this.getAppVersion();
-	},
+		onLoad() {
+			this.initUserInfo();
+			this.getAppVersion();
+		},
+
+		onShow() {
+			// 通知自定义 TabBar 高亮当前项
+			uni.$emit('customTabSelect', 1);
+		},
 
 	methods: {
 		// ── 设置变更 ────
@@ -233,11 +238,11 @@ export default {
    混入 settingsMixin + page-theme-mixins
    ═════════════════════════════════════════ */
 
-$bg:   #f0f2f5;
-$text: #1a1a2e;
-$sub:  #6b7280;
-$hint: #9ca3af;
-$line: #e5e7eb;
+$bg: var(--color-bg-page);
+$text: var(--color-text);
+$sub: var(--color-text-secondary);
+$hint: var(--color-text-hint);
+$line: var(--color-border);
 
 .page {
 	@include p-page;
@@ -253,36 +258,36 @@ $line: #e5e7eb;
 }
 .avatar { width: 96rpx; height: 96rpx; border-radius: 50%; background: #e8edf2; flex-shrink: 0; }
 .user-body { flex: 1; margin-left: 24rpx; min-width: 0; }
-.user-name { display: block; font-size: 34rpx; font-weight: 700; color: $text; line-height: 1.3; transition: color .25s; }
-.user-meta { display: block; font-size: 24rpx; color: $sub; margin-top: 4rpx; transition: color .25s; }
-.ver-tag   { flex-shrink: 0; font-size: 20rpx; padding: 6rpx 16rpx; border-radius: 20rpx; font-weight: 600; transition: background .25s, color .25s; }
+.user-name { display: block; font-size: var(--font-xl); font-weight: 700; color: $text; line-height: 1.3; transition: color .25s; }
+.user-meta { display: block; font-size: var(--font-sm); color: $sub; margin-top: 4rpx; transition: color .25s; }
+.ver-tag   { flex-shrink: 0; font-size: var(--font-xs); padding: 6rpx 16rpx; border-radius: 20rpx; font-weight: 600; transition: background .25s, color .25s; }
 
 /* ── 分区 ──── */
 .block { margin-bottom: 20rpx; }
-.block-head { display: flex; align-items: center; gap: 12rpx; padding: 0 4rpx 16rpx; font-size: 24rpx; font-weight: 600; color: $sub; letter-spacing: 2rpx; transition: color .25s; }
+.block-head { display: flex; align-items: center; gap: 12rpx; padding: 0 4rpx 16rpx; font-size: var(--font-sm); font-weight: 600; color: $sub; letter-spacing: 2rpx; transition: color .25s; }
 .block-dot  { width: 10rpx; height: 10rpx; border-radius: 50%; transition: background .25s; }
 .card       { @include p-card; overflow: hidden; }
 
 /* ── 行 ──── */
 .row       { display: flex; align-items: center; justify-content: space-between; padding: 28rpx 28rpx; min-height: 88rpx; box-sizing: border-box; }
-.row.arrow:active { background: #fafafa; }
+.row.arrow:active { background: var(--color-bg-card); }
 .row-l     { flex: 1; min-width: 0; margin-right: 20rpx; }
-.row-label { display: block; font-size: 28rpx; font-weight: 500; color: $text; line-height: 1.4; transition: color .25s; }
-.row-hint  { display: block; font-size: 22rpx; color: $hint; margin-top: 2rpx; transition: color .25s; }
-.arrow-icon{ font-size: 36rpx; color: $hint; font-weight: 300; flex-shrink: 0; transition: color .25s; }
+.row-label { display: block; font-size: var(--font-lg); font-weight: 500; color: $text; line-height: 1.4; transition: color .25s; }
+.row-hint  { display: block; font-size: var(--font-xs); color: $hint; margin-top: 2rpx; transition: color .25s; }
+.arrow-icon{ font-size: var(--font-xl); color: $hint; font-weight: 300; flex-shrink: 0; transition: color .25s; }
 .sep       { @include p-sep; margin: 0 28rpx; }
 
 /* ── 大小按钮 ──── */
 .sz-group { display: flex; gap: 6rpx; flex-shrink: 0; }
-.sz-btn   { min-width: 64rpx; height: 52rpx; padding: 0 16rpx; border-radius: 8rpx; display: flex; align-items: center; justify-content: center; font-size: 24rpx; font-weight: 500; color: $sub; background: #f3f4f6; transition: all .15s; }
+.sz-btn   { min-width: 64rpx; height: 52rpx; padding: 0 16rpx; border-radius: 8rpx; display: flex; align-items: center; justify-content: center; font-size: var(--font-sm); font-weight: 500; color: $sub; background: var(--color-bg-page); transition: all .15s; }
 
 /* ── 颜色圆点 ──── */
 .clr-group { display: flex; gap: 18rpx; flex-shrink: 0; }
 .clr-dot   { width: 42rpx; height: 42rpx; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: transform .15s, box-shadow .15s; &:active { transform: scale(.88); } }
-.clr-check { font-size: 22rpx; color: #fff; font-weight: 700; }
+.clr-check { font-size: var(--font-xs); color: #fff; font-weight: 700; }
 
 /* ── 退出 ──── */
-.logout { margin-top: 12rpx; padding: 28rpx; border-radius: 16rpx; text-align: center; font-size: 28rpx; font-weight: 600; color: #ef4444; @include p-card; &:active { background: #fef2f2; } }
+.logout { margin-top: 12rpx; padding: 28rpx; border-radius: 16rpx; text-align: center; font-size: var(--font-lg); font-weight: 600; color: #ef4444; @include p-card; &:active { background: #fef2f2; } }
 .safe-bottom { height: 60rpx; }
 
 /* ═══════════════════════ 尺寸 / 深色 ═══════════════════════ */
@@ -292,25 +297,25 @@ $line: #e5e7eb;
 	.user-card { padding: 22rpx 20rpx; margin-bottom: 14rpx; border-radius: 12rpx; }
 	.avatar { width: 72rpx; height: 72rpx; }
 	.user-body { margin-left: 18rpx; }
-	.user-name { font-size: 28rpx; }
-	.user-meta { font-size: 20rpx; }
+	.user-name { font-size: var(--font-lg); }
+	.user-meta { font-size: var(--font-xs); }
 	.ver-tag { font-size: 18rpx; padding: 4rpx 12rpx; }
 	.block { margin-bottom: 14rpx; }
-	.block-head { font-size: 20rpx; padding-bottom: 12rpx; gap: 8rpx; }
+	.block-head { font-size: var(--font-xs); padding-bottom: 12rpx; gap: 8rpx; }
 	.block-dot { width: 8rpx; height: 8rpx; }
 	.card { border-radius: 12rpx; }
 	.row { padding: 20rpx 20rpx; min-height: 72rpx; }
-	.row-label { font-size: 24rpx; }
+	.row-label { font-size: var(--font-sm); }
 	.row-hint { font-size: 18rpx; }
 	.row-l { margin-right: 14rpx; }
 	.sep { margin: 0 20rpx; }
-	.arrow-icon { font-size: 28rpx; }
-	.sz-btn { min-width: 54rpx; height: 42rpx; font-size: 20rpx; padding: 0 12rpx; }
+	.arrow-icon { font-size: var(--font-lg); }
+	.sz-btn { min-width: 54rpx; height: 42rpx; font-size: var(--font-xs); padding: 0 12rpx; }
 	.sz-group { gap: 4rpx; }
 	.clr-dot { width: 34rpx; height: 34rpx; }
 	.clr-group { gap: 14rpx; }
 	.clr-check { font-size: 18rpx; }
-	.logout { padding: 22rpx; font-size: 24rpx; border-radius: 12rpx; }
+	.logout { padding: 22rpx; font-size: var(--font-sm); border-radius: 12rpx; }
 	.safe-bottom { height: 48rpx; }
 }
 
@@ -319,40 +324,40 @@ $line: #e5e7eb;
 	.user-card { padding: 44rpx 36rpx; margin-bottom: 28rpx; border-radius: 20rpx; }
 	.avatar { width: 120rpx; height: 120rpx; }
 	.user-body { margin-left: 32rpx; }
-	.user-name { font-size: 40rpx; }
-	.user-meta { font-size: 28rpx; }
-	.ver-tag { font-size: 24rpx; padding: 8rpx 20rpx; }
+	.user-name { font-size: var(--font-xl); }
+	.user-meta { font-size: var(--font-lg); }
+	.ver-tag { font-size: var(--font-sm); padding: 8rpx 20rpx; }
 	.block { margin-bottom: 28rpx; }
-	.block-head { font-size: 28rpx; padding-bottom: 20rpx; gap: 16rpx; }
+	.block-head { font-size: var(--font-lg); padding-bottom: 20rpx; gap: 16rpx; }
 	.block-dot { width: 12rpx; height: 12rpx; }
 	.card { border-radius: 20rpx; }
 	.row { padding: 36rpx 36rpx; min-height: 104rpx; }
-	.row-label { font-size: 32rpx; }
-	.row-hint { font-size: 26rpx; }
+	.row-label { font-size: var(--font-xl); }
+	.row-hint { font-size: var(--font-md); }
 	.row-l { margin-right: 28rpx; }
 	.sep { margin: 0 36rpx; }
 	.arrow-icon { font-size: 44rpx; }
-	.sz-btn { min-width: 76rpx; height: 62rpx; font-size: 28rpx; padding: 0 20rpx; }
+	.sz-btn { min-width: 76rpx; height: 62rpx; font-size: var(--font-lg); padding: 0 20rpx; }
 	.sz-group { gap: 10rpx; }
 	.clr-dot { width: 50rpx; height: 50rpx; }
 	.clr-group { gap: 22rpx; }
-	.clr-check { font-size: 26rpx; }
-	.logout { padding: 36rpx; font-size: 32rpx; border-radius: 20rpx; margin-top: 18rpx; }
+	.clr-check { font-size: var(--font-md); }
+	.logout { padding: 36rpx; font-size: var(--font-xl); border-radius: 20rpx; margin-top: 18rpx; }
 	.safe-bottom { height: 72rpx; }
 }
 
 .theme-dark {
 	&.page { background: #0f0f1a; }
-	.user-card { background: #1a1a2e; box-shadow: 0 2rpx 16rpx rgba(0,0,0,.25); }
+	.user-card { background: var(--color-bg-card); box-shadow: 0 2rpx 16rpx rgba(0,0,0,.25); }
 	.user-name { color: #e0e0e0; }
 	.user-meta { color: #888; }
 	.block-head { color: #888; }
-	.card { background: #1a1a2e; box-shadow: 0 2rpx 16rpx rgba(0,0,0,.25); }
+	.card { background: var(--color-bg-card); box-shadow: 0 2rpx 16rpx rgba(0,0,0,.25); }
 	.row-label { color: #e0e0e0; }
-	.row-hint, .arrow-icon { color: #666; }
+	.row-hint, .arrow-icon { color: var(--color-text-secondary); }
 	.sep { background: #2a2a45; }
 	.row.arrow:active { background: #22223a; }
 	.sz-btn { background: #252540; color: #888; }
-	.logout { background: #1a1a2e; box-shadow: 0 2rpx 16rpx rgba(0,0,0,.25); &:active { background: #2a1a2e; } }
+	.logout { background: var(--color-bg-card); box-shadow: 0 2rpx 16rpx rgba(0,0,0,.25); &:active { background: #2a1a2e; } }
 }
 </style>

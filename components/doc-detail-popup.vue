@@ -1216,7 +1216,7 @@
 
 	.detail-container {
 		height: 80vh;
-		background: #fff;
+		background: var(--color-bg-card);
 		display: flex;
 		flex-direction: column;
 		overflow: hidden;
@@ -1226,7 +1226,7 @@
 	}
 
 	.tabs-container {
-		border-bottom: 1rpx solid #f0f0f0;
+		border-bottom: 1rpx solid var(--color-border);
 		flex-shrink: 0;
 		width: 100%;
 	}
@@ -1242,8 +1242,8 @@
 		flex: 1;
 		text-align: center;
 		padding: 24rpx 0;
-		font-size: 28rpx;
-		color: #666;
+		font-size: var(--font-lg);
+		color: var(--color-text-secondary);
 		position: relative;
 		transition: all 0.3s ease;
 
@@ -1275,7 +1275,7 @@
 		padding: 80rpx 0;
 
 		.error-text {
-			font-size: 28rpx;
+			font-size: var(--font-lg);
 			color: #ff4d4f;
 			margin: 24rpx 0;
 		}
@@ -1285,7 +1285,7 @@
 			border: none;
 			border-radius: 8rpx;
 			padding: 16rpx 32rpx;
-			font-size: 26rpx;
+			font-size: var(--font-md);
 
 			&:active {
 				opacity: 0.8;
@@ -1321,7 +1321,7 @@
 	}
 
 	.info-card {
-		background: #f8f9fa;
+		background: var(--color-bg-page);
 		border-radius: 12rpx;
 		padding: 24rpx;
 		width: 100%;
@@ -1341,12 +1341,12 @@
 			box-sizing: border-box;
 
 			&:not(:last-child) {
-				border-bottom: 1rpx solid #f0f0f0;
+				border-bottom: 1rpx solid var(--color-border);
 			}
 
 			.info-label {
-				font-size: 26rpx;
-				color: #666;
+				font-size: var(--font-md);
+				color: var(--color-text-secondary);
 				flex-shrink: 0;
 				width: 200rpx;
 				transition: all 0.3s ease;
@@ -1354,8 +1354,8 @@
 
 			.info-value {
 				flex: 1;
-				font-size: 26rpx;
-				color: #333;
+				font-size: var(--font-md);
+				color: var(--color-text);
 				text-align: right;
 				word-break: break-all;
 				word-wrap: break-word;
@@ -1380,28 +1380,28 @@
 		align-items: center;
 		padding: 20rpx 32rpx;
 		margin-bottom: 0;
-		border-bottom: 1rpx solid #f0f0f0;
+		border-bottom: 1rpx solid var(--color-border);
 		flex-shrink: 0;
 		width: 100%;
 		box-sizing: border-box;
-		background: #fff;
+		background: var(--color-bg-card);
 
 		.page-size-selector {
 			display: flex;
 			align-items: center;
 			gap: 12rpx;
-			font-size: 26rpx;
-			color: #666;
+			font-size: var(--font-md);
+			color: var(--color-text-secondary);
 
 			.picker-view {
 				display: flex;
 				align-items: center;
 				gap: 8rpx;
 				padding: 8rpx 16rpx;
-				background: #f5f5f5;
+				background: var(--color-bg-page);
 				border-radius: 8rpx;
-				font-size: 24rpx;
-				color: #333;
+				font-size: var(--font-sm);
+				color: var(--color-text);
 				transition: all 0.3s ease;
 			}
 		}
@@ -1417,7 +1417,7 @@
 				display: flex;
 				align-items: center;
 				justify-content: center;
-				background: #f5f5f5;
+				background: var(--color-bg-page);
 				border-radius: 8rpx;
 				transition: all 0.3s ease;
 
@@ -1426,13 +1426,13 @@
 				}
 
 				&:active:not(.disabled) {
-					background: #e0e0e0;
+					background: var(--color-border);
 				}
 			}
 
 			.page-info {
-				font-size: 26rpx;
-				color: #666;
+				font-size: var(--font-md);
+				color: var(--color-text-secondary);
 				min-width: 100rpx;
 				text-align: center;
 			}
@@ -1448,11 +1448,11 @@
 	.table-container {
 		display: inline-block;
 		min-width: 100%;
-		background: #fff;
+		background: var(--color-bg-card);
 		border-radius: 12rpx;
 
 		.table-header {
-			background: #f5f5f5;
+			background: var(--color-bg-page);
 			border-radius: 12rpx 12rpx 0 0;
 			position: sticky;
 			top: 0;
@@ -1460,16 +1460,16 @@
 
 			.table-row {
 				display: flex;
-				background: #fafafa;
-				border-bottom: 1rpx solid #e8e8e8;
+				background: var(--color-bg-card);
+				border-bottom: 1rpx solid var(--color-border);
 			}
 
 			.table-cell {
 				font-weight: 600;
-				color: #333;
-				font-size: 26rpx;
+				color: var(--color-text);
+				font-size: var(--font-md);
 				padding: 24rpx 16rpx;
-				background: #f5f5f5;
+				background: var(--color-bg-page);
 				white-space: normal;
 				word-break: break-word;
 				transition: all 0.3s ease;
@@ -1479,22 +1479,22 @@
 		.table-body {
 			.table-row {
 				display: flex;
-				border-bottom: 1rpx solid #f0f0f0;
+				border-bottom: 1rpx solid var(--color-border);
 				cursor: pointer;
 				transition: background 0.2s;
 
 				&:hover {
-					background: #fafafa;
+					background: var(--color-bg-card);
 				}
 
 				&:active {
-					background: #f5f5f5;
+					background: var(--color-bg-page);
 				}
 			}
 
 			.table-cell {
-				font-size: 24rpx;
-				color: #666;
+				font-size: var(--font-sm);
+				color: var(--color-text-secondary);
 				padding: 20rpx 16rpx;
 				word-break: break-word;
 				white-space: normal;
@@ -1558,11 +1558,11 @@
 	.delete-btn {
 		display: inline-block;
 		padding: 8rpx 20rpx;
-		background: #fff;
+		background: var(--color-bg-card);
 		color: #ff4d4f !important;
 		border: 1rpx solid #ff4d4f;
 		border-radius: 8rpx;
-		font-size: 24rpx;
+		font-size: var(--font-sm);
 		text-align: center;
 		cursor: pointer;
 		transition: all 0.3s ease;
@@ -1592,15 +1592,15 @@
 			gap: 16rpx;
 
 			.total-count {
-				font-size: 26rpx;
-				color: #666;
+				font-size: var(--font-md);
+				color: var(--color-text-secondary);
 				transition: all 0.3s ease;
 			}
 		}
 	}
 
 	.sub-table-item {
-		background: #f8f9fa;
+		background: var(--color-bg-page);
 		border-radius: 12rpx;
 		padding: 24rpx;
 		margin-bottom: 20rpx;
@@ -1614,16 +1614,16 @@
 			align-items: center;
 			margin-bottom: 16rpx;
 			padding-bottom: 16rpx;
-			border-bottom: 1rpx solid #e8e8e8;
+			border-bottom: 1rpx solid var(--color-border);
 
 			.item-index {
-				font-size: 26rpx;
+				font-size: var(--font-md);
 				font-weight: 500;
 				transition: all 0.3s ease;
 			}
 
 			.item-status {
-				font-size: 22rpx;
+				font-size: var(--font-xs);
 				padding: 4rpx 12rpx;
 				border-radius: 4rpx;
 				transition: all 0.3s ease;
@@ -1641,7 +1641,7 @@
 
 			.status-in {
 				background: #e6f0ff;
-				color: #1677ff;
+				color: var(--color-primary);
 			}
 
 			.status-inv {
@@ -1655,8 +1655,8 @@
 			}
 
 			.status-default {
-				background: #f5f5f5;
-				color: #666;
+				background: var(--color-bg-page);
+				color: var(--color-text-secondary);
 			}
 		}
 	}
@@ -1680,8 +1680,8 @@
 			}
 
 			.field-label {
-				font-size: 24rpx;
-				color: #666;
+				font-size: var(--font-sm);
+				color: var(--color-text-secondary);
 				flex-shrink: 0;
 				width: 160rpx;
 				transition: all 0.3s ease;
@@ -1689,8 +1689,8 @@
 
 			.field-value {
 				flex: 1;
-				font-size: 24rpx;
-				color: #333;
+				font-size: var(--font-sm);
+				color: var(--color-text);
 				text-align: right;
 				word-break: break-all;
 				word-wrap: break-word;
@@ -1710,24 +1710,24 @@
 		gap: 16rpx;
 		margin-top: 16rpx;
 		padding-top: 16rpx;
-		border-top: 1rpx solid #e8e8e8;
+		border-top: 1rpx solid var(--color-border);
 
 		.action-btn {
 			display: flex;
 			align-items: center;
 			gap: 4rpx;
 			padding: 8rpx 16rpx;
-			background: #fff;
+			background: var(--color-bg-card);
 			border-radius: 6rpx;
-			font-size: 22rpx;
+			font-size: var(--font-xs);
 			transition: all 0.3s ease;
 
 			&:active {
-				background: #f5f5f5;
+				background: var(--color-bg-page);
 			}
 
 			&.edit-btn {
-				border: 1rpx solid #1677ff;
+				border: 1rpx solid var(--color-primary);
 
 				&:active {
 					background: #e6f0ff;
@@ -1750,8 +1750,8 @@
 		text-align: center;
 
 		.no-more-text {
-			font-size: 24rpx;
-			color: #999;
+			font-size: var(--font-sm);
+			color: var(--color-text-hint);
 		}
 	}
 
@@ -1763,13 +1763,13 @@
 		.empty-text {
 			display: block;
 			margin-top: 16rpx;
-			font-size: 26rpx;
+			font-size: var(--font-md);
 		}
 	}
 
 	.edit-modal {
 		width: 560rpx;
-		background: #fff;
+		background: var(--color-bg-card);
 		border-radius: 24rpx;
 		overflow: hidden;
 		transition: all 0.3s ease;
@@ -1779,12 +1779,12 @@
 			justify-content: space-between;
 			align-items: center;
 			padding: 32rpx 32rpx 24rpx;
-			border-bottom: 1rpx solid #f0f0f0;
+			border-bottom: 1rpx solid var(--color-border);
 
 			.modal-title {
-				font-size: 32rpx;
+				font-size: var(--font-xl);
 				font-weight: 500;
-				color: #333;
+				color: var(--color-text);
 				transition: all 0.3s ease;
 			}
 
@@ -1801,31 +1801,31 @@
 
 				.form-label {
 					display: block;
-					font-size: 28rpx;
-					color: #666;
+					font-size: var(--font-lg);
+					color: var(--color-text-secondary);
 					margin-bottom: 12rpx;
 					transition: all 0.3s ease;
 				}
 
 				.form-value {
 					display: block;
-					font-size: 28rpx;
-					color: #333;
+					font-size: var(--font-lg);
+					color: var(--color-text);
 					padding: 16rpx 0;
-					border-bottom: 1rpx solid #f0f0f0;
+					border-bottom: 1rpx solid var(--color-border);
 					transition: all 0.3s ease;
 				}
 
 				.form-input {
 					width: 100%;
 					padding: 16rpx 0;
-					font-size: 28rpx;
-					color: #333;
-					border-bottom: 1rpx solid #e0e0e0;
+					font-size: var(--font-lg);
+					color: var(--color-text);
+					border-bottom: 1rpx solid var(--color-border);
 					transition: all 0.3s ease;
 
 					&:focus {
-						border-bottom-color: #1677ff;
+						border-bottom-color: var(--color-primary);
 					}
 				}
 			}
@@ -1833,15 +1833,15 @@
 
 		.modal-footer {
 			display: flex;
-			border-top: 1rpx solid #f0f0f0;
+			border-top: 1rpx solid var(--color-border);
 
 			button {
 				flex: 1;
 				height: 96rpx;
 				line-height: 96rpx;
-				font-size: 32rpx;
+				font-size: var(--font-xl);
 				border-radius: 0;
-				background: #fff;
+				background: var(--color-bg-card);
 				transition: all 0.3s ease;
 
 				&::after {
@@ -1850,8 +1850,8 @@
 			}
 
 			.cancel-btn {
-				color: #666;
-				border-right: 1rpx solid #f0f0f0;
+				color: var(--color-text-secondary);
+				border-right: 1rpx solid var(--color-border);
 			}
 
 			.confirm-btn {
@@ -1866,7 +1866,7 @@
 	.size-small {
 		.tab-item {
 			padding: 16rpx 0;
-			font-size: 24rpx;
+			font-size: var(--font-sm);
 		}
 
 		.tab-panel {
@@ -1891,7 +1891,7 @@
 
 			.info-label,
 			.info-value {
-				font-size: 22rpx;
+				font-size: var(--font-xs);
 			}
 
 			.info-label {
@@ -1900,18 +1900,18 @@
 		}
 
 		.table-header .table-cell {
-			font-size: 22rpx;
+			font-size: var(--font-xs);
 			padding: 16rpx 12rpx;
 		}
 
 		.table-body .table-cell {
-			font-size: 20rpx;
+			font-size: var(--font-xs);
 			padding: 14rpx 12rpx;
 		}
 
 		.delete-btn {
 			padding: 6rpx 14rpx;
-			font-size: 20rpx;
+			font-size: var(--font-xs);
 		}
 
 		.sub-table-item {
@@ -1921,7 +1921,7 @@
 
 		.item-content .item-row .field-label,
 		.item-content .item-row .field-value {
-			font-size: 20rpx;
+			font-size: var(--font-xs);
 		}
 
 		.field-label {
@@ -1930,7 +1930,7 @@
 
 		.item-actions .action-btn {
 			padding: 6rpx 12rpx;
-			font-size: 20rpx;
+			font-size: var(--font-xs);
 		}
 
 		.edit-modal {
@@ -1940,7 +1940,7 @@
 				padding: 24rpx 24rpx 20rpx;
 
 				.modal-title {
-					font-size: 28rpx;
+					font-size: var(--font-lg);
 				}
 			}
 
@@ -1953,7 +1953,7 @@
 					.form-label,
 					.form-value,
 					.form-input {
-						font-size: 24rpx;
+						font-size: var(--font-sm);
 					}
 				}
 			}
@@ -1961,7 +1961,7 @@
 			.modal-footer button {
 				height: 80rpx;
 				line-height: 80rpx;
-				font-size: 28rpx;
+				font-size: var(--font-lg);
 			}
 		}
 	}
@@ -1970,7 +1970,7 @@
 	.size-large {
 		.tab-item {
 			padding: 32rpx 0;
-			font-size: 32rpx;
+			font-size: var(--font-xl);
 		}
 
 		.tab-panel {
@@ -1995,7 +1995,7 @@
 
 			.info-label,
 			.info-value {
-				font-size: 30rpx;
+				font-size: var(--font-lg);
 			}
 
 			.info-label {
@@ -2004,18 +2004,18 @@
 		}
 
 		.table-header .table-cell {
-			font-size: 30rpx;
+			font-size: var(--font-lg);
 			padding: 32rpx 20rpx;
 		}
 
 		.table-body .table-cell {
-			font-size: 28rpx;
+			font-size: var(--font-lg);
 			padding: 26rpx 20rpx;
 		}
 
 		.delete-btn {
 			padding: 12rpx 28rpx;
-			font-size: 28rpx;
+			font-size: var(--font-lg);
 		}
 
 		.sub-table-item {
@@ -2025,7 +2025,7 @@
 
 		.item-content .item-row .field-label,
 		.item-content .item-row .field-value {
-			font-size: 28rpx;
+			font-size: var(--font-lg);
 		}
 
 		.field-label {
@@ -2034,7 +2034,7 @@
 
 		.item-actions .action-btn {
 			padding: 12rpx 24rpx;
-			font-size: 26rpx;
+			font-size: var(--font-md);
 		}
 
 		.edit-modal {
@@ -2044,7 +2044,7 @@
 				padding: 40rpx 40rpx 32rpx;
 
 				.modal-title {
-					font-size: 36rpx;
+					font-size: var(--font-xl);
 				}
 			}
 
@@ -2057,7 +2057,7 @@
 					.form-label,
 					.form-value,
 					.form-input {
-						font-size: 32rpx;
+						font-size: var(--font-xl);
 					}
 				}
 			}
@@ -2065,7 +2065,7 @@
 			.modal-footer button {
 				height: 112rpx;
 				line-height: 112rpx;
-				font-size: 36rpx;
+				font-size: var(--font-xl);
 			}
 		}
 	}
@@ -2089,7 +2089,7 @@
 		}
 
 		.info-card {
-			background: #1a1a2e;
+			background: var(--color-bg-card);
 		}
 
 		.info-list .info-item {
@@ -2105,7 +2105,7 @@
 		}
 
 		.table-container {
-			background: #1a1a2e;
+			background: var(--color-bg-card);
 
 			.table-header .table-cell {
 				background: #1e1e36;
@@ -2131,7 +2131,7 @@
 		}
 
 		.sub-table-item {
-			background: #1a1a2e;
+			background: var(--color-bg-card);
 
 			.item-header {
 				border-bottom-color: #2a2a45;
@@ -2157,7 +2157,7 @@
 		}
 
 		.pagination-bar {
-			background: #1a1a2e;
+			background: var(--color-bg-card);
 			border-bottom-color: #2a2a45;
 
 			.page-size-selector {
@@ -2181,7 +2181,7 @@
 		}
 
 		.edit-modal {
-			background: #1a1a2e;
+			background: var(--color-bg-card);
 
 			.modal-header {
 				border-bottom-color: #2a2a45;
@@ -2218,11 +2218,11 @@
 		}
 
 		.empty-tip {
-			color: #666;
+			color: var(--color-text-secondary);
 		}
 
 		.load-more .no-more-text {
-			color: #666;
+			color: var(--color-text-secondary);
 		}
 	}
 </style>

@@ -13,9 +13,20 @@
 								descKey: 'commandDesc'
 							}" :clearable="false" @change="onCmdChange" @clear="onCmdClear" />
 					</view>
+					<!-- 非「两种模式」单据：仅展示当前模式（不可切换） -->
+					<view class="mode-chip" v-if="codeType !== 'both' && !isBothModeDoc">
+						{{ codeType === 'container' ? '选择分录' : '扫码输入' }}
+					</view>
+					<!-- 两种模式单据：在条码操作页内随时切换（依据首页传入的 codeType=both 判断，不写死单据编号） -->
+					<view class="code-type-compact" v-if="codeType !== 'both' && isBothModeDoc">
+						<view class="code-type-btn" :class="{ active: codeType === 'container' }"
+							@click="pickMode('container')">选择分录</view>
+						<view class="code-type-btn" :class="{ active: codeType === 'normal' }"
+							@click="pickMode('normal')">扫码输入</view>
+					</view>
 				</view>
 
-				<!-- 第三行：明细选择框（载具条码模式） -->
+				<!-- 第三行：明细选择框（选择分录模式） -->
 				<view class="third-row" v-if="codeType === 'container' && isInboundCommand">
 					<view class="detail-selector-wrapper">
 						<search-selector v-model="selectedDetailId" :options="detailOptions" placeholder="选择分录"
@@ -304,6 +315,8 @@
 				currentSnValue: null,
 
 				codeType: "normal",
+				// 标记：本单据由首页传入 codeType='both'，即支持两种模式在页内随时切换（不写死单据编号）
+				isBothModeDoc: false,
 				selectedDetailId: null,
 				selectedDetailItem: null,
 				detailList: [],
@@ -338,9 +351,10 @@
 
 					return true;
 				}
-				// 生产领料（DJ11）也显示分录选择框
+				// 生产领料（DJ11）DJ14 DJ12也显示分录选择框
 				if (this.currentCmdInfo && this.currentCmdInfo.cmdCategroy === "出库" &&
-					this.docData && this.docData.docType === "DJ11") {
+					this.docData && (this.docData.docType === "DJ11" || this.docData.docType === 'DJ14' || this.docData
+						.docType === 'DJ12')) {
 					return true;
 				}
 				return false;
@@ -357,6 +371,7 @@
 
 			canSubmit() {
 				if (this.cmdList.length === 0) return false;
+				// 控制「提交按钮是否显示」：所有 isRequire === 'Y' 的必填项都必须已填（含不可编辑字段）。
 				const requiredFields = this.cmdList.filter(item => item.isRequire === 'Y');
 				return requiredFields.every(item => item.value && item.value.trim() !== '');
 			},
@@ -452,7 +467,13 @@
 		},
 		onLoad(options) {
 			if (options.codeType) {
-				this.codeType = options.codeType;
+				if (options.codeType === 'both') {
+					// 两种模式单据：默认进入「扫码输入」，并允许在页内随时切换（不写死单据编号）
+					this.isBothModeDoc = true;
+					this.codeType = 'normal';
+				} else {
+					this.codeType = options.codeType;
+				}
 			}
 
 			if (options.docData) {
@@ -590,7 +611,7 @@
 					keepDocInfo: false,
 					clearDetail: true
 				});
-				this.showMessage(`已切换为${this.codeType === 'normal' ? '普通条码' : '载具条码'}模式`, 'info');
+				this.showMessage(`已切换为${this.codeType === 'normal' ? '扫码输入' : '选择分录'}模式`, 'info');
 			},
 
 			switchCodeType(type) {
@@ -598,6 +619,13 @@
 					this.showMessage('只有入库指令支持切换条码类型', 'warning');
 					return;
 				}
+				this.codeType = type;
+			},
+
+			// 两种模式单据：用户在「选择分录 / 扫码输入」间手动选择（可随时切换，依据 isBothModeDoc）
+			pickMode(type) {
+				if (type !== 'container' && type !== 'normal') return;
+				if (this.codeType === type) return;
 				this.codeType = type;
 			},
 
@@ -720,6 +748,7 @@
 					this.showSubmitButton = false;
 					return;
 				}
+				// 控制「提交按钮是否显示」：所有 isRequire === 'Y' 的必填项都必须已填（含不可编辑字段）。
 				const requiredFields = this.cmdList.filter(item => item.isRequire === 'Y');
 				const allRequiredFilled = requiredFields.every(item => item.value && item.value.trim() !== '');
 				this.showSubmitButton = allRequiredFilled;
@@ -1314,6 +1343,8 @@
 					this.formData.inventoryCode = this.snResultNum;
 					this.showMessage(`下一个参数是数量，已自动填充: ${this.snResultNum}，按回车验证`, 'info');
 				}
+				// SN 自动填充后主动刷新提交按钮状态，防止深度监听偶发漏触发。
+				this.$nextTick(() => this.checkAllParamsFilled());
 			},
 
 			openSnSelectPopup() {
@@ -1447,9 +1478,10 @@
 				}
 				this.isSubmitting = true;
 				this.showMessage('正在提交...', 'info');
+				// 提交全部参数（不限于必填项）：每个字段都带上，已填的 trim，未填的传空字符串。
 				const params = {};
 				this.cmdList.forEach(item => {
-					if (item.isRequire === 'Y') params[item.paramName] = item.value ? item.value.trim() : '';
+					params[item.paramName] = item.value ? item.value.trim() : '';
 				});
 				try {
 					const cmdResponse = await getCmdByCmdCode(this.formData.cmdOpt);
@@ -1502,7 +1534,9 @@
 					url = `/pages/print/productSnPrint?docNo=${encodeURIComponent(docNo)}`;
 				}
 				if (url) {
-					uni.redirectTo({ url });
+					uni.redirectTo({
+						url
+					});
 					return true;
 				}
 				return false;
@@ -1607,23 +1641,24 @@
 				let apiName = '';
 
 				if (this.currentCmdInfo && this.currentCmdInfo.cmdCategroy === "入库") {
-						apiMethod = getReceiveDocDetailByDocNo;
-						apiName = '入库';
-					} else if (this.currentCmdInfo && this.currentCmdInfo.cmdCategroy === "出库") {
+					apiMethod = getReceiveDocDetailByDocNo;
+					apiName = '入库';
+				} else if (this.currentCmdInfo && this.currentCmdInfo.cmdCategroy === "出库") {
+					apiMethod = getOutDocDetailByDocNo;
+					apiName = '出库';
+				} else {
+					// 🔥 关键：当 currentCmdInfo 为空或无法判断时，根据 docType 或默认使用入库
+					if (this.docData && (this.docData.docType === 'DJ11' || this.docData.docType === 'DJ14' || this
+							.docData.docType === 'DJ12')) {
+						// 生产领料默认调用出库
 						apiMethod = getOutDocDetailByDocNo;
 						apiName = '出库';
 					} else {
-						// 🔥 关键：当 currentCmdInfo 为空或无法判断时，根据 docType 或默认使用入库
-						if (this.docData && this.docData.docType === 'DJ11') {
-							// 生产领料默认调用出库
-							apiMethod = getOutDocDetailByDocNo;
-							apiName = '出库';
-						} else {
-							// 默认调用入库
-							apiMethod = getReceiveDocDetailByDocNo;
-							apiName = '入库';
-						}
+						// 默认调用入库
+						apiMethod = getReceiveDocDetailByDocNo;
+						apiName = '入库';
 					}
+				}
 
 				try {
 					this.showMessage(`正在加载${apiName}明细...`, 'info');
@@ -1670,7 +1705,7 @@
 		position: sticky;
 		top: 0;
 		z-index: 10;
-		background: #fff;
+		background: var(--color-bg-card);
 		padding: 20rpx 24rpx;
 		padding-top: calc(20rpx + env(safe-area-inset-top));
 		box-shadow: 0 1rpx 8rpx rgba(0, 0, 0, .03);
@@ -1683,7 +1718,7 @@
 	}
 
 	.form-container {
-		background: #fff;
+		background: var(--color-bg-card);
 		border-radius: 12rpx;
 		margin-bottom: 12rpx;
 	}
@@ -1699,6 +1734,21 @@
 		}
 	}
 
+	/* 顶部当前模式标识 */
+	.mode-chip {
+		flex-shrink: 0;
+		padding: 8rpx 18rpx;
+		border-radius: 999rpx;
+		font-size: var(--font-xs);
+		background: rgba(22, 119, 255, .1);
+		color: #1565c0;
+		white-space: nowrap;
+
+		&.clickable {
+			border: 1rpx dashed var(--color-primary);
+		}
+	}
+
 	.code-type-compact {
 		display: flex;
 		background: #f4f5f7;
@@ -1708,13 +1758,13 @@
 		.code-type-btn {
 			padding: 10rpx 20rpx;
 			border-radius: 6rpx;
-			font-size: 24rpx;
-			color: #666;
+			font-size: var(--font-sm);
+			color: var(--color-text-secondary);
 			transition: all .2s;
 
 			&.active {
-				background: #fff;
-				color: #1677ff;
+				background: var(--color-bg-card);
+				color: var(--color-primary);
 				box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, .08);
 			}
 		}
@@ -1738,12 +1788,12 @@
 			padding: 24rpx 80rpx 24rpx 24rpx;
 			background: #f4f5f7;
 			border-radius: 12rpx;
-			font-size: 28rpx;
+			font-size: var(--font-lg);
 			transition: all .25s;
 
 			&[disabled] {
-				background: #e8e8e8;
-				color: #999;
+				background: var(--color-border);
+				color: var(--color-text-hint);
 			}
 		}
 
@@ -1762,7 +1812,7 @@
 	.message-box {
 		padding: 16rpx 20rpx;
 		border-radius: 8rpx;
-		font-size: 24rpx;
+		font-size: var(--font-sm);
 		text-align: center;
 		opacity: 0;
 		transform: translateY(-8rpx);
@@ -1819,7 +1869,7 @@
 	}
 
 	.cmd-button-item {
-		background: #1677ff;
+		background: var(--color-primary);
 		border-radius: 12rpx;
 		padding: 32rpx 20rpx;
 		text-align: center;
@@ -1832,7 +1882,7 @@
 	}
 
 	.cmd-name {
-		font-size: 30rpx;
+		font-size: var(--font-lg);
 		font-weight: 500;
 		color: #fff;
 	}
@@ -1840,13 +1890,13 @@
 	.cmd-empty-tip {
 		text-align: center;
 		padding: 60rpx 0;
-		color: #999;
-		font-size: 28rpx;
+		color: var(--color-text-hint);
+		font-size: var(--font-lg);
 	}
 
 	/* 参数列表 */
 	.params-container {
-		background: #fff;
+		background: var(--color-bg-card);
 		border-radius: 16rpx;
 		flex: 1;
 		display: flex;
@@ -1865,14 +1915,14 @@
 
 	.param-item {
 		padding: 20rpx 24rpx;
-		border-bottom: 1rpx solid #f0f0f0;
+		border-bottom: 1rpx solid var(--color-border);
 
 		&:last-child {
 			border-bottom: none;
 		}
 
 		&.current {
-			border-left: 6rpx solid #1677ff;
+			border-left: 6rpx solid var(--color-primary);
 			background: rgba(22, 119, 255, .05);
 			transition: background 0.2s ease, border-color 0.2s ease;
 		}
@@ -1908,9 +1958,9 @@
 	}
 
 	.param-name {
-		font-size: 28rpx;
+		font-size: var(--font-lg);
 		font-weight: 500;
-		color: #333;
+		color: var(--color-text);
 
 		.required-star {
 			color: #ff4d4f;
@@ -1925,8 +1975,8 @@
 	}
 
 	.param-value {
-		font-size: 26rpx;
-		color: #666;
+		font-size: var(--font-md);
+		color: var(--color-text-secondary);
 		max-width: 280rpx;
 		text-align: right;
 
@@ -1964,8 +2014,8 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		color: #999;
-		font-size: 28rpx;
+		color: var(--color-text-hint);
+		font-size: var(--font-lg);
 	}
 
 	/* 底部固定按钮区域 */
@@ -1974,7 +2024,7 @@
 		bottom: 0;
 		left: 0;
 		right: 0;
-		background: #fff;
+		background: var(--color-bg-card);
 		padding: 20rpx 24rpx;
 		padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
 		box-shadow: 0 -2rpx 12rpx rgba(0, 0, 0, .04);
@@ -1989,11 +2039,11 @@
 		.btn-detail {
 			flex: 0.8;
 			background: #f4f5f7;
-			color: #666;
+			color: var(--color-text-secondary);
 			text-align: center;
 			padding: 24rpx 0;
 			border-radius: 12rpx;
-			font-size: 28rpx;
+			font-size: var(--font-lg);
 			font-weight: 500;
 			transition: all .2s;
 
@@ -2006,11 +2056,11 @@
 		.btn-reset {
 			flex: 1;
 			background: #f4f5f7;
-			color: #666;
+			color: var(--color-text-secondary);
 			text-align: center;
 			padding: 24rpx 0;
 			border-radius: 12rpx;
-			font-size: 28rpx;
+			font-size: var(--font-lg);
 			font-weight: 500;
 			transition: all .2s;
 
@@ -2022,12 +2072,12 @@
 
 		.btn-submit {
 			flex: 1.2;
-			background: #1677ff;
+			background: var(--color-primary);
 			color: #fff;
 			text-align: center;
 			padding: 24rpx 0;
 			border-radius: 12rpx;
-			font-size: 28rpx;
+			font-size: var(--font-lg);
 			font-weight: 500;
 			transition: all .2s;
 
@@ -2046,7 +2096,7 @@
 	/* 弹窗样式 */
 	.sn-select-popup,
 	.unit-select-popup {
-		background: #fff;
+		background: var(--color-bg-card);
 		border-top-left-radius: 24rpx;
 		border-top-right-radius: 24rpx;
 		padding: 24rpx;
@@ -2064,9 +2114,9 @@
 		margin-bottom: 20rpx;
 
 		.popup-title {
-			font-size: 30rpx;
+			font-size: var(--font-lg);
 			font-weight: 500;
-			color: #333;
+			color: var(--color-text);
 		}
 	}
 
@@ -2078,13 +2128,13 @@
 
 	.sn-item,
 	.unit-item {
-		background: #f8f9fa;
+		background: var(--color-bg-page);
 		border-radius: 12rpx;
 		padding: 20rpx;
 		margin-bottom: 16rpx;
 
 		&:active {
-			background: #e8e8e8;
+			background: var(--color-border);
 		}
 	}
 
@@ -2095,11 +2145,11 @@
 
 		.cancel-btn {
 			width: 100%;
-			background: #f5f5f5;
-			color: #666;
+			background: var(--color-bg-page);
+			color: var(--color-text-secondary);
 			border-radius: 8rpx;
 			padding: 20rpx 0;
-			font-size: 28rpx;
+			font-size: var(--font-lg);
 		}
 	}
 
@@ -2111,17 +2161,17 @@
 
 		.first-row .code-type-btn {
 			padding: 6rpx 14rpx;
-			font-size: 20rpx;
+			font-size: var(--font-xs);
 		}
 
 		.scan-input {
 			padding: 16rpx 70rpx 16rpx 16rpx;
-			font-size: 24rpx;
+			font-size: var(--font-sm);
 		}
 
 		.message-box {
 			padding: 10rpx 16rpx;
-			font-size: 20rpx;
+			font-size: var(--font-xs);
 		}
 
 		.content {
@@ -2133,11 +2183,11 @@
 		}
 
 		.param-name {
-			font-size: 24rpx;
+			font-size: var(--font-sm);
 		}
 
 		.param-value {
-			font-size: 22rpx;
+			font-size: var(--font-xs);
 			max-width: 220rpx;
 		}
 
@@ -2146,7 +2196,7 @@
 		}
 
 		.cmd-name {
-			font-size: 26rpx;
+			font-size: var(--font-md);
 		}
 
 		.action-buttons {
@@ -2155,7 +2205,7 @@
 			.btn-reset,
 			.btn-submit {
 				padding: 16rpx 0;
-				font-size: 24rpx;
+				font-size: var(--font-sm);
 			}
 		}
 	}
@@ -2168,17 +2218,17 @@
 
 		.first-row .code-type-btn {
 			padding: 14rpx 28rpx;
-			font-size: 28rpx;
+			font-size: var(--font-lg);
 		}
 
 		.scan-input {
 			padding: 32rpx 100rpx 32rpx 32rpx;
-			font-size: 32rpx;
+			font-size: var(--font-xl);
 		}
 
 		.message-box {
 			padding: 22rpx 28rpx;
-			font-size: 28rpx;
+			font-size: var(--font-lg);
 		}
 
 		.content {
@@ -2190,11 +2240,11 @@
 		}
 
 		.param-name {
-			font-size: 32rpx;
+			font-size: var(--font-xl);
 		}
 
 		.param-value {
-			font-size: 30rpx;
+			font-size: var(--font-lg);
 			max-width: 360rpx;
 		}
 
@@ -2203,7 +2253,7 @@
 		}
 
 		.cmd-name {
-			font-size: 34rpx;
+			font-size: var(--font-xl);
 		}
 
 		.action-buttons {
@@ -2212,7 +2262,7 @@
 			.btn-reset,
 			.btn-submit {
 				padding: 28rpx 0;
-				font-size: 32rpx;
+				font-size: var(--font-xl);
 			}
 		}
 	}
@@ -2229,7 +2279,7 @@
 		.bottom-bar,
 		.sn-select-popup,
 		.unit-select-popup {
-			background: #1a1a2e;
+			background: var(--color-bg-card);
 		}
 
 		.code-type-compact {
@@ -2251,7 +2301,7 @@
 
 			&[disabled] {
 				background: #252545;
-				color: #666;
+				color: var(--color-text-secondary);
 			}
 		}
 

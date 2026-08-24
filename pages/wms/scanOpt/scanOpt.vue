@@ -988,7 +988,7 @@
 		position: sticky;
 		top: 0;
 		z-index: 10;
-		background: #fff;
+		background: var(--color-bg-card);
 		padding-bottom: 0;
 		box-shadow: 0 1rpx 8rpx rgba(0, 0, 0, .03);
 		transition: background .25s;
@@ -1012,15 +1012,15 @@
 		background: #f4f5f7;
 		border-radius: 12rpx;
 		padding: 0 24rpx;
-		border: 1rpx solid #e5e7eb;
+		border: 1rpx solid var(--color-border);
 		transition: all 0.25s;
 	}
 
 	.searchInput {
 		flex: 1;
 		height: 80rpx;
-		font-size: 28rpx;
-		color: #333;
+		font-size: var(--font-lg);
+		color: var(--color-text);
 		transition: all 0.25s;
 	}
 
@@ -1051,14 +1051,14 @@
 	}
 
 	.titleText {
-		font-size: 24rpx;
-		color: #666;
+		font-size: var(--font-sm);
+		color: var(--color-text-secondary);
 		transition: all 0.25s;
 	}
 
 	.clearHistory {
-		font-size: 24rpx;
-		color: #1677ff;
+		font-size: var(--font-sm);
+		color: var(--color-primary);
 		transition: all 0.25s;
 	}
 
@@ -1075,20 +1075,20 @@
 		padding: 12rpx 24rpx;
 		background: #f4f5f7;
 		border-radius: 12rpx;
-		border: 1rpx solid #e5e7eb;
+		border: 1rpx solid var(--color-border);
 		transition: all 0.25s;
 	}
 
 	.historyText {
-		font-size: 26rpx;
-		color: #666;
+		font-size: var(--font-md);
+		color: var(--color-text-secondary);
 		transition: all 0.25s;
 	}
 
 	.typeNav {
-		background: #fff;
+		background: var(--color-bg-card);
 		padding: 0 32rpx;
-		border-top: 1rpx solid #f0f0f0;
+		border-top: 1rpx solid var(--color-border);
 		transition: all 0.25s;
 	}
 
@@ -1108,13 +1108,13 @@
 		gap: 8rpx;
 		padding: 16rpx 0;
 		position: relative;
-		font-size: 28rpx;
-		color: #666;
+		font-size: var(--font-lg);
+		color: var(--color-text-secondary);
 		transition: all 0.25s;
 	}
 
 	.typeItem.type-item-active {
-		color: #1677ff;
+		color: var(--color-primary);
 		font-weight: 600;
 	}
 
@@ -1125,13 +1125,13 @@
 		left: 0;
 		right: 0;
 		height: 4rpx;
-		background: #1677ff;
+		background: var(--color-primary);
 	}
 
 	.typeBadge {
-		background: #e5e7eb;
-		color: #666;
-		font-size: 20rpx;
+		background: var(--color-border);
+		color: var(--color-text-secondary);
+		font-size: var(--font-xs);
 		padding: 4rpx 12rpx;
 		border-radius: 20rpx;
 		transition: all 0.25s;
@@ -1139,7 +1139,7 @@
 
 	.typeItem.type-item-active .typeBadge {
 		background: rgba(22, 119, 255, 0.15);
-		color: #1677ff;
+		color: var(--color-primary);
 	}
 
 	/* 内容区域 */
@@ -1154,7 +1154,7 @@
 	}
 
 	.dataCard {
-		background: #fff;
+		background: var(--color-bg-card);
 		border-radius: 20rpx;
 		margin-bottom: 24rpx;
 		overflow: hidden;
@@ -1168,29 +1168,29 @@
 		align-items: center;
 		padding: 24rpx 32rpx;
 		background: #fafcff;
-		border-bottom: 1rpx solid #f0f2f5;
+		border-bottom: 1rpx solid var(--color-bg-page);
 		transition: all 0.25s;
 	}
 
 	.cardTitle {
-		font-size: 30rpx;
+		font-size: var(--font-lg);
 		font-weight: 600;
-		color: #333;
+		color: var(--color-text);
 		transition: all 0.25s;
 	}
 
 	.cardStatus {
-		font-size: 24rpx;
+		font-size: var(--font-sm);
 		padding: 8rpx 20rpx;
 		border-radius: 30rpx;
 		background: #f4f5f7;
-		color: #666;
+		color: var(--color-text-secondary);
 		transition: all 0.25s;
 	}
 
 	.cardStatus.statusIdle {
 		background: rgba(22, 119, 255, 0.1);
-		color: #1677ff;
+		color: var(--color-primary);
 	}
 
 	.cardStatus.statusShelf {
@@ -1205,7 +1205,7 @@
 
 	.cardStatus.statusProgress {
 		background: rgba(22, 119, 255, 0.1);
-		color: #1677ff;
+		color: var(--color-primary);
 	}
 
 	.cardStatus.statusDone {
@@ -1216,7 +1216,7 @@
 	.snOperations {
 		padding: 20rpx 32rpx;
 		background: #fafcff;
-		border-bottom: 1rpx solid #f0f2f5;
+		border-bottom: 1rpx solid var(--color-bg-page);
 		transition: all 0.25s;
 	}
 
@@ -1249,16 +1249,16 @@
 	}
 
 	.btnBlue {
-		background: #1677ff;
+		background: var(--color-primary);
 	}
 
 	.btnGreen {
-		background: #52c41a;
+		background: var(--color-primary);
 	}
 
 	.operationBtn .btnText {
 		color: #fff;
-		font-size: 26rpx;
+		font-size: var(--font-md);
 		font-weight: 500;
 		transition: all 0.25s;
 	}
@@ -1286,8 +1286,8 @@
 
 	.infoLabel {
 		flex-shrink: 0;
-		font-size: 26rpx;
-		color: #666;
+		font-size: var(--font-md);
+		color: var(--color-text-secondary);
 		width: 160rpx;
 		transition: all 0.25s;
 	}
@@ -1301,8 +1301,8 @@
 	}
 
 	.infoValue {
-		font-size: 28rpx;
-		color: #333;
+		font-size: var(--font-lg);
+		color: var(--color-text);
 		text-align: right;
 		word-break: break-all;
 		transition: all 0.25s;
@@ -1314,32 +1314,32 @@
 	}
 
 	.accentText {
-		color: #1677ff;
+		color: var(--color-primary);
 		font-weight: 600;
 	}
 
 	.linkText {
-		color: #1677ff;
+		color: var(--color-primary);
 		padding-right: 36rpx;
 	}
 
 	.linkIcon {
 		position: absolute;
 		right: 0;
-		color: #1677ff;
-		font-size: 24rpx;
+		color: var(--color-primary);
+		font-size: var(--font-sm);
 	}
 
 	.sectionFooter {
 		padding: 24rpx 32rpx;
 		background: #fafcff;
-		border-top: 1rpx solid #f0f2f5;
+		border-top: 1rpx solid var(--color-bg-page);
 		transition: all 0.25s;
 	}
 
 	.footerText {
-		font-size: 24rpx;
-		color: #999;
+		font-size: var(--font-sm);
+		color: var(--color-text-hint);
 		transition: all 0.25s;
 	}
 
@@ -1357,15 +1357,15 @@
 	}
 
 	.emptyTitle {
-		font-size: 32rpx;
-		color: #666;
+		font-size: var(--font-xl);
+		color: var(--color-text-secondary);
 		margin-bottom: 16rpx;
 		transition: all 0.25s;
 	}
 
 	.emptyDesc {
-		font-size: 26rpx;
-		color: #999;
+		font-size: var(--font-md);
+		color: var(--color-text-hint);
 		transition: all 0.25s;
 	}
 
@@ -1379,7 +1379,7 @@
 		bottom: 0;
 		left: 0;
 		right: 0;
-		background: #fff;
+		background: var(--color-bg-card);
 		padding: 20rpx 24rpx;
 		padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
 		box-shadow: 0 -2rpx 12rpx rgba(0, 0, 0, .04);
@@ -1397,7 +1397,7 @@
 		text-align: center;
 		padding: 24rpx 0;
 		border-radius: 12rpx;
-		font-size: 28rpx;
+		font-size: var(--font-lg);
 		font-weight: 500;
 		transition: all .2s;
 
@@ -1409,11 +1409,11 @@
 
 	.btn-reset {
 		background: #f4f5f7;
-		color: #666;
+		color: var(--color-text-secondary);
 	}
 
 	.btn-submit {
-		background: #1677ff;
+		background: var(--color-primary);
 		color: #fff;
 
 		&.disabled {
@@ -1440,7 +1440,7 @@
 		width: 80rpx;
 		height: 80rpx;
 		border: 4rpx solid #e2e8f0;
-		border-top: 4rpx solid #1677ff;
+		border-top: 4rpx solid var(--color-primary);
 		border-radius: 50%;
 		animation: spin 1s linear infinite;
 		margin-bottom: 24rpx;
@@ -1471,7 +1471,7 @@
 	}
 
 	.modalContent {
-		background: #fff;
+		background: var(--color-bg-card);
 		border-radius: 24rpx;
 		width: 85%;
 		max-height: 70vh;
@@ -1485,14 +1485,14 @@
 		justify-content: space-between;
 		align-items: center;
 		padding: 32rpx;
-		border-bottom: 1rpx solid #f0f0f0;
+		border-bottom: 1rpx solid var(--color-border);
 		transition: all 0.25s;
 	}
 
 	.modalTitle {
-		font-size: 32rpx;
+		font-size: var(--font-xl);
 		font-weight: 600;
-		color: #333;
+		color: var(--color-text);
 		transition: all 0.25s;
 	}
 
@@ -1517,14 +1517,14 @@
 	}
 
 	.snLabel {
-		font-size: 26rpx;
-		color: #666;
+		font-size: var(--font-md);
+		color: var(--color-text-secondary);
 		margin-right: 16rpx;
 		transition: all 0.25s;
 	}
 
 	.snValue {
-		font-size: 28rpx;
+		font-size: var(--font-lg);
 		font-weight: 500;
 		transition: all 0.25s;
 	}
@@ -1543,7 +1543,7 @@
 
 		&:active {
 			background: #eff6ff;
-			border-color: #1677ff;
+			border-color: var(--color-primary);
 		}
 	}
 
@@ -1555,16 +1555,16 @@
 	}
 
 	.docNo {
-		font-size: 30rpx;
+		font-size: var(--font-lg);
 		font-weight: 600;
-		color: #333;
+		color: var(--color-text);
 		flex: 1;
 		word-break: break-all;
 		transition: all 0.25s;
 	}
 
 	.docStatus {
-		font-size: 22rpx;
+		font-size: var(--font-xs);
 		padding: 6rpx 16rpx;
 		border-radius: 24rpx;
 		margin-left: 16rpx;
@@ -1580,14 +1580,14 @@
 	}
 
 	.docType {
-		font-size: 26rpx;
-		color: #666;
+		font-size: var(--font-md);
+		color: var(--color-text-secondary);
 		transition: all 0.25s;
 	}
 
 	.docDate {
-		font-size: 24rpx;
-		color: #999;
+		font-size: var(--font-sm);
+		color: var(--color-text-hint);
 		transition: all 0.25s;
 	}
 
@@ -1596,8 +1596,8 @@
 	}
 
 	.extraText {
-		font-size: 24rpx;
-		color: #666;
+		font-size: var(--font-sm);
+		color: var(--color-text-secondary);
 		transition: all 0.25s;
 	}
 
@@ -1607,8 +1607,8 @@
 	}
 
 	.emptyText {
-		font-size: 28rpx;
-		color: #999;
+		font-size: var(--font-lg);
+		color: var(--color-text-hint);
 		transition: all 0.25s;
 	}
 
@@ -1620,7 +1620,7 @@
 
 		.searchInput {
 			height: 64rpx;
-			font-size: 24rpx;
+			font-size: var(--font-sm);
 		}
 
 		.scanBtn {
@@ -1630,7 +1630,7 @@
 
 		.titleText,
 		.clearHistory {
-			font-size: 22rpx;
+			font-size: var(--font-xs);
 		}
 
 		.historyItem {
@@ -1638,11 +1638,11 @@
 		}
 
 		.historyText {
-			font-size: 22rpx;
+			font-size: var(--font-xs);
 		}
 
 		.typeItem {
-			font-size: 24rpx;
+			font-size: var(--font-sm);
 			padding: 12rpx 0;
 		}
 
@@ -1651,11 +1651,11 @@
 		}
 
 		.cardTitle {
-			font-size: 26rpx;
+			font-size: var(--font-md);
 		}
 
 		.cardStatus {
-			font-size: 20rpx;
+			font-size: var(--font-xs);
 			padding: 6rpx 16rpx;
 		}
 
@@ -1664,34 +1664,34 @@
 		}
 
 		.operationBtn .btnText {
-			font-size: 22rpx;
+			font-size: var(--font-xs);
 		}
 
 		.infoLabel {
-			font-size: 22rpx;
+			font-size: var(--font-xs);
 			width: 130rpx;
 		}
 
 		.infoValue {
-			font-size: 24rpx;
+			font-size: var(--font-sm);
 		}
 
 		.footerText {
-			font-size: 20rpx;
+			font-size: var(--font-xs);
 		}
 
 		.btn-reset,
 		.btn-submit {
 			padding: 16rpx 0;
-			font-size: 24rpx;
+			font-size: var(--font-sm);
 		}
 
 		.modalTitle {
-			font-size: 28rpx;
+			font-size: var(--font-lg);
 		}
 
 		.docNo {
-			font-size: 26rpx;
+			font-size: var(--font-md);
 		}
 	}
 
@@ -1703,7 +1703,7 @@
 
 		.searchInput {
 			height: 96rpx;
-			font-size: 32rpx;
+			font-size: var(--font-xl);
 		}
 
 		.scanBtn {
@@ -1713,7 +1713,7 @@
 
 		.titleText,
 		.clearHistory {
-			font-size: 28rpx;
+			font-size: var(--font-lg);
 		}
 
 		.historyItem {
@@ -1721,11 +1721,11 @@
 		}
 
 		.historyText {
-			font-size: 30rpx;
+			font-size: var(--font-lg);
 		}
 
 		.typeItem {
-			font-size: 32rpx;
+			font-size: var(--font-xl);
 			padding: 20rpx 0;
 		}
 
@@ -1734,11 +1734,11 @@
 		}
 
 		.cardTitle {
-			font-size: 34rpx;
+			font-size: var(--font-xl);
 		}
 
 		.cardStatus {
-			font-size: 26rpx;
+			font-size: var(--font-md);
 			padding: 10rpx 24rpx;
 		}
 
@@ -1747,34 +1747,34 @@
 		}
 
 		.operationBtn .btnText {
-			font-size: 30rpx;
+			font-size: var(--font-lg);
 		}
 
 		.infoLabel {
-			font-size: 30rpx;
+			font-size: var(--font-lg);
 			width: 200rpx;
 		}
 
 		.infoValue {
-			font-size: 32rpx;
+			font-size: var(--font-xl);
 		}
 
 		.footerText {
-			font-size: 28rpx;
+			font-size: var(--font-lg);
 		}
 
 		.btn-reset,
 		.btn-submit {
 			padding: 28rpx 0;
-			font-size: 32rpx;
+			font-size: var(--font-xl);
 		}
 
 		.modalTitle {
-			font-size: 36rpx;
+			font-size: var(--font-xl);
 		}
 
 		.docNo {
-			font-size: 34rpx;
+			font-size: var(--font-xl);
 		}
 	}
 
@@ -1789,7 +1789,7 @@
 		.dataCard,
 		.modalContent,
 		.bottom-bar {
-			background: #1a1a2e;
+			background: var(--color-bg-card);
 		}
 
 		.searchInputWrapper {
@@ -1936,7 +1936,7 @@
 		}
 
 		.emptyText {
-			color: #666;
+			color: var(--color-text-secondary);
 		}
 	}
 </style>

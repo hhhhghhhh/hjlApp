@@ -773,7 +773,7 @@
 		position: sticky;
 		top: 0;
 		z-index: 10;
-		background: #fff;
+		background: var(--color-bg-card);
 		padding: 20rpx 24rpx;
 		padding-top: calc(20rpx + env(safe-area-inset-top));
 		box-shadow: 0 1rpx 8rpx rgba(0, 0, 0, .03);
@@ -781,7 +781,7 @@
 	}
 
 	.form-container {
-		background: #fff;
+		background: var(--color-bg-card);
 		border-radius: 12rpx;
 		margin-bottom: 12rpx;
 	}
@@ -796,12 +796,12 @@
 		padding: 24rpx 80rpx 24rpx 24rpx;
 		background: #f4f5f7;
 		border-radius: 12rpx;
-		font-size: 28rpx;
+		font-size: var(--font-lg);
 		transition: all .25s;
 
 		&[disabled] {
-			background: #e8e8e8;
-			color: #999;
+			background: var(--color-border);
+			color: var(--color-text-hint);
 		}
 	}
 
@@ -818,7 +818,7 @@
 	.auto-submit-wrapper {
 		margin-top: 20rpx;
 		padding-top: 16rpx;
-		border-top: 1rpx solid #f0f0f0;
+		border-top: 1rpx solid var(--color-border);
 	}
 
 	.auto-submit-label {
@@ -831,37 +831,37 @@
 	.checkbox {
 		width: 36rpx;
 		height: 36rpx;
-		border: 2rpx solid #d9d9d9;
+		border: 2rpx solid var(--color-border);
 		border-radius: 6rpx;
 		margin-right: 16rpx;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		transition: all 0.3s ease;
-		background-color: #fff;
+		background-color: var(--color-bg-card);
 
 		&.checked {
-			background-color: #1677ff;
-			border-color: #1677ff;
+			background-color: var(--color-primary);
+			border-color: var(--color-primary);
 		}
 
 		.checkbox-icon {
 			color: #fff;
-			font-size: 24rpx;
+			font-size: var(--font-sm);
 			font-weight: bold;
 		}
 	}
 
 	.auto-submit-text {
-		font-size: 26rpx;
-		color: #666;
+		font-size: var(--font-md);
+		color: var(--color-text-secondary);
 	}
 
 	/* 消息提示 */
 	.message-box {
 		padding: 16rpx 20rpx;
 		border-radius: 8rpx;
-		font-size: 24rpx;
+		font-size: var(--font-sm);
 		text-align: center;
 		opacity: 0;
 		transform: translateY(-8rpx);
@@ -896,7 +896,7 @@
 	}
 
 	.params-container {
-		background: #fff;
+		background: var(--color-bg-card);
 		border-radius: 16rpx;
 		height: 100%;
 		display: flex;
@@ -921,7 +921,7 @@
 		}
 
 		&.current {
-			border-left: 6rpx solid #1677ff;
+			border-left: 6rpx solid var(--color-primary);
 			background: rgba(22, 119, 255, .05);
 			transition: background 0.2s ease, border-color 0.2s ease;
 		}
@@ -954,9 +954,9 @@
 	}
 
 	.param-name {
-		font-size: 28rpx;
+		font-size: var(--font-lg);
 		font-weight: 500;
-		color: #333;
+		color: var(--color-text);
 
 		.required-star {
 			color: #ff4d4f;
@@ -971,8 +971,8 @@
 	}
 
 	.param-value {
-		font-size: 26rpx;
-		color: #666;
+		font-size: var(--font-md);
+		color: var(--color-text-secondary);
 		max-width: 280rpx;
 		text-align: right;
 
@@ -992,8 +992,8 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		color: #999;
-		font-size: 28rpx;
+		color: var(--color-text-hint);
+		font-size: var(--font-lg);
 	}
 
 	/* 底部固定按钮区域 */
@@ -1002,7 +1002,7 @@
 		bottom: 0;
 		left: 0;
 		right: 0;
-		background: #fff;
+		background: var(--color-bg-card);
 		padding: 20rpx 24rpx;
 		padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
 		box-shadow: 0 -2rpx 12rpx rgba(0, 0, 0, .04);
@@ -1016,12 +1016,12 @@
 
 	.btn-submit {
 		flex: 1;
-		background: #1677ff;
+		background: var(--color-primary);
 		color: #fff;
 		text-align: center;
 		padding: 24rpx 0;
 		border-radius: 12rpx;
-		font-size: 28rpx;
+		font-size: var(--font-lg);
 		font-weight: 500;
 		transition: all .2s;
 
@@ -1037,7 +1037,7 @@
 	}
 
 	.auto-submit-btn {
-		background-color: #52c41a;
+		background-color: var(--color-primary);
 
 		&:disabled {
 			background-color: #95de64;
@@ -1052,12 +1052,12 @@
 
 		.scan-input {
 			padding: 16rpx 70rpx 16rpx 16rpx;
-			font-size: 24rpx;
+			font-size: var(--font-sm);
 		}
 
 		.message-box {
 			padding: 10rpx 16rpx;
-			font-size: 20rpx;
+			font-size: var(--font-xs);
 		}
 
 		.content {
@@ -1069,11 +1069,11 @@
 		}
 
 		.param-name {
-			font-size: 24rpx;
+			font-size: var(--font-sm);
 		}
 
 		.param-value {
-			font-size: 22rpx;
+			font-size: var(--font-xs);
 			max-width: 220rpx;
 		}
 
@@ -1082,17 +1082,17 @@
 			height: 30rpx;
 
 			.checkbox-icon {
-				font-size: 20rpx;
+				font-size: var(--font-xs);
 			}
 		}
 
 		.auto-submit-text {
-			font-size: 22rpx;
+			font-size: var(--font-xs);
 		}
 
 		.btn-submit {
 			padding: 16rpx 0;
-			font-size: 24rpx;
+			font-size: var(--font-sm);
 		}
 	}
 
@@ -1104,12 +1104,12 @@
 
 		.scan-input {
 			padding: 32rpx 100rpx 32rpx 32rpx;
-			font-size: 32rpx;
+			font-size: var(--font-xl);
 		}
 
 		.message-box {
 			padding: 22rpx 28rpx;
-			font-size: 28rpx;
+			font-size: var(--font-lg);
 		}
 
 		.content {
@@ -1121,11 +1121,11 @@
 		}
 
 		.param-name {
-			font-size: 32rpx;
+			font-size: var(--font-xl);
 		}
 
 		.param-value {
-			font-size: 30rpx;
+			font-size: var(--font-lg);
 			max-width: 360rpx;
 		}
 
@@ -1134,17 +1134,17 @@
 			height: 42rpx;
 
 			.checkbox-icon {
-				font-size: 28rpx;
+				font-size: var(--font-lg);
 			}
 		}
 
 		.auto-submit-text {
-			font-size: 30rpx;
+			font-size: var(--font-lg);
 		}
 
 		.btn-submit {
 			padding: 28rpx 0;
-			font-size: 32rpx;
+			font-size: var(--font-xl);
 		}
 	}
 
@@ -1158,7 +1158,7 @@
 		.form-container,
 		.params-container,
 		.bottom-bar {
-			background: #1a1a2e;
+			background: var(--color-bg-card);
 		}
 
 		.scan-input {
@@ -1167,7 +1167,7 @@
 
 			&[disabled] {
 				background: #252545;
-				color: #666;
+				color: var(--color-text-secondary);
 			}
 		}
 
@@ -1196,7 +1196,7 @@
 		}
 
 		.empty-tip {
-			color: #666;
+			color: var(--color-text-secondary);
 		}
 	}
 </style>

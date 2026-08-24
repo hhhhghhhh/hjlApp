@@ -1,5 +1,5 @@
 <template>
-	<view class="container">
+	<view class="container" :class="[sizeClass, darkClass, themeClass]">
 		<!-- dothan-lpapi-ble 需要页面里有一个隐藏 canvas 用于绘制标签（所见即所得）。
 		     官方示例要求 type="2d"，否则 createDrawContext 拿不到 2d 绘制上下文。LPAPI 打印（打印测试 / 写入打印机并校准）必须它。 -->
 		<canvas type="2d" canvas-id="lpapi-canvas-label" id="lpapi-canvas-label"
@@ -267,7 +267,9 @@
 		PRINT_MODES
 	} from '@/utils/zplTemplate.js'
 
-	export default {
+	import settingsMixin from '@/common/settingsMixin.js'
+export default {
+	mixins: [settingsMixin],
 		data() {
 			return {
 				varHint: '固定文字或 {{变量名}} 占位符',
@@ -619,21 +621,21 @@
 	.container {
 		padding: 20rpx;
 		padding-bottom: 160rpx;
-		background: #f5f5f5;
+		background: var(--color-bg-page);
 		min-height: 100vh;
 	}
 
 	.card {
-		background: #fff;
+		background: var(--color-bg-card);
 		border-radius: 12rpx;
 		padding: 24rpx;
 		margin-bottom: 20rpx;
 	}
 
 	.card-title {
-		font-size: 30rpx;
+		font-size: var(--font-lg);
 		font-weight: bold;
-		color: #333;
+		color: var(--color-text);
 		display: block;
 		margin-bottom: 12rpx;
 	}
@@ -643,18 +645,18 @@
 		justify-content: space-between;
 		align-items: center;
 		padding: 12rpx 0;
-		border-bottom: 1rpx solid #f2f2f2;
+		border-bottom: 1rpx solid var(--color-bg-page);
 	}
 
 	.label {
 		font-size: 27rpx;
-		color: #666;
+		color: var(--color-text-secondary);
 		flex-shrink: 0;
 	}
 
 	.ipt {
 		font-size: 27rpx;
-		color: #333;
+		color: var(--color-text);
 		text-align: right;
 		width: 240rpx;
 		padding: 6rpx 0;
@@ -675,11 +677,11 @@
 		height: 56rpx;
 		line-height: 52rpx;
 		text-align: center;
-		font-size: 40rpx;
-		color: #333;
+		font-size: var(--font-xl);
+		color: var(--color-text);
 		border: 1rpx solid #ddd;
 		border-radius: 10rpx;
-		background: #f5f5f5;
+		background: var(--color-bg-page);
 	}
 
 	.stepper-num {
@@ -697,12 +699,12 @@
 
 	.value {
 		font-size: 27rpx;
-		color: #333;
+		color: var(--color-text);
 	}
 
 	.hint {
 		font-size: 23rpx;
-		color: #999;
+		color: var(--color-text-hint);
 		line-height: 1.6;
 		margin-top: 12rpx;
 	}
@@ -715,8 +717,8 @@
 	}
 
 	.empty {
-		font-size: 26rpx;
-		color: #999;
+		font-size: var(--font-md);
+		color: var(--color-text-hint);
 		text-align: center;
 		padding: 24rpx 0;
 	}
@@ -736,7 +738,7 @@
 	}
 
 	.element-title {
-		font-size: 28rpx;
+		font-size: var(--font-lg);
 		font-weight: bold;
 		color: #E8833A;
 	}
@@ -761,7 +763,7 @@
 		border: 1rpx solid #ddd;
 		border-radius: 8rpx;
 		padding: 16rpx;
-		font-size: 22rpx;
+		font-size: var(--font-xs);
 		color: #555;
 		box-sizing: border-box;
 	}
@@ -774,7 +776,7 @@
 		display: flex;
 		gap: 20rpx;
 		padding: 16rpx 20rpx;
-		background: #fff;
+		background: var(--color-bg-card);
 		box-shadow: 0 -2rpx 12rpx rgba(0, 0, 0, 0.06);
 	}
 

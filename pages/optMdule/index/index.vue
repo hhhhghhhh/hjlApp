@@ -103,7 +103,7 @@ export default {
 
 .page {
 	@include p-page;
-	background: #f0f2f5;
+	background: var(--color-bg-page);
 	min-height: 100vh;
 }
 
@@ -118,7 +118,7 @@ export default {
 	justify-content: center;
 	padding: 100rpx 0;
 	color: #9ca3af;
-	font-size: 28rpx;
+	font-size: var(--font-lg);
 }
 
 /* ═════════════════ 尺寸 / 深色 ═════════════════ */

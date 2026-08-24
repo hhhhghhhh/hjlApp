@@ -134,7 +134,7 @@
 							<text class="item-name">{{ getItemDisplay(item) }}</text>
 							<text class="item-code" v-if="getItemCode(item)">{{ getItemCode(item) }}</text>
 						</view>
-						<uni-icons v-if="isItemActive(item)" type="check" size="16" color="#1677ff"></uni-icons>
+						<uni-icons v-if="isItemActive(item)" type="check" size="16" color="var(--color-primary)"></uni-icons>
 					</view>
 
 					<!-- 空状态 -->
@@ -904,9 +904,9 @@
 			min-width: 0;
 			max-width: 100%;
 			height: 80rpx;
-			background: #f8f9fa;
+			background: var(--color-bg-page);
 			border-radius: 8rpx;
-			border: 1rpx solid #e9ecef;
+			border: 1rpx solid var(--color-border);
 			box-sizing: border-box;
 			padding: 0 24rpx;
 			overflow: hidden;
@@ -921,7 +921,7 @@
 
 			&.disabled {
 				opacity: 0.5;
-				background: #f0f0f0;
+				background: var(--color-bg-page);
 			}
 
 			.selector-content {
@@ -935,8 +935,8 @@
 				position: relative;
 
 				.selector-label {
-					font-size: 26rpx;
-					color: #333;
+					font-size: var(--font-md);
+					color: var(--color-text);
 					flex-shrink: 0;
 					white-space: nowrap;
 					max-width: 80rpx;
@@ -984,8 +984,8 @@
 				}
 
 				.selector-value {
-					font-size: 26rpx;
-					color: #333;
+					font-size: var(--font-md);
+					color: var(--color-text);
 					display: block;
 					overflow: hidden;
 					text-overflow: ellipsis;
@@ -994,13 +994,13 @@
 					min-width: 0;
 
 					&.placeholder {
-						color: #999;
+						color: var(--color-text-hint);
 					}
 				}
 
 				.selector-code {
-					font-size: 22rpx;
-					color: #666;
+					font-size: var(--font-xs);
+					color: var(--color-text-secondary);
 					margin-left: 8rpx;
 					flex-shrink: 0;
 					white-space: nowrap;
@@ -1025,7 +1025,7 @@
 					.clear-icon-wrapper {
 						padding: 6rpx;
 						border-radius: 50%;
-						background: #f0f0f0;
+						background: var(--color-bg-page);
 						display: flex;
 						align-items: center;
 						justify-content: center;
@@ -1033,14 +1033,14 @@
 					}
 
 					.clear-icon-wrapper:active {
-						background: #e0e0e0;
+						background: var(--color-border);
 					}
 				}
 			}
 		}
 
 		.selector-popup {
-			background: #fff;
+			background: var(--color-bg-card);
 			border-radius: 24rpx 24rpx 0 0;
 			max-height: 90vh;
 
@@ -1052,9 +1052,9 @@
 				border-bottom: 1rpx solid #e5e5e5;
 
 				.popup-title {
-					font-size: 32rpx;
+					font-size: var(--font-xl);
 					font-weight: 600;
-					color: #333;
+					color: var(--color-text);
 				}
 			}
 
@@ -1075,28 +1075,28 @@
 					.search-box {
 						display: flex;
 						align-items: center;
-						background: #f8f9fa;
+						background: var(--color-bg-page);
 						border-radius: 8rpx;
 						padding: 16rpx 20rpx;
-						border: 1rpx solid #e9ecef;
+						border: 1rpx solid var(--color-border);
 
 						.search-input {
 							flex: 1;
-							font-size: 26rpx;
-							color: #333;
+							font-size: var(--font-md);
+							color: var(--color-text);
 							margin: 0 16rpx;
 							min-width: 0;
 						}
 
 						.placeholder-style {
-							color: #999;
-							font-size: 26rpx;
+							color: var(--color-text-hint);
+							font-size: var(--font-md);
 						}
 
 						.search-clear {
 							padding: 6rpx;
 							border-radius: 50%;
-							background: #f0f0f0;
+							background: var(--color-bg-page);
 							flex-shrink: 0;
 						}
 					}
@@ -1105,28 +1105,28 @@
 				.search-box {
 					display: flex;
 					align-items: center;
-					background: #f8f9fa;
+					background: var(--color-bg-page);
 					border-radius: 8rpx;
 					padding: 16rpx 20rpx;
-					border: 1rpx solid #e9ecef;
+					border: 1rpx solid var(--color-border);
 
 					.search-input {
 						flex: 1;
-						font-size: 26rpx;
-						color: #333;
+						font-size: var(--font-md);
+						color: var(--color-text);
 						margin: 0 16rpx;
 						min-width: 0;
 					}
 
 					.placeholder-style {
-						color: #999;
-						font-size: 26rpx;
+						color: var(--color-text-hint);
+						font-size: var(--font-md);
 					}
 
 					.search-clear {
 						padding: 6rpx;
 						border-radius: 50%;
-						background: #f0f0f0;
+						background: var(--color-bg-page);
 						flex-shrink: 0;
 					}
 				}
@@ -1140,7 +1140,7 @@
 					display: flex;
 					align-items: center;
 					padding: 24rpx 0;
-					border-bottom: 1rpx solid #f0f0f0;
+					border-bottom: 1rpx solid var(--color-border);
 					min-height: 80rpx;
 					box-sizing: border-box;
 					overflow: hidden;
@@ -1159,8 +1159,8 @@
 						}
 
 						.item-name {
-							font-size: 26rpx;
-							color: #333;
+							font-size: var(--font-md);
+							color: var(--color-text);
 							font-weight: 500;
 							overflow: hidden;
 							text-overflow: ellipsis;
@@ -1174,8 +1174,8 @@
 						}
 
 						.item-code {
-							font-size: 22rpx;
-							color: #666;
+							font-size: var(--font-xs);
+							color: var(--color-text-secondary);
 							margin-top: 4rpx;
 							overflow: hidden;
 							text-overflow: ellipsis;
@@ -1198,7 +1198,7 @@
 						margin: 0 -20rpx;
 
 						.item-name {
-							color: #1677ff;
+							color: var(--color-primary);
 						}
 					}
 				}
@@ -1210,8 +1210,8 @@
 					padding: 60rpx 0;
 
 					.empty-text {
-						font-size: 26rpx;
-						color: #999;
+						font-size: var(--font-md);
+						color: var(--color-text-hint);
 					}
 				}
 
@@ -1220,8 +1220,8 @@
 					text-align: center;
 
 					.no-more-text {
-						font-size: 24rpx;
-						color: #999;
+						font-size: var(--font-sm);
+						color: var(--color-text-hint);
 					}
 				}
 			}

@@ -455,12 +455,12 @@ export default {
 <style lang="scss" scoped>
 @import '@/common/page-theme-mixins.scss';
 
-$bg: #f0f2f5;
-$card: #fff;
-$text: #1a1a2e;
-$sub: #6b7280;
-$hint: #9ca3af;
-$line: #e5e7eb;
+$bg: var(--color-bg-page);
+$card: var(--color-bg-card);
+$text: var(--color-text);
+$sub: var(--color-text-secondary);
+$hint: var(--color-text-hint);
+$line: var(--color-border);
 
 .page {
 	@include p-page;
@@ -499,13 +499,13 @@ $line: #e5e7eb;
 }
 
 .info-label {
-	font-size: 24rpx;
+	font-size: var(--font-sm);
 	color: $sub;
 	flex-shrink: 0;
 }
 
 .info-value {
-	font-size: 24rpx;
+	font-size: var(--font-sm);
 	color: $text;
 	font-weight: 500;
 	text-align: right;
@@ -514,9 +514,9 @@ $line: #e5e7eb;
 	word-break: break-all;
 
 	&.highlight {
-		color: #1677ff;
+		color: var(--color-primary);
 		font-weight: 700;
-		font-size: 28rpx;
+		font-size: var(--font-lg);
 	}
 }
 
@@ -530,16 +530,16 @@ $line: #e5e7eb;
 	padding: 26rpx 100rpx 26rpx 24rpx;
 	background: #f7f8fa;
 	border-radius: 10rpx;
-	font-size: 30rpx;
+	font-size: var(--font-lg);
 	border: 2rpx solid $line;
 	font-family: 'Courier New', Courier, monospace, sans-serif;
 	color: #1a1a2e;
-	caret-color: #1677ff;
+	caret-color: var(--color-primary);
 	-webkit-text-fill-color: #1a1a2e;
 	transition: border .2s, background .2s;
 
 	&:focus {
-		border-color: #1677ff;
+		border-color: var(--color-primary);
 		background: $card;
 	}
 }
@@ -578,30 +578,30 @@ $line: #e5e7eb;
 .checkbox {
 	width: 36rpx;
 	height: 36rpx;
-	border: 2rpx solid #d9d9d9;
+	border: 2rpx solid var(--color-border);
 	border-radius: 6rpx;
 	margin-right: 16rpx;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	transition: all 0.3s ease;
-	background-color: #fff;
+	background-color: var(--color-bg-card);
 
 	&.checked {
-		background-color: #1677ff;
-		border-color: #1677ff;
+		background-color: var(--color-primary);
+		border-color: var(--color-primary);
 	}
 
 	.checkbox-icon {
 		color: #fff;
-		font-size: 24rpx;
+		font-size: var(--font-sm);
 		font-weight: bold;
 	}
 }
 
 .auto-submit-text {
-	font-size: 26rpx;
-	color: #666;
+	font-size: var(--font-md);
+	color: var(--color-text-secondary);
 }
 
 .last-sn {
@@ -620,12 +620,12 @@ $line: #e5e7eb;
 }
 
 .last-label {
-	font-size: 22rpx;
+	font-size: var(--font-xs);
 	color: $hint;
 }
 
 .last-value {
-	font-size: 26rpx;
+	font-size: var(--font-md);
 	color: $text;
 	font-weight: 600;
 	font-family: 'Courier New', Courier, monospace, sans-serif;
@@ -637,9 +637,9 @@ $line: #e5e7eb;
 	margin-left: 20rpx;
 	padding: 8rpx 20rpx;
 	background: rgba(22, 119, 255, 0.1);
-	color: #1677ff;
+	color: var(--color-primary);
 	border-radius: 6rpx;
-	font-size: 22rpx;
+	font-size: var(--font-xs);
 	font-weight: 500;
 
 	&:active {
@@ -650,7 +650,7 @@ $line: #e5e7eb;
 .tip-box {
 	padding: 24rpx;
 	border-radius: 10rpx;
-	font-size: 26rpx;
+	font-size: var(--font-md);
 	text-align: center;
 	font-weight: 500;
 	transition: all .3s;
@@ -669,7 +669,7 @@ $line: #e5e7eb;
 
 	&.info {
 		background: rgba(22,119,255,.1);
-		color: #1677ff;
+		color: var(--color-primary);
 	}
 }
 
@@ -694,7 +694,7 @@ $line: #e5e7eb;
 .btn-submit {
 	flex: 1;
 	border-radius: 10rpx;
-	font-size: 30rpx;
+	font-size: var(--font-lg);
 	height: 88rpx;
 	display: flex;
 	align-items: center;
@@ -713,7 +713,7 @@ $line: #e5e7eb;
 }
 
 .btn-submit {
-	background: #1677ff;
+	background: var(--color-primary);
 	color: #fff;
 
 	&:active:not(.disabled) {
@@ -732,7 +732,7 @@ $line: #e5e7eb;
 	justify-content: center;
 	height: 50vh;
 	color: $hint;
-	font-size: 28rpx;
+	font-size: var(--font-lg);
 }
 
 /* 尺寸样式 */
@@ -740,11 +740,11 @@ $line: #e5e7eb;
 	&.page { padding: 14rpx 16rpx 120rpx; }
 	.card { padding: 20rpx; margin-bottom: 12rpx; }
 	.info-item { padding: 10rpx 14rpx; }
-	.info-label, .info-value { font-size: 20rpx; }
-	.info-value.highlight { font-size: 24rpx; }
-	.scan-input { padding: 20rpx 90rpx 20rpx 20rpx; font-size: 26rpx; }
-	.tip-box { padding: 18rpx; font-size: 22rpx; }
-	.btn-reset, .btn-submit { height: 72rpx; font-size: 26rpx; }
+	.info-label, .info-value { font-size: var(--font-xs); }
+	.info-value.highlight { font-size: var(--font-sm); }
+	.scan-input { padding: 20rpx 90rpx 20rpx 20rpx; font-size: var(--font-md); }
+	.tip-box { padding: 18rpx; font-size: var(--font-xs); }
+	.btn-reset, .btn-submit { height: 72rpx; font-size: var(--font-md); }
 	.bottom-bar { padding: 16rpx 20rpx; }
 }
 
@@ -752,18 +752,18 @@ $line: #e5e7eb;
 	&.page { padding: 28rpx 32rpx 160rpx; }
 	.card { padding: 36rpx; margin-bottom: 22rpx; }
 	.info-item { padding: 18rpx 22rpx; }
-	.info-label, .info-value { font-size: 28rpx; }
-	.info-value.highlight { font-size: 32rpx; }
-	.scan-input { padding: 32rpx 120rpx 32rpx 32rpx; font-size: 36rpx; }
-	.tip-box { padding: 32rpx; font-size: 30rpx; }
-	.btn-reset, .btn-submit { height: 104rpx; font-size: 34rpx; }
+	.info-label, .info-value { font-size: var(--font-lg); }
+	.info-value.highlight { font-size: var(--font-xl); }
+	.scan-input { padding: 32rpx 120rpx 32rpx 32rpx; font-size: var(--font-xl); }
+	.tip-box { padding: 32rpx; font-size: var(--font-lg); }
+	.btn-reset, .btn-submit { height: 104rpx; font-size: var(--font-xl); }
 	.bottom-bar { padding: 28rpx 32rpx; }
 }
 
 /* 暗色主题 */
 .theme-dark {
 	&.page { background: #0f0f1a; }
-	.card { background: #1a1a2e; box-shadow: 0 2rpx 16rpx rgba(0,0,0,.25); }
+	.card { background: var(--color-bg-card); box-shadow: 0 2rpx 16rpx rgba(0,0,0,.25); }
 	.info-grid { border-top-color: #2a2a45; }
 	.info-item { background: #1e1e36; }
 	.info-value { color: #e0e0e0; }
@@ -772,7 +772,7 @@ $line: #e5e7eb;
 		border-color: #2a2a45;
 		color: #e0e0e0;
 		-webkit-text-fill-color: #e0e0e0;
-		&:focus { background: #1e1e36; border-color: #1677ff; }
+		&:focus { background: #1e1e36; border-color: var(--color-primary); }
 	}
 	.last-sn { background: #1e1e36; }
 	.last-value { color: #e0e0e0; }
@@ -781,8 +781,8 @@ $line: #e5e7eb;
 		color: #4096ff;
 	}
 	.tip-box { background: #1e1e36; }
-	.bottom-bar { background: #1a1a2e; }
+	.bottom-bar { background: var(--color-bg-card); }
 	.btn-reset { background: #1e1e36; color: #888; }
-	.init-tip { color: #666; }
+	.init-tip { color: var(--color-text-secondary); }
 }
 </style>

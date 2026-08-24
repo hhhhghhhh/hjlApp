@@ -720,11 +720,11 @@ $primary: #4A90D9;
 $danger: #D9726A;
 $success: #3BA37F;
 $warning: #E8833A;
-$text: #1a1a2e;
-$sub: #6b7280;
-$hint: #9ca3af;
+$text: var(--color-text);
+$sub: var(--color-text-secondary);
+$hint: var(--color-text-hint);
 $bg: #f7f8fa;
-$border: #e5e7eb;
+$border: var(--color-border);
 
 .package-manager {
 	padding: 16rpx 0 160rpx;
@@ -733,7 +733,7 @@ $border: #e5e7eb;
 .message-box {
 	padding: 12rpx 20rpx;
 	border-radius: 8rpx;
-	font-size: 24rpx;
+	font-size: var(--font-sm);
 	text-align: center;
 	opacity: 0;
 	transform: translateY(-8rpx);
@@ -763,7 +763,7 @@ $border: #e5e7eb;
 }
 
 .header-card {
-	background: #fff;
+	background: var(--color-bg-card);
 	border-radius: 16rpx;
 	padding: 24rpx;
 	margin-bottom: 16rpx;
@@ -776,7 +776,7 @@ $border: #e5e7eb;
 }
 
 .title {
-	font-size: 32rpx;
+	font-size: var(--font-xl);
 	font-weight: 700;
 	color: $text;
 }
@@ -790,7 +790,7 @@ $border: #e5e7eb;
 	display: flex;
 	align-items: center;
 	gap: 6rpx;
-	font-size: 24rpx;
+	font-size: var(--font-sm);
 	color: $sub;
 	padding: 8rpx 16rpx;
 	background: $bg;
@@ -801,7 +801,7 @@ $border: #e5e7eb;
 }
 
 .info-card {
-	background: #fff;
+	background: var(--color-bg-card);
 	border-radius: 16rpx;
 	padding: 24rpx;
 	margin-bottom: 16rpx;
@@ -825,7 +825,7 @@ $border: #e5e7eb;
 .info-input {
 	flex: 1;
 	text-align: left;
-	font-size: 26rpx;
+	font-size: var(--font-md);
 	color: $text;
 	border: none;
 	border-bottom: 1rpx solid transparent;
@@ -839,7 +839,7 @@ $border: #e5e7eb;
 
 	&::placeholder {
 		color: $hint;
-		font-size: 24rpx;
+		font-size: var(--font-sm);
 	}
 }
 
@@ -868,13 +868,13 @@ $border: #e5e7eb;
 
 .stat-label {
 	display: block;
-	font-size: 22rpx;
+	font-size: var(--font-xs);
 	color: $hint;
 	margin-bottom: 4rpx;
 }
 
 .stat-value {
-	font-size: 32rpx;
+	font-size: var(--font-xl);
 	font-weight: 700;
 	color: $text;
 
@@ -887,7 +887,7 @@ $border: #e5e7eb;
 }
 
 .input-card {
-	background: #fff;
+	background: var(--color-bg-card);
 	border-radius: 16rpx;
 	padding: 24rpx;
 	margin-bottom: 16rpx;
@@ -909,7 +909,7 @@ $border: #e5e7eb;
 }
 
 .input-label {
-	font-size: 26rpx;
+	font-size: var(--font-md);
 	font-weight: 600;
 	color: $text;
 }
@@ -925,7 +925,7 @@ $border: #e5e7eb;
 .input-value-input {
 	flex: 1;
 	text-align: left;
-	font-size: 24rpx;
+	font-size: var(--font-sm);
 	color: $text;
 	border: none;
 	border-bottom: 1rpx solid transparent;
@@ -939,7 +939,7 @@ $border: #e5e7eb;
 
 	&::placeholder {
 		color: $hint;
-		font-size: 22rpx;
+		font-size: var(--font-xs);
 	}
 }
 
@@ -963,17 +963,17 @@ $border: #e5e7eb;
 }
 
 .auto-submit-label {
-	font-size: 24rpx;
+	font-size: var(--font-sm);
 	color: $text;
 }
 
 .auto-submit-hint {
-	font-size: 22rpx;
+	font-size: var(--font-xs);
 	color: $hint;
 }
 
 .tabs-container {
-	background: #fff;
+	background: var(--color-bg-card);
 	border-radius: 16rpx;
 	overflow: hidden;
 	margin-bottom: 16rpx;
@@ -988,7 +988,7 @@ $border: #e5e7eb;
 	flex: 1;
 	text-align: center;
 	padding: 20rpx 0;
-	font-size: 26rpx;
+	font-size: var(--font-md);
 	color: $sub;
 	position: relative;
 
@@ -1021,7 +1021,7 @@ $border: #e5e7eb;
 	padding: 40rpx 0;
 	gap: 16rpx;
 	color: $hint;
-	font-size: 24rpx;
+	font-size: var(--font-sm);
 }
 
 .item-list {
@@ -1056,7 +1056,7 @@ $border: #e5e7eb;
 	background: $primary;
 	color: #fff;
 	border-radius: 50%;
-	font-size: 22rpx;
+	font-size: var(--font-xs);
 	font-weight: 600;
 	flex-shrink: 0;
 	margin-top: 4rpx;
@@ -1070,7 +1070,7 @@ $border: #e5e7eb;
 .item-row {
 	display: flex;
 	gap: 16rpx;
-	font-size: 22rpx;
+	font-size: var(--font-xs);
 	padding: 2rpx 0;
 }
 
@@ -1113,7 +1113,7 @@ $border: #e5e7eb;
 	right: 0;
 	padding: 20rpx 24rpx;
 	padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
-	background: #fff;
+	background: var(--color-bg-card);
 	box-shadow: 0 -4rpx 16rpx rgba(0,0,0,0.06);
 	z-index: 100;
 }
@@ -1126,7 +1126,7 @@ $border: #e5e7eb;
 
 	text {
 		color: #fff;
-		font-size: 30rpx;
+		font-size: var(--font-lg);
 		font-weight: 600;
 	}
 	&:active {
@@ -1140,7 +1140,7 @@ $border: #e5e7eb;
 	.input-card,
 	.tabs-container,
 	.bottom-bar {
-		background: #1a1a2e;
+		background: var(--color-bg-card);
 	}
 
 	.title {
@@ -1160,7 +1160,7 @@ $border: #e5e7eb;
 		}
 
 		&::placeholder {
-			color: #666;
+			color: var(--color-text-secondary);
 		}
 	}
 
@@ -1177,7 +1177,7 @@ $border: #e5e7eb;
 	}
 
 	.auto-submit-hint {
-		color: #666;
+		color: var(--color-text-secondary);
 	}
 
 	.input-label {
@@ -1192,7 +1192,7 @@ $border: #e5e7eb;
 		}
 
 		&::placeholder {
-			color: #666;
+			color: var(--color-text-secondary);
 		}
 	}
 
@@ -1228,7 +1228,7 @@ $border: #e5e7eb;
 	}
 
 	.empty-state {
-		color: #666;
+		color: var(--color-text-secondary);
 	}
 
 	.bottom-bar {

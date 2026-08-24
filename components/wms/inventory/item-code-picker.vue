@@ -36,7 +36,7 @@
 									class="search-input" 
 									placeholder="物料编码"
 									@input="onSearchInput"
-									placeholder-style="color: #999; font-size: 24rpx;"
+									placeholder-style="color: var(--color-text-hint); font-size: var(--font-sm);"
 									confirm-type="search"
 								/>
 								<view class="clear-btn" v-if="searchForm.itemCode" @click="clearItemCode">
@@ -53,7 +53,7 @@
 									class="search-input" 
 									placeholder="物料名称"
 									@input="onSearchInput"
-									placeholder-style="color: #999; font-size: 24rpx;"
+									placeholder-style="color: var(--color-text-hint); font-size: var(--font-sm);"
 									confirm-type="search"
 								/>
 								<view class="clear-btn" v-if="searchForm.itemName" @click="clearItemName">
@@ -83,7 +83,7 @@
 						<view class="material-info">
 							<text class="material-name">{{ item.itemName }}</text>
 							<view class="check-icon" v-if="isSelected(item)">
-								<uni-icons type="checkmarkempty" size="16" color="#1677ff"></uni-icons>
+								<uni-icons type="checkmarkempty" size="16" color="var(--color-primary)"></uni-icons>
 							</view>
 						</view>
 						
@@ -305,24 +305,24 @@ export default {
 	display: flex;
 	align-items: center;
 	padding: 20rpx 24rpx;
-	background: #f8f9fa;
+	background: var(--color-bg-page);
 	border-radius: 8rpx;
-	border: 1rpx solid #e9ecef;
+	border: 1rpx solid var(--color-border);
 	height: 80rpx;
 	box-sizing: border-box;
 }
 
 .trigger-text {
 	flex: 1;
-	font-size: 26rpx;
-	color: #333;
+	font-size: var(--font-md);
+	color: var(--color-text);
 	margin-right: 12rpx;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 
 	&.placeholder {
-		color: #999;
+		color: var(--color-text-hint);
 	}
 }
 
@@ -340,7 +340,7 @@ export default {
 }
 
 .popup-container {
-	background: #fff;
+	background: var(--color-bg-card);
 	border-radius: 24rpx 24rpx 0 0;
 	max-height: 80vh;
 	display: flex;
@@ -355,21 +355,21 @@ export default {
 	border-bottom: 1rpx solid #e5e5e5;
 	
 	.popup-title {
-		font-size: 32rpx;
+		font-size: var(--font-xl);
 		font-weight: 600;
-		color: #333;
+		color: var(--color-text);
 	}
 	
 	.close-btn {
 		padding: 8rpx 0;
-		font-size: 28rpx;
-		color: #666;
+		font-size: var(--font-lg);
+		color: var(--color-text-secondary);
 	}
 }
 
 .search-conditions {
 	padding: 24rpx 32rpx;
-	border-bottom: 1rpx solid #f0f0f0;
+	border-bottom: 1rpx solid var(--color-border);
 	
 	.search-row {
 		display: flex;
@@ -384,12 +384,12 @@ export default {
 				display: flex;
 				align-items: center;
 				padding: 16rpx 20rpx;
-				background: #f8f9fa;
+				background: var(--color-bg-page);
 				border-radius: 8rpx;
 				
 				.search-input {
 					flex: 1;
-					font-size: 26rpx;
+					font-size: var(--font-md);
 					margin: 0 16rpx;
 					height: 40rpx;
 					line-height: 40rpx;
@@ -410,11 +410,11 @@ export default {
 
 .material-item {
 	padding: 24rpx 0;
-	border-bottom: 1rpx solid #f0f0f0;
+	border-bottom: 1rpx solid var(--color-border);
 	
 	&.selected {
 		.material-code {
-			color: #1677ff;
+			color: var(--color-primary);
 		}
 	}
 	
@@ -425,8 +425,8 @@ export default {
 		margin-bottom: 12rpx;
 		
 		.material-code {
-			font-size: 28rpx;
-			color: #333;
+			font-size: var(--font-lg);
+			color: var(--color-text);
 			font-weight: 600;
 			flex: 1;
 			overflow: hidden;
@@ -436,7 +436,7 @@ export default {
 		}
 		
 		.material-status {
-			font-size: 22rpx;
+			font-size: var(--font-xs);
 			padding: 4rpx 12rpx;
 			border-radius: 12rpx;
 			
@@ -447,7 +447,7 @@ export default {
 			
 			&.status-inactive {
 				background: rgba(136, 136, 136, 0.1);
-				color: #666;
+				color: var(--color-text-secondary);
 			}
 			
 			&.status-pending {
@@ -457,7 +457,7 @@ export default {
 			
 			&.status-default {
 				background: rgba(22, 119, 255, 0.1);
-				color: #1677ff;
+				color: var(--color-primary);
 			}
 		}
 	}
@@ -469,8 +469,8 @@ export default {
 		margin-bottom: 8rpx;
 		
 		.material-name {
-			font-size: 26rpx;
-			color: #666;
+			font-size: var(--font-md);
+			color: var(--color-text-secondary);
 			flex: 1;
 			overflow: hidden;
 			text-overflow: ellipsis;
@@ -483,8 +483,8 @@ export default {
 		margin-bottom: 8rpx;
 		
 		.material-spec-text {
-			font-size: 24rpx;
-			color: #999;
+			font-size: var(--font-sm);
+			color: var(--color-text-hint);
 			overflow: hidden;
 			text-overflow: ellipsis;
 			white-space: nowrap;
@@ -495,13 +495,13 @@ export default {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		font-size: 22rpx;
-		color: #999;
+		font-size: var(--font-xs);
+		color: var(--color-text-hint);
 		
 		.material-unit,
 		.material-type {
-			font-size: 22rpx;
-			color: #999;
+			font-size: var(--font-xs);
+			color: var(--color-text-hint);
 		}
 	}
 }
@@ -520,8 +520,8 @@ export default {
 	.empty-text {
 		display: block;
 		margin-top: 16rpx;
-		font-size: 26rpx;
-		color: #999;
+		font-size: var(--font-md);
+		color: var(--color-text-hint);
 	}
 }
 
@@ -530,8 +530,8 @@ export default {
 	text-align: center;
 	
 	.no-more-text {
-		font-size: 24rpx;
-		color: #999;
+		font-size: var(--font-sm);
+		color: var(--color-text-hint);
 	}
 }
 </style>
