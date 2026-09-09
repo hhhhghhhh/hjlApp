@@ -270,6 +270,18 @@ function convertElement(el, warn) {
 		if (!mm) warn(label + ' 读不到字号，已按 3mm 高处理')
 		const h = Math.max(0.5, round2(mm || 3))
 		const out = { type: 'text', x, y, fontH: h, fontW: h, rotation: rot.rotation, text: el.text || '' }
+		// 字型与排版：detail 已携带 bold/italic/wordWrap/fitToFrame；valign/charSpace/lineSpace 由编辑器设置
+		// （detail 不携带）。这里只做透传 + 默认值省略，渲染层负责下发 SDK，绝不动坐标/尺寸。
+		if (el.bold) out.bold = true
+		if (el.italic) out.italic = true
+		if (el.wordWrap === false) out.wordWrap = false
+		if (el.fitToFrame === true) out.fitToFrame = true
+		const _valign = Number(el.valign)
+		if (_valign === 0 || _valign === 1 || _valign === 2) out.valign = _valign
+		const _char = Number(el.charSpace)
+		if (_char > 0) out.charSpace = _char
+		const _line = Number(el.lineSpace)
+		if (_line > 0) out.lineSpace = _line
 		// ^FB 需要知道行宽才能居中/右对齐
 		if ((el.align === 'center' || el.align === 'right') && frameW > 0) out.align = el.align
 		if (frameW > 0) out.width = frameW
@@ -446,6 +458,11 @@ const ANCHOR_DETAIL_MAP = {
 
 // 把 LabDetail 的一个 object 归一成 convertElement 期望的元素字段形状（与 pdaTemplate.elements 对齐），
 // 之后直接复用 convertElement，避免两套解析逻辑。返回 null 表示类型不支持、需跳过。
+//
+// 只写 convertElement 会读的字段（带 Mm 后缀的 xMm/yMm/widthMm/heightMm 等）。
+// 中性模型的框宽/框高 width/height 一律由 convertElement 从 widthMm/heightMm 统一写入
+// （见 convertElement 里的 frameW/frameH）。这里若直接赋 out.width / out.height 是死赋值 ——
+// convertElement 会重新构造对象，从不读取传进来的 width/height。需要改框尺寸请改 convertElement。
 function normalizeDetailObject(obj) {
 	const typeName = String(obj.typeName || '').trim().toLowerCase()
 	const is2D = obj.is2D === true
@@ -476,6 +493,10 @@ function normalizeDetailObject(obj) {
 			out.italic = !!obj.font.italic
 		}
 		if (obj.alignmentName) out.align = obj.alignmentName.toLowerCase()
+		// wordWrap / fitToFrame 是 CodeSoft 文本对象的布尔属性（detail 全量视图携带）。
+		// 中性模型透传，渲染层据此设 autoReturn(自动换行) / autoShrink(适应框高)。
+		if (obj.wordWrap === false) out.wordWrap = false
+		if (obj.fitToFrame === true) out.fitToFrame = true
 	} else if (type === 'qrcode') {
 		out.data = obj.template != null ? obj.template : ''
 		out.ec = obj.ecc || 'M'
@@ -483,8 +504,6 @@ function normalizeDetailObject(obj) {
 		// ZPL 用它算放大倍数，LPAPI 直接用 width/height 框定尺寸。
 		const modMm = Number(obj.moduleXMm) > 0 ? obj.moduleXMm : 0.51
 		out.moduleWidthMm = modMm
-		out.width = obj.widthMm
-		out.height = obj.heightMm
 	} else if (type === 'barcode') {
 		out.data = obj.template != null ? obj.template : ''
 		out.subtype = String(obj.symbologyName || '').toLowerCase() || 'code128'
@@ -590,6 +609,149 @@ function convertDetail(detail, rawInput, csWarnings) {
 /**
  * 模板里实际用到的 {{变量}}，用于打印前核对数据里有没有这些字段
  */
+// 随 App 下载即自带的内置默认模板：用和 CodeSoft 导入完全相同的代码路径(convertDetail)生成，
+// 保证与用户在导入页导入的模板 100% 同构，不会因手写而和导入映射漂移。
+// 三张共享同一份 .Lab 设计（itemLotSn.Lab），仅把绑定变量 itemLotSn 分流为
+// itemLotSn / keySn / productSn；itemName 三张都保留（用户只要求改 itemLotSn 分流）。
+const BUILTIN_ITEM_LOT_SN_DETAIL = {
+	file: 'itemLotSn.Lab',
+	label: {
+		widthMm: 20.0, heightMm: 15.0,
+		marginLeftMm: 0.0, marginTopMm: 0.0,
+		horizontalGapMm: 0.0, verticalGapMm: 0.0,
+		columns: 1, rows: 1, portrait: true,
+		stockName: 'Indéterminé', stockType: 'Indéterminé', mediaType: 'unknown'
+	},
+	variables: [
+		{ name: '变量8', dataSource: 5, dataSourceName: 'Free', defaultValue: '', maxLength: 25, prefix: '', suffix: '', padCharacter: '\u0000', inputMask: '', displayInForm: false, formPrompt: '', isCounter: false, increment: '+1' },
+		{ name: '计数器0', dataSource: 1, dataSourceName: 'Counter', defaultValue: '0', prefix: '', suffix: '', padCharacter: '\u0000', isCounter: true, increment: '+1' },
+		{ name: 'itemName', dataSource: 6, dataSourceName: 'Form', defaultValue: '', maxLength: 25, prefix: '', suffix: '', padCharacter: '\u0000', inputMask: '', displayInForm: true, formPrompt: '', isCounter: false, increment: '+1' },
+		{ name: 'itemLotSn', dataSource: 6, dataSourceName: 'Form', defaultValue: '', maxLength: 50, prefix: '', suffix: '', padCharacter: '\u0000', inputMask: '', displayInForm: true, formPrompt: '', isCounter: false, increment: '+1' }
+	],
+	objects: [
+		{
+			index: 1, name: 'Barcode1(3)', type: 2, typeName: 'Barcode',
+			xMm: 5.0, yMm: 5.0, widthMm: 5.33, heightMm: 5.33, rotationDeg: 0.0,
+			anchorPoint: 5, anchorPointName: 'Center', printable: true,
+			foreColor: 0, backColor: 16777215, raw: '', template: '{{itemLotSn}}',
+			usedVariables: ['itemLotSn'], boundVariable: 'itemLotSn',
+			symbology: 123, symbologyName: 'QRCode', is2D: true,
+			narrowBarWidthMm: 0.06, barHeightMm: 11.98, ratio: 1.9,
+			hrPosition: 0, hrPositionName: 'none',
+			moduleXMm: 0.25, moduleYMm: 0.25, ecc: 'Q', code2dRows: 0, code2dColumns: 0
+		},
+		{
+			index: 2, name: 'Text1', type: 1, typeName: 'Text',
+			xMm: 10.0, yMm: 1.0, widthMm: 8.5, heightMm: 1.61, rotationDeg: 0.0,
+			anchorPoint: 1, anchorPointName: 'TopLeft', printable: true,
+			foreColor: 0, backColor: 0, raw: 'itemLotSn', template: '{{itemLotSn}}',
+			usedVariables: ['itemLotSn'], boundVariable: 'itemLotSn',
+			font: { name: '宋体', sizePt: 4.5, bold: true, italic: false, underline: false, strikeThrough: false },
+			alignment: 1, alignmentName: 'center', wordWrap: true, fitToFrame: false
+		},
+		{
+			index: 3, name: 'Text3(2)', type: 1, typeName: 'Text',
+			xMm: 0.47, yMm: 10.0, widthMm: 19.0, heightMm: 1.82, rotationDeg: 0.0,
+			anchorPoint: 1, anchorPointName: 'TopLeft', printable: true,
+			foreColor: 0, backColor: 0, raw: 'itemName', template: '{{itemName}}',
+			usedVariables: ['itemName'], boundVariable: 'itemName',
+			font: { name: '宋体', sizePt: 5.0, bold: true, italic: false, underline: false, strikeThrough: false },
+			alignment: 1, alignmentName: 'center', wordWrap: true, fitToFrame: false
+		}
+	]
+}
+
+// 默认包装模板基准：packageSn.Lab 的 CodeSoft 设计（用户提供的解析结果）。
+// 与 itemLotSn.Lab 一样是 detail 全量格式，直接走 convertDetail 生成，与导入页同构。
+// 仅绑定 packageSn（二维码 + 下方文本各一份），其余变量（itemName/itemCode/...）作为模板源信息保留。
+const BUILTIN_PACKAGE_SN_DETAIL = {
+	file: 'packageSn.Lab',
+	label: {
+		widthMm: 20.0, heightMm: 15.0,
+		marginLeftMm: 0.0, marginTopMm: 0.0,
+		horizontalGapMm: 0.0, verticalGapMm: 0.0,
+		columns: 1, rows: 1, portrait: true,
+		stockName: 'Indéterminé', stockType: 'Indéterminé', mediaType: 'unknown'
+	},
+	variables: [
+		{ name: 'itemLot', dataSource: 6, dataSourceName: 'Form', defaultValue: '', maxLength: 25, prefix: '', suffix: '', padCharacter: '\u0000', inputMask: '', displayInForm: true, formPrompt: '', isCounter: false, increment: '+1' },
+		{ name: 'packageQuantity', dataSource: 6, dataSourceName: 'Form', defaultValue: '', maxLength: 25, prefix: '', suffix: '', padCharacter: '\u0000', inputMask: '', displayInForm: true, formPrompt: '', isCounter: false, increment: '+1' },
+		{ name: 'custId_dictText', dataSource: 6, dataSourceName: 'Form', defaultValue: '', maxLength: 25, prefix: '', suffix: '', padCharacter: '\u0000', inputMask: '', displayInForm: true, formPrompt: '', isCounter: false, increment: '+1' },
+		{ name: '变量8', dataSource: 5, dataSourceName: 'Free', defaultValue: '', maxLength: 25, prefix: '', suffix: '', padCharacter: '\u0000', inputMask: '', displayInForm: false, formPrompt: '', isCounter: false, increment: '+1' },
+		{ name: '计数器0', dataSource: 1, dataSourceName: 'Counter', defaultValue: '0', prefix: '', suffix: '', padCharacter: '\u0000', isCounter: true, increment: '+1' },
+		{ name: 'packageSn', dataSource: 6, dataSourceName: 'Form', defaultValue: '', maxLength: 25, prefix: '', suffix: '', padCharacter: '\u0000', inputMask: '', displayInForm: true, formPrompt: '', isCounter: false, increment: '+1' },
+		{ name: 'itemSpec', dataSource: 6, dataSourceName: 'Form', defaultValue: '', maxLength: 50, prefix: '', suffix: '', padCharacter: '\u0000', inputMask: '', displayInForm: true, formPrompt: '', isCounter: false, increment: '+1' },
+		{ name: 'supplierName', dataSource: 6, dataSourceName: 'Form', defaultValue: '', maxLength: 50, prefix: '', suffix: '', padCharacter: '\u0000', inputMask: '', displayInForm: true, formPrompt: '', isCounter: false, increment: '+1' },
+		{ name: 'itemName', dataSource: 6, dataSourceName: 'Form', defaultValue: '', maxLength: 50, prefix: '', suffix: '', padCharacter: '\u0000', inputMask: '', displayInForm: true, formPrompt: '', isCounter: false, increment: '+1' },
+		{ name: 'itemCode', dataSource: 6, dataSourceName: 'Form', defaultValue: '', maxLength: 50, prefix: '', suffix: '', padCharacter: '\u0000', inputMask: '', displayInForm: true, formPrompt: '', isCounter: false, increment: '+1' },
+		{ name: 'itemSn', dataSource: 6, dataSourceName: 'Form', defaultValue: '', maxLength: 35, prefix: '', suffix: '', padCharacter: '\u0000', inputMask: '', displayInForm: true, formPrompt: '', isCounter: false, increment: '+1' }
+	],
+	objects: [
+		{
+			index: 1, name: 'Barcode1', type: 2, typeName: 'Barcode',
+			xMm: 10.0, yMm: 5.0, widthMm: 8.0, heightMm: 8.0, rotationDeg: 0.0,
+			anchorPoint: 5, anchorPointName: 'Center', printable: true,
+			foreColor: 0, backColor: 16777215, raw: '', template: '{{packageSn}}',
+			usedVariables: ['packageSn'], boundVariable: 'packageSn',
+			symbology: 123, symbologyName: 'QRCode', is2D: true,
+			narrowBarWidthMm: 0.09, barHeightMm: 11.98, ratio: 1.9,
+			hrPosition: 0, hrPositionName: 'none',
+			moduleXMm: 0.38, moduleYMm: 0.25, ecc: 'Q', code2dRows: 0, code2dColumns: 0
+		},
+		{
+			index: 2, name: 'Text1', type: 1, typeName: 'Text',
+			xMm: 1.0, yMm: 11.0, widthMm: 18.0, heightMm: 1.99, rotationDeg: 0.0,
+			anchorPoint: 1, anchorPointName: 'TopLeft', printable: true,
+			foreColor: 0, backColor: 0, raw: 'packageSn', template: '{{packageSn}}',
+			usedVariables: ['packageSn'], boundVariable: 'packageSn',
+			font: { name: '宋体', sizePt: 5.5, bold: true, italic: false, underline: false, strikeThrough: false },
+			alignment: 1, alignmentName: 'center', wordWrap: true, fitToFrame: false
+		}
+	]
+}
+
+function buildPackageDetail(name) {
+	const d = JSON.parse(JSON.stringify(BUILTIN_PACKAGE_SN_DETAIL))
+	d.file = name
+	return d
+}
+
+// 深拷贝基准 detail，按目标模板名 + 分流变量改写绑定（itemLotSn -> keySn / productSn）。
+function buildBuiltinDetail(name, snVar) {
+	const d = JSON.parse(JSON.stringify(BUILTIN_ITEM_LOT_SN_DETAIL))
+	d.file = name
+	d.objects.forEach((o) => {
+		if (o.boundVariable === 'itemLotSn' || (o.usedVariables || []).indexOf('itemLotSn') !== -1) {
+			o.template = (o.template || '').split('{{itemLotSn}}').join('{{' + snVar + '}}')
+			o.boundVariable = snVar
+			o.usedVariables = (o.usedVariables || []).map((v) => (v === 'itemLotSn' ? snVar : v))
+		}
+	})
+	;(d.variables || []).forEach((v) => { if (v.name === 'itemLotSn') v.name = snVar })
+	return d
+}
+
+export function builtinTemplates() {
+	const specs = [
+		{ id: 'tpl_builtin_batch', name: '默认批次号模板', base: 'itemLotSn', snVar: 'itemLotSn' },
+		{ id: 'tpl_builtin_key', name: '默认关键件模板', snVar: 'keySn' },
+		{ id: 'tpl_builtin_product', name: '默认产品模板', snVar: 'productSn' },
+		{ id: 'tpl_builtin_package', name: '默认包装模板', base: 'packageSn' }
+	]
+	return specs.map(({ id, name, base, snVar }) => {
+		// 走真实 CodeSoft 导入路径，与导入页导入的模板同构
+		const detail = base === 'packageSn'
+			? buildPackageDetail(name)
+			: buildBuiltinDetail(name, snVar)
+		const r = convertDetail(detail, '', [])
+		r.template.id = id
+		r.template.name = name
+		r.template.source.from = 'builtin'
+		r.template.source.importedAt = ''
+		return r.template
+	})
+}
+
 export function templateVariables(tpl) {
 	const found = []
 	;(tpl.elements || []).forEach((el) => {

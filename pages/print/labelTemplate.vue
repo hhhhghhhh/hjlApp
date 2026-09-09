@@ -16,11 +16,12 @@
 				<text class="label">模板名称</text>
 				<input class="ipt" v-model="tpl.name" placeholder="模板名称" />
 			</view>
-			<view class="btn-row">
-				<button size="mini" @click="addTemplate">新建</button>
-				<button size="mini" @click="copyTemplate">复制</button>
-				<button size="mini" type="warn" @click="removeTemplate">删除</button>
-			</view>
+		<view class="btn-row">
+			<button size="mini" @click="addTemplate">新建</button>
+			<button size="mini" @click="copyTemplate">复制</button>
+			<button size="mini" type="warn" @click="removeTemplate">删除</button>
+			<button size="mini" type="primary" @click="overwriteBuiltin">覆盖默认模板</button>
+		</view>
 		</view>
 
 		<view class="card">
@@ -35,9 +36,14 @@
 			</view>
 			<view class="row" v-if="isLpapi">
 				<text class="label">水平偏移微调 (mm)</text>
-				<input class="ipt" type="digit" v-model="tpl.page.offsetXMm" placeholder="0=自动居中" />
+				<input class="ipt" type="digit" v-model="tpl.page.offsetXMm" :placeholder="offsetHintBase" />
 			</view>
-			<view class="hint" v-if="isLpapi">微调量，0=自动居中（标签居中在纸上）。实测整体偏右就填负值（如 -1.5）、偏左填正值；换不同尺寸纸时自动居中会随尺寸重算、微调量保持不变，无需每次重调。</view>
+			<view class="hint" v-if="isLpapi">微调量，{{ offsetHintBase }}。实测整体偏右就填负值（如 -1.5）、偏左填正值；换不同尺寸纸时自动偏移基准会随尺寸重算、微调量保持不变，无需每次重调。</view>
+			<view class="row" v-if="isLpapi">
+				<text class="label">垂直偏移微调 (mm)</text>
+				<input class="ipt" type="digit" v-model="tpl.page.offsetYMm" placeholder="0=不微调" />
+			</view>
+			<view class="hint" v-if="isLpapi">个别模板特调：整体偏下填负值（内容上移）、偏上填正值（内容下移）；与全局「垂直偏移微调」（打印设置页）叠加——本模板不填时用全局值。</view>
 			<view class="row">
 				<text class="label">纸张类型</text>
 				<picker :range="mediaLabels" :value="mediaIndex" @change="onMediaChange">
@@ -141,20 +147,47 @@
 					</view>
 				</template>
 
-				<template v-if="el.type === 'text'">
-					<view class="row">
-						<text class="label">内容</text>
-						<input class="ipt wide" v-model="el.text" :placeholder="varHint" />
-					</view>
-					<view class="row">
-						<text class="label">字高 (mm)</text>
-						<input class="ipt" type="number" v-model="el.fontH" />
-					</view>
-					<view class="row">
-						<text class="label">字宽 (mm)</text>
-						<input class="ipt" type="number" v-model="el.fontW" />
-					</view>
-				</template>
+			<template v-if="el.type === 'text'">
+				<view class="row">
+					<text class="label">框宽 (mm)</text>
+					<input class="ipt" type="digit" :value="el.width" @input="e => setFrame(el, 'width', e)" />
+				</view>
+				<view class="row">
+					<text class="label">框高/字号 (mm)</text>
+					<input class="ipt" type="digit" :value="el.height" @input="e => setFrame(el, 'height', e)" />
+				</view>
+				<view class="hint">「框高」即字体大小（只填这一个高度）；「框宽」控制自动换行宽度。</view>
+				<view class="row">
+					<text class="label">内容</text>
+					<input class="ipt wide" v-model="el.text" :placeholder="varHint" />
+				</view>
+				<view class="row">
+					<text class="label">粗体</text>
+					<switch :checked="el.bold" @change="e => el.bold = e.detail.value" />
+				</view>
+				<view class="row">
+					<text class="label">斜体</text>
+					<switch :checked="el.italic" @change="e => el.italic = e.detail.value" />
+				</view>
+				<view class="row">
+					<text class="label">垂直对齐</text>
+					<picker :range="valignLabels" :value="valignIndex(el)" @change="e => setValign(el, e)">
+						<text class="picker">{{ valignLabel(el) }} ▾</text>
+					</picker>
+				</view>
+				<view class="row">
+					<text class="label">字符间距 (mm)</text>
+					<input class="ipt" type="digit" v-model="el.charSpace" />
+				</view>
+				<view class="row">
+					<text class="label">行间距 (mm)</text>
+					<input class="ipt" type="digit" v-model="el.lineSpace" />
+				</view>
+				<view class="row">
+					<text class="label">自动换行</text>
+					<switch :checked="el.wordWrap !== false" @change="e => el.wordWrap = e.detail.value" />
+				</view>
+			</template>
 
 				<template v-if="el.type === 'qrcode'">
 					<view class="row">
@@ -256,6 +289,7 @@
 		defaultTemplate,
 		loadTemplates,
 		saveTemplates,
+		overwriteBuiltinTemplates,
 		newElement,
 		labelDots,
 		ANCHORS,
@@ -285,13 +319,24 @@ export default {
 				barcodeTypes: BARCODE_TYPES,
 				qrEcc: QR_ECC,
 				elementTypes: ELEMENT_TYPES,
-				copiesSelStart: -1,
-				copiesSelEnd: -1
-			}
+				valignLabels: ['上', '中', '下'],
+			copiesSelStart: -1,
+			copiesSelEnd: -1,
+			printerAlignment: printer.getPrinterAlignment()
+		}
 		},
 		computed: {
 			isLpapi() {
 				return printer.getProtocol() === 'lpapi'
+			},
+			// 水平偏移提示的基线文案，随当前 LPAPI 打印机对齐方式自适应：
+			// 0=R0 右对齐 → 贴右；4=L4 左对齐 → 贴左；2=C2 居中（默认） → 居中；未连返回 null → 兜底居中。
+			offsetHintBase() {
+				const a = this.printerAlignment
+				if (a === 0) return '0=自动贴右（标签贴在纸右端）'
+				if (a === 4) return '0=自动贴左（标签贴在纸左端）'
+				if (a === 2) return '0=自动居中（标签居中在纸上）'
+				return '0=按打印机对齐自动落点（右/中/左）'
 			},
 			templateNames() {
 				return this.templates.map((t) => t.name || '未命名')
@@ -417,6 +462,8 @@ export default {
 			try {
 				if (lpapiPlugin && lpapiPlugin.setActiveCanvas) lpapiPlugin.setActiveCanvas('lpapi-canvas-label')
 			} catch (e) {}
+			// 切回本页时若已连 LPAPI，刷新对齐方式（0/2/4）供"水平偏移"提示自适应
+			this.printerAlignment = printer.getPrinterAlignment()
 		},
 		methods: {
 			toast(title) {
@@ -534,6 +581,19 @@ export default {
 				return ANCHORS[this.anchorIndex(el)].label
 			},
 
+			valignIndex(el) {
+				const v = Number(el.valign) || 0
+				return v === 1 ? 1 : v === 2 ? 2 : 0
+			},
+
+			valignLabel(el) {
+				return this.valignLabels[this.valignIndex(el)]
+			},
+
+			setValign(el, e) {
+				this.$set(el, 'valign', Number(e.detail.value))
+			},
+
 			// 旧模板和新建的元素都没有 anchor 字段，要用 $set 写进去才有响应式
 			setAnchor(el, e) {
 				this.$set(el, 'anchor', ANCHORS[Number(e.detail.value)].value)
@@ -543,10 +603,10 @@ export default {
 				this.$set(el, key, e.detail.value)
 			},
 
-			// 基点不是左上角时才需要参照框；线和矩形本来就有确切宽高，不重复问
+			// 基点不是左上角时才需要参照框；文本已在自身面板始终显示框宽/框高，不重复问
 			showFrame(el) {
 				if (!el.anchor || el.anchor === 'topLeft') return false
-				return el.type === 'text' || el.type === 'qrcode' || el.type === 'barcode'
+				return el.type === 'qrcode' || el.type === 'barcode'
 			},
 
 			addElement(type) {
@@ -581,20 +641,33 @@ export default {
 				this.selectTemplate(this.templates.length - 1)
 			},
 
-			removeTemplate() {
-				if (this.templates.length <= 1) return this.toast('至少保留一个模板')
-				uni.showModal({
-					title: '删除模板',
-					content: '确定删除「' + this.tpl.name + '」？',
-					success: (res) => {
-						if (!res.confirm) return
-						this.templates.splice(this.templateIndex, 1)
-						saveTemplates(this.templates)
-						this.selectTemplate(0)
-						this.toast('已删除')
-					}
-				})
-			},
+		removeTemplate() {
+			if (this.templates.length <= 1) return this.toast('至少保留一个模板')
+			uni.showModal({
+				title: '删除模板',
+				content: '确定删除「' + this.tpl.name + '」？',
+				success: (res) => {
+					if (!res.confirm) return
+					this.templates.splice(this.templateIndex, 1)
+					saveTemplates(this.templates)
+					this.selectTemplate(0)
+					this.toast('已删除')
+				}
+			})
+		},
+
+		overwriteBuiltin() {
+			uni.showModal({
+				title: '覆盖默认模板',
+				content: '将用最新内置模板覆盖「默认批次号/关键件/产品模板」三张，你改过的内容会被重置；自建模板不受影响。继续？',
+				success: (res) => {
+					if (!res.confirm) return
+					this.templates = overwriteBuiltinTemplates()
+					this.selectTemplate(0)
+					this.toast('已覆盖生成默认模板')
+				}
+			})
+		},
 
 			save() {
 				this.templates.splice(this.templateIndex, 1, this.clone(this.tpl))

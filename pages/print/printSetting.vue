@@ -98,6 +98,17 @@
 			<view class="tip-inline" v-if="false">
 				三种测试：PDF位图（厂家 1F 2A 位图方式，最可靠）、TPCL（东芝 TSPL 标准指令流：文本/条码/二维码）、ESC/POS（Epson 标准指令流：文本/条码/二维码/走纸）。中文无内置字库，走位图下发。哪种能正常出纸就在业务里用哪种。
 			</view>
+			<view class="row" v-if="protocol === 'lpapi'">
+				<text class="label">测试标签宽(mm)</text>
+				<input class="ipt" type="digit" v-model="testW" placeholder="如 20" />
+			</view>
+			<view class="row" v-if="protocol === 'lpapi'">
+				<text class="label">测试标签高(mm)</text>
+				<input class="ipt" type="digit" v-model="testH" placeholder="如 15" />
+			</view>
+			<view class="tip-inline" v-if="protocol === 'lpapi'">
+				测试页按填入尺寸 + 当前打印机对齐方式（右对齐/居中/左对齐）自适应打印，用于核对落点是否贴边正确、文字是否清晰。
+			</view>
 			<view class="btn-row" v-if="protocol === 'lpapi'">
 				<button size="mini" type="primary" @click="testLpapi">LPAPI 综合测试</button>
 				<button size="mini" @click="testLpapiText">LPAPI 中文文本</button>
@@ -107,10 +118,17 @@
 			</view>
 			<view class="row" v-if="protocol === 'lpapi'">
 				<text class="label">水平偏移微调 (mm)</text>
-				<input class="ipt" type="digit" v-model="offsetDelta" @blur="saveOffsetDelta" placeholder="0=自动居中" />
+				<input class="ipt" type="digit" v-model="offsetDelta" @blur="saveOffsetDelta" :placeholder="offsetHintBase" />
 			</view>
 			<view class="tip-inline" v-if="protocol === 'lpapi'">
-				全局微调量：0=自动居中；实测整体偏右就填负值（如 -1.5），偏左填正值。设一次对所有 LPAPI 打印（含测试页、模板打印）生效，换模板/换纸无需重调。
+				全局微调量：{{ offsetHintBase }}；实测整体偏右就填负值（如 -1.5），偏左填正值。设一次对所有 LPAPI 打印（含测试页、模板打印）生效，换模板/换纸无需重调。
+			</view>
+			<view class="row" v-if="protocol === 'lpapi'">
+				<text class="label">垂直偏移微调 (mm)</text>
+				<input class="ipt" type="digit" v-model="offsetDeltaY" @blur="saveOffsetDeltaY" placeholder="0=不微调" />
+			</view>
+			<view class="tip-inline" v-if="protocol === 'lpapi'">
+				整体偏下填负值（内容上移）、偏上填正值（内容下移）。设一次对所有 LPAPI 打印生效，换模板/换纸无需重调。
 			</view>
 			<text class="hint" v-if="printerLang && protocol === 'zebra'">当前语言：{{ printerLang }}</text>
 			<textarea class="zpl-input" v-model="customZpl" maxlength="-1" placeholder="可粘贴 ZPL 指令；若只填纯文字会自动包装成一张标签" v-if="protocol === 'zebra'" />
@@ -214,7 +232,11 @@ export default {
 			lpapiCanvasH: 354,
 			protocol: printer.getProtocol(),
 			offsetDelta: printer.getOffsetDelta(),
-				protocolOptions: printer.protocolOptions
+			offsetDeltaY: printer.getOffsetDeltaY(),
+			printerAlignment: printer.getPrinterAlignment(),
+			testW: 20,
+			testH: 15,
+			protocolOptions: printer.protocolOptions
 			}
 		},
 		computed: {
@@ -230,9 +252,18 @@ export default {
 			},
 			// 三种 BLE 标签机指令集（PDF 位图 / ESC / TPCL）共用 ibptm7330Adapter，
 			// 测试按钮统一展示，方便同一台机器对比哪种能出纸。
-			isBleLabelProto() {
-				return ['esc', 'tpcl', 'pdf'].includes(this.protocol)
-			}
+		isBleLabelProto() {
+			return ['esc', 'tpcl', 'pdf'].includes(this.protocol)
+		},
+		// 水平偏移提示的基线文案，随当前 LPAPI 打印机对齐方式自适应：
+		// 0=R0 右对齐 → 贴右；4=L4 左对齐 → 贴左；2=C2 居中（默认） → 居中；未连返回 null → 兜底居中。
+		offsetHintBase() {
+			const a = this.printerAlignment
+			if (a === 0) return '0=自动贴右（标签贴在纸右端）'
+			if (a === 4) return '0=自动贴左（标签贴在纸左端）'
+			if (a === 2) return '0=自动居中（标签居中在纸上）'
+			return '0=按打印机对齐自动落点（右/中/左）'
+		}
 		},
 		onLoad() {
 			// 用默认打印机预填，省得在小键盘上重新敲一遍地址
@@ -266,6 +297,10 @@ export default {
 			this.forceTtf = printer.getForceTtf()
 			this.printerHasTtfFont = printer.hasTtfFont()
 			this.protocol = printer.getProtocol()
+			// 切回本页时若已连 LPAPI，刷新对齐方式（0/2/4）供"水平偏移"提示自适应
+			this.printerAlignment = printer.getPrinterAlignment()
+			// 同步全局垂直偏移微调量（与水平对称）
+			this.offsetDeltaY = printer.getOffsetDeltaY()
 		},
 		onUnload() {
 			// 页面退出时保留连接，供业务页面复用；如需释放可调用 printer.disconnect()
@@ -310,6 +345,10 @@ export default {
 			this.connectedName = cur && cur.name ? cur.name : 'LPAPI 已连接'
 			this.verified = true
 		}
+		// 连接状态变化后同步 LPAPI 对齐方式（0/2/4），供"水平偏移"提示自适应
+		this.printerAlignment = printer.getPrinterAlignment()
+		// 同步全局垂直偏移微调量（与水平对称）
+		this.offsetDeltaY = printer.getOffsetDeltaY()
 	},
 
 			async refresh() {
@@ -493,12 +532,18 @@ export default {
 
 		async testLpapi() {
 			console.log('[printSetting] testLpapi start, protocol:', this.protocol)
+			const w = Number(this.testW)
+			const h = Number(this.testH)
+			if (!(w > 0) || !(h > 0)) {
+				this.toast('请先填写有效的测试标签宽/高(mm)')
+				return
+			}
 			uni.showLoading({ title: 'LPAPI 打印中...', mask: true })
 			try {
-				await printer.printTestLpapi()
+				await printer.printTestLpapi(w, h)
 				uni.hideLoading()
 				console.log('[printSetting] testLpapi success')
-				this.toast('LPAPI 综合测试已提交')
+				this.toast('LPAPI 综合测试已提交(' + w + 'x' + h + 'mm)')
 			} catch (e) {
 				uni.hideLoading()
 				console.error('[printSetting] testLpapi error:', e.message)
@@ -510,6 +555,12 @@ export default {
 			const n = Number(this.offsetDelta)
 			printer.setOffsetDelta(isNaN(n) ? 0 : n)
 			this.toast('水平偏移微调已保存：' + (isNaN(n) ? 0 : n) + ' mm（对所有 LPAPI 打印生效）')
+		},
+
+		saveOffsetDeltaY() {
+			const n = Number(this.offsetDeltaY)
+			printer.setOffsetDeltaY(isNaN(n) ? 0 : n)
+			this.toast('垂直偏移微调已保存：' + (isNaN(n) ? 0 : n) + ' mm（对所有 LPAPI 打印生效）')
 		},
 
 		async testLpapiText() {

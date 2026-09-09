@@ -168,10 +168,10 @@ export default {
 		return adapter.printTestEsc()
 	},
 
-	async printTestLpapi() {
+	async printTestLpapi(widthMm, heightMm) {
 		await this._ensureConnected()
 		if (!adapter || typeof adapter.printTestLpapi !== 'function') throw new Error('当前协议不支持 LPAPI 测试（请选择 LPAPI 指令集）')
-		return adapter.printTestLpapi()
+		return adapter.printTestLpapi(widthMm, heightMm)
 	},
 
 	async printTemplate(tpl, data) {
@@ -292,7 +292,8 @@ export default {
 	},
 
 	// LPAPI 全局水平偏移微调量（mm）：一次设置，所有 LPAPI 打印入口通用（模板/测试页/文本/校准）。
-	// 正=右移、负=左移，0/空=自动居中。存 storage，避免"每个模板都要单独填水平偏移"。
+	// 正=右移、负=左移；0/空=不额外微调（落点由打印机自身对齐方式决定：右对齐/居中/左对齐，见 getPrinterAlignment）。
+	// 注意：这是叠加在 printerAlignment 自动基线之上的【delta】，与对齐无关，方向恒为"正=右移"。
 	getOffsetDelta() {
 		const n = Number(uni.getStorageSync('lpapi_offset_delta'))
 		return isNaN(n) ? 0 : n
@@ -300,6 +301,26 @@ export default {
 
 	setOffsetDelta(v) {
 		uni.setStorageSync('lpapi_offset_delta', v)
+	},
+
+	// LPAPI 全局垂直偏移微调量（mm）：与水平对称，一次设置所有 LPAPI 打印入口通用。
+	// 正=下移、负=上移；0/空=不微调。叠加在标签默认贴顶位置之上，用于纠正打印头上下机械偏差。
+	getOffsetDeltaY() {
+		const n = Number(uni.getStorageSync('lpapi_offset_delta_y'))
+		return isNaN(n) ? 0 : n
+	},
+
+	setOffsetDeltaY(v) {
+		uni.setStorageSync('lpapi_offset_delta_y', v)
+	},
+
+	// 当前连接 LPAPI 打印机的对齐方式（0=R0 右对齐 / 2=C2 居中 / 4=L4 左对齐）。
+	// 由适配器连接时从 getPrinterInfo().softwareFlags 派生（见 lpapiAdapter._refreshMediaInfo）。
+	// 未连 LPAPI / 未连接 / 非 LPAPI 协议返回 null。供打印页把"水平偏移"提示自适应成对应用方式。
+	getPrinterAlignment() {
+		if (protocol !== PROTOCOLS.LPAPI || !adapter) return null
+		if (typeof adapter.printerAlignment === 'number') return adapter.printerAlignment
+		return null
 	},
 
 	// Zebra 专用：打印测试（保持兼容）

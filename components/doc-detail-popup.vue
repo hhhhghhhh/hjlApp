@@ -156,8 +156,8 @@
 										<view class="table-cell col-receive-issue">{{ receiveIssueColumnName }}</view>
 										<view class="table-cell col-warehouse">仓库</view>
 										<view class="table-cell col-status">状态</view>
-										<view class="table-cell col-action"
-											v-if="showSubItemActions && docData.snType != '5'">操作</view>
+										<!-- <view class="table-cell col-action"
+											v-if="showSubItemActions && docData.snType != '5'">操作</view> -->
 									</view>
 								</view>
 								<view class="table-body" v-if="itemList.length > 0">
@@ -177,14 +177,14 @@
 										<view class="table-cell col-status">
 											{{ item.status_dictText|| item.itemStatus_dictText || item.itemStatusName||'-' }}
 										</view>
-										<view class="table-cell col-action"
+										<!-- <view class="table-cell col-action"
 											v-if="showSubItemActions && docData.snType != '5'">
 											<view class="delete-btn"
 												:class="{ 'delete-disabled': !canDeleteSubItem(item) }"
 												@click.stop="onSubItemDeleteClick(item)">
 												<text>删除</text>
 											</view>
-										</view>
+										</view> -->
 									</view>
 								</view>
 								<view class="empty-tip" v-else>
@@ -285,10 +285,10 @@
 								<!-- 操作按钮 -->
 								<view class="item-actions" v-if="showSnItemActions">
 									<!-- 入库单SN修改按钮 - 可修改状态 -->
-									<view class="action-btn edit-btn" @click.stop="onSnEditClick(item)"
+									<!-- <view class="action-btn edit-btn" @click.stop="onSnEditClick(item)"
 										v-if="canEditSn(item)">
 										<text>修改</text>
-									</view>
+									</view> -->
 									<!-- 入库单SN删除按钮 -->
 									<view class="action-btn delete-btn" @click.stop="onSnDeleteClick(item)"
 										v-if="canDeleteSn(item)">

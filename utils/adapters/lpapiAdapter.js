@@ -39,6 +39,18 @@ function saveOffsetDelta(v) {
 	uni.setStorageSync(OFFSET_DELTA_KEY, v)
 }
 
+// 全局垂直偏移微调量（mm）：与水平偏移对称，一次设置所有 LPAPI 打印入口通用。
+// 正=下移（y 增大）、负=上移；0/空=不微调。垂直方向无打印机对齐基线（标签垂直起点由纸张类型定），
+// 故纯为手动 delta，叠加在标签默认贴顶位置之上，用于纠正打印头上下机械偏差。
+const OFFSET_DELTA_Y_KEY = 'lpapi_offset_delta_y'
+function loadOffsetDeltaY() {
+	const n = Number(uni.getStorageSync(OFFSET_DELTA_Y_KEY))
+	return isNaN(n) ? 0 : n
+}
+function saveOffsetDeltaY(v) {
+	uni.setStorageSync(OFFSET_DELTA_Y_KEY, v)
+}
+
 // 从加载层取 LPAPI 单例（插件未导入时抛清晰错误）。
 function loadLpapi() {
 	const api = lpapiPlugin.getLPAPI ? lpapiPlugin.getLPAPI() : null
@@ -86,6 +98,12 @@ function buildCommitOpts(opts) {
 			: (o.mediaType !== undefined ? gapTypeForMedia(o.mediaType) : 2),
 		printDarkness: o.printDarkness !== undefined ? o.printDarkness : 10,
 		printSpeed: o.printSpeed !== undefined ? o.printSpeed : 3,
+		// 二值化模式：2=COLOR_MODE_BLACK_WHITE。务必显式设置！否则 SDK 把 canvas 灰阶原样下发，
+		// 打印发虚/灰蒙蒙（"完全不清晰"）。与 startJob 的 colorMode 双重保险。
+		colorMode: o.colorMode !== undefined ? o.colorMode : 2,
+		// 二值化阈值（0~255，SDK 默认 150）：亮度高于此值判白、低于判黑。150 是 SDK 默认值，
+		// 显式写出避免依赖隐式默认。偏细/偏淡的字体可调低(如 128)让笔画更粗，太脏可调高(如 180)。
+		threshold: o.threshold !== undefined ? o.threshold : 150,
 		// 份数：SDK 内部读 jobOptions.printCopies / copies，>1 时循环打印。默认 1。
 		printCopies: o.printCopies !== undefined ? o.printCopies : 1
 	}
@@ -105,16 +123,25 @@ function printableMmOf(printerWidth, dpi) {
 //   - 自动居中：offset = (打印头宽 - 标签宽)/2，随模板/纸宽自动重算。
 //   - tpl.page.offsetXMm / 全局偏移微调 是【delta】（正=右移、负=左移），叠加在自动居中上，
 //     用于纠正打印头的固定机械偏差。换不同尺寸纸时自动居中随尺寸重算、delta 固定不变。
-// 关键（实测结论）：偏移基准是【打印头宽 printerWidth(≈81.3mm)】，不是介质宽 paperWidth。
-//   paperWidth 实测=90mm（比打印头宽 8.7mm），因为打印头居中装在介质上、两侧各约 4.35mm
-//   机械死区。若用介质宽算 offset=(90-50)/2=20 会偏右约 4.4mm；用打印头宽算
-//   offset=(81.3-50)/2=15.65 才正好（用户实测 delta -4.5 → 15.5 正常）。
-function computeOffsetX(printerWidth, dpi, labelWmm, tpl, paperWidthMm) {
+	// 关键（实测结论）：偏移基准是【打印头宽 printerWidth 实测值】，不是介质宽 paperWidth，也绝不写死旧机 81.3mm。
+	//   本机 PTM230X 实测 48.8mm；若用介质宽(paperWidth)算会明显偏右。对齐方式(printerAlignment)以蓝牙连接读到为准
+	//   （PTM230X 读到 0=右对齐），故本机 offset=(printableMm - labelW)，与日志 offsetX≈28.77 一致。
+function computeOffsetX(printerWidth, dpi, labelWmm, tpl, paperWidthMm, alignment) {
 	const labelW = Number(labelWmm) || 0
 	if (labelW <= 0) return 0
 	// 居中基准 = 打印头可打印宽度（不再用介质宽 paperWidthMm，见上注释）。
 	const printableMm = printableMmOf(printerWidth, dpi)
-	let off = printableMm > 0 ? (printableMm - labelW) / 2 : 0
+	// 按打印机对齐方式(printerAlignment)决定内容在打印头画布上的水平落点：
+	//   0=R0 右对齐：标签贴打印头最右端 → offset = printableMm - labelW（内容整体右移贴右）；
+	//   4=L4 左对齐：标签贴最左端 → offset = 0；
+	//   2=C2 居中：offset = (printableMm - labelW)/2（部分机型用，本机 PTM230X 走右对齐分支）。
+	const a = Number(alignment)
+	let off = 0
+	if (printableMm > 0) {
+		if (a === 0) off = printableMm - labelW
+		else if (a === 4) off = 0
+		else off = (printableMm - labelW) / 2
+	}
 	// 微调量 delta：优先模板 page.offsetXMm（个别模板特调），否则用全局偏移微调（打印设置页设一次，
 	// 所有 LPAPI 打印通用）。这样换模板/换纸都不用重填，测试页、文本打印也能吃到同一微调值。
 	let delta = NaN
@@ -125,6 +152,20 @@ function computeOffsetX(printerWidth, dpi, labelWmm, tpl, paperWidthMm) {
 	}
 	if (isFinite(delta)) off += delta
 	return off > 0 ? off : 0
+}
+
+// 内容整体下移量（mm）：垂直方向无打印机对齐基线（标签垂直起点由纸张类型定），
+// 故偏移纯为手动 delta：优先模板 page.offsetYMm（个别模板特调），否则用全局垂直偏移微调。
+// 正=下移、负=上移。与水平对称为同一套叠加模式（computeOffsetX 叠加在 alignment 自动基线上，
+// 这里直接叠加在默认贴顶的 0 基线上）。
+function computeOffsetY(tpl) {
+	let delta = NaN
+	if (tpl && tpl.page && tpl.page.offsetYMm !== undefined && tpl.page.offsetYMm !== null && String(tpl.page.offsetYMm).trim() !== '') {
+		delta = Number(tpl.page.offsetYMm)
+	} else {
+		delta = loadOffsetDeltaY()
+	}
+	return isFinite(delta) ? delta : 0
 }
 
 // commitJob 返回的 ret 内含 UniContext（context 自引用，循环结构），绝不能 JSON.stringify，
@@ -153,12 +194,17 @@ export class LpapiAdapter extends PrinterAdapter {
 		// 渲染时按设计 dpi 还原成 mm（与打印机无关）——但若点值缺省没记录设计 dpi，则回落到
 		// 打印机实际 dpi（300），而不是写死的 203。故这里默认 300，连接后还会用 getPrinterInfo 校正。
 		this.printerDpi = 300
-		// 打印头实测可打印宽度（点）。道臻 DT7330/IB-PTM7330 打印头约 81mm(960点@300dpi)，
-		// 但标签往往更窄（如 50mm）且居中贴在更宽的介质上。LPAPI 把整张 job 画布贴在打印头
-		// 最左端（x=0）下发，于是 50mm 内容会整体左移、左侧印到标签外的留白里。
-		// 因此 job 画布必须铺满打印头可打印宽度，并把内容右移 (printableMm - labelMm)/2 来居中。
+		// 打印头实测可打印宽度（点）。本机【PTM230X】实测 printerWidth=576 点 @300dpi ≈ 48.8mm
+		// （不是旧机型 IB-PTM7330 的 960 点/81.3mm）。具体值以蓝牙连接 getPrinterInfo().printerWidth
+		// 读到的为准（见 _refreshMediaInfo），下方 960 仅为「未读到时的兜底」，非真实值。
+		// LPAPI 把整张 job 画布贴在打印头最左端（x=0）下发，故需按打印机对齐方式(printerAlignment)
+		// 把内容整体右移 offsetX（见 computeOffsetX）补偿到正确位置（PTM230X 为右对齐）。
 		this.printerWidth = 960
 		this.paperWidth = 0
+		// 打印机对齐方式：0=R0 右对齐 / 2=C2 居中 / 4=L4 左对齐（由 softwareFlags 派生，见 _refreshMediaInfo）。
+		// 本机【PTM230X】实测 softwareFlags=0xd0 → 派生为 0=右对齐(R0)，连接后覆盖下方默认值。
+		// 一切以蓝牙连接时读到的为准；未连接时默认 2=居中仅作兜底。
+		this.printerAlignment = 2
 		this.label = { widthMm: DEFAULT_LABEL.widthMm, heightMm: DEFAULT_LABEL.heightMm }
 		this.name = ''
 		this.printerName = ''
@@ -242,15 +288,27 @@ export class LpapiAdapter extends PrinterAdapter {
 			}
 			// 打印头可打印宽度（点）：标签比它窄且居中时使用，用来把 job 内容向右补偿居中。
 			if (info && info.printerWidth) {
-				this.printerWidth = Number(info.printerWidth) || 960
+				this.printerWidth = Number(info.printerWidth) || 960  // 实测为准；960 仅兜底
 				console.log(TAG, '打印机可打印宽度(点):', this.printerWidth)
 			}
-			// 物理介质宽（mm，SDK 返回的 paperWidth/pagerWidth 单位已是 mm，如 90 表示 90mm 底纸）。
-			// 标签通常比介质窄且居中贴 → 正确水平偏移 = (介质宽 - 标签宽)/2。
-			if (info && info.paperWidth) {
-				this.paperWidth = Number(info.paperWidth) || 0
-				console.log(TAG, '打印机物理介质宽(mm):', this.paperWidth)
-			}
+		// 物理介质宽（mm，SDK 返回的 paperWidth/pagerWidth 单位已是 mm，如 90 表示 90mm 底纸）。
+		// 标签通常比介质窄且居中贴 → 正确水平偏移 = (介质宽 - 标签宽)/2。
+		if (info && info.paperWidth) {
+			this.paperWidth = Number(info.paperWidth) || 0
+			console.log(TAG, '打印机物理介质宽(mm):', this.paperWidth)
+		}
+		// 对齐方式：0=R0 右对齐 / 2=C2 居中 / 4=L4 左对齐。决定内容在打印头画布上的水平落点
+		// （见 computeOffsetX）。本机 PTM230X 实测 softwareFlags=0xd0 → 0=右对齐(R0)，以读到的为准。
+		// 注意：getPrinterInfo() 返回的对象里【没有 printerAlignment 字段】，对齐方式藏在硬件
+		// softwareFlags 寄存器里，SDK 内部用 (softwareFlags & 0x600) >> 8 计算（与下方一致）。
+		// 故从 softwareFlags 派生，而不是直接读 printerAlignment（那样永远是 undefined → 走默认居中）。
+		if (info && info.softwareFlags !== undefined && info.softwareFlags !== null) {
+			const sf = Number(info.softwareFlags) || 0
+			this.printerAlignment = (sf & 1536) >> 8   // 1536 = 0x600 = PRTA 两位掩码
+			console.log(TAG, '打印机对齐方式(printerAlignment):', this.printerAlignment,
+				this.printerAlignment === 0 ? '(R0 右对齐)' : this.printerAlignment === 4 ? '(L4 左对齐)' : '(C2 居中)',
+				' [softwareFlags=0x' + sf.toString(16) + ']')
+		}
 		} catch (e) {
 			console.log(TAG, '读取打印机介质信息失败，沿用上次值:', e.message)
 		}
@@ -291,7 +349,12 @@ export class LpapiAdapter extends PrinterAdapter {
 			width: wMm,
 			height: hMm,
 			orientation: (opts && opts.orientation) || 0,
-			isPreview: false
+			isPreview: false,
+			// 关键：强制黑/白二值化（2=COLOR_MODE_BLACK_WHITE）。
+			// SDK 的 imageProcess 在 colorMode 未设置(0)时走 `void 0` 分支，把 canvas 的
+			// 抗锯齿灰阶像素【原样】发给打印机，导致打印出来发虚/灰蒙蒙（"完全不清晰"）。
+			// 设成 2 后 SDK 会用 threshold 把位图二值化为纯黑/白，文字/条码立刻变锐利。
+			colorMode: 2
 		})
 		// startJob 之后把页面隐藏 canvas 的 :style 同步成"任务像素尺寸"（官方 updateCanvas）。
 		// 像素尺寸优先用 SDK 返回的 job.canvas（SDK 已据此把页面节点位图设好）；拿不到则按
@@ -301,8 +364,8 @@ export class LpapiAdapter extends PrinterAdapter {
 			pxW = job.canvas.width
 			pxH = job.canvas.height
 		} else {
-			pxW = Math.round(this.label.widthMm * this.printerDpi / 25.4)
-			pxH = Math.round(this.label.heightMm * this.printerDpi / 25.4)
+			pxW = Math.round(wMm * this.printerDpi / 25.4)
+			pxH = Math.round(hMm * this.printerDpi / 25.4)
 		}
 		console.log(TAG, '_startJob 页面canvas像素: ', pxW + ' x ' + pxH, ' (jobW_mm=' + wMm.toFixed(1) + ')')
 		await this._resizeCanvas(pxW, pxH)
@@ -318,29 +381,33 @@ export class LpapiAdapter extends PrinterAdapter {
 		await delay(120)
 	}
 
-	async printTestLpapi() {
+	async printTestLpapi(widthMm, heightMm) {
 		const lpapi = loadLpapi()
-		const { widthMm, heightMm } = this.label
-		// 测试页同样铺满打印头宽度并居中，便于肉眼核对对齐。
+		// 允许调用方传入测试标签尺寸（打印设置页可填宽高）；缺省回落到默认标签（50x30）。
+		const w = Number(widthMm) > 0 ? Number(widthMm) : this.label.widthMm
+		const h = Number(heightMm) > 0 ? Number(heightMm) : this.label.heightMm
+		// 测试页同样铺满打印头宽度，并按当前打印机对齐方式(printerAlignment)自适应落点，便于核对偏移。
 		const printableMm = printableMmOf(this.printerWidth, this.printerDpi)
-		const offsetX = computeOffsetX(this.printerWidth, this.printerDpi, widthMm, null, this.paperWidth)
-		const jobW = printableMm > 0 ? Math.max(printableMm, widthMm) : widthMm
-		console.log(TAG, 'printTestLpapi', widthMm + 'x' + heightMm + 'mm, jobW:', jobW.toFixed(1), 'offsetX:', offsetX.toFixed(2))
-		await this._startJob({ widthMm: jobW, heightMm })
+		const offsetX = computeOffsetX(this.printerWidth, this.printerDpi, w, null, this.paperWidth, this.printerAlignment)
+		const offsetY = loadOffsetDeltaY() // 全局垂直微调：正=下移、负=上移
+		const jobW = printableMm > 0 ? Math.max(printableMm, w) : w
+		console.log(TAG, 'printTestLpapi', w + 'x' + h + 'mm, jobW:', jobW.toFixed(1), 'offsetX:', offsetX.toFixed(2), 'offsetY:', offsetY.toFixed(2), 'alignment:', this.printerAlignment)
+		await this._startJob({ widthMm: jobW, heightMm: h })
 		const ox = offsetX
-		// 外框
-		lpapi.drawRectangle({ x: 1 + ox, y: 1, width: widthMm - 2, height: heightMm - 2, lineWidth: 0.3 })
-		// 文本（中文走 SDK 内部字体/位图，所见即所得）
-		lpapi.drawText({ text: 'LPAPI 测试页', x: 2 + ox, y: 2, width: widthMm - 4, height: 6, fontHeight: 4 })
-		lpapi.drawText({ text: '道臻 DT7330 / ' + widthMm + 'x' + heightMm + 'mm', x: 2 + ox, y: 9, width: widthMm - 4, height: 4, fontHeight: 3 })
-		lpapi.drawText({ text: '中文：直流模块(TY)', x: 2 + ox, y: 14, width: widthMm - 4, height: 4, fontHeight: 3 })
-		// 一维码（Code128，枚举值 28；注意示例里曾误用 22=EAN13）
+		// 外框：始终贴合标签边界，便于核对落点是否正确（不随尺寸溢出）
+		lpapi.drawRectangle({ x: 1 + ox, y: 1 + offsetY, width: Math.max(1, w - 2), height: Math.max(1, h - 2), lineWidth: 0.3 })
+		// 二维码：右上角，尺寸随标签收敛（小标签也能放下）；便于扫码核对
+		const qsz = Math.min(10, w - 3, h - 3)
+		if (qsz >= 4) lpapi.draw2DQRCode({ text: 'DT7330', x: ox + w - qsz - 1, y: 1 + offsetY, width: qsz })
+		// 标题：标注本次测试尺寸，便于回看
+		lpapi.drawText({ text: 'LPAPI ' + w + 'x' + h + 'mm', x: 2 + ox, y: 2 + offsetY, width: Math.max(4, w - qsz - 4), height: 4, fontHeight: Math.min(4, h * 0.5) })
+		// 第二行中文（仅当标签够高，避免小标签溢出）
+		if (h >= 11) lpapi.drawText({ text: '中文：直流模块(TY)', x: 2 + ox, y: 7 + offsetY, width: Math.max(4, w - 4), height: 4, fontHeight: 3 })
+		// 一维码（Code128=28；仅当标签够高，避免负高度）
 		const drawBarcode = lpapi.draw1DBarcode || lpapi.drawBarcode
-		if (drawBarcode) {
-			drawBarcode.call(lpapi, { text: '1234567890', x: 2 + ox, y: 19, width: widthMm - 14, height: Math.min(8, heightMm - 21), textHeight: 3, barcodeType: 28 })
+		if (drawBarcode && h >= 18) {
+			drawBarcode.call(lpapi, { text: '1234567890', x: 2 + ox, y: 12 + offsetY, width: Math.max(4, w - 14), height: Math.min(8, h - 14), textHeight: 3, barcodeType: 28 })
 		}
-		// 二维码
-		lpapi.draw2DQRCode({ text: 'DT7330', x: widthMm - 13 + ox, y: 1, width: 12 })
 		const ret = safeRet(await lpapi.commitJob(buildCommitOpts()))
 		// 注意：commitJob 返回的 ret 内含 UniContext（context 自引用，循环结构），
 		// 切勿 JSON.stringify(ret)，否则抛 "Converting circular structure to JSON"。
@@ -355,12 +422,13 @@ export class LpapiAdapter extends PrinterAdapter {
 		const lines = String(text || '').split(/\r?\n/)
 		const fontH = opts.fontHeight || 4
 		const printableMm = printableMmOf(this.printerWidth, this.printerDpi)
-		const offsetX = computeOffsetX(this.printerWidth, this.printerDpi, widthMm, null, this.paperWidth)
+		const offsetX = computeOffsetX(this.printerWidth, this.printerDpi, widthMm, null, this.paperWidth, this.printerAlignment)
+		const offsetY = loadOffsetDeltaY() // 全局垂直微调：正=下移、负=上移
 		const jobW = printableMm > 0 ? Math.max(printableMm, widthMm) : widthMm
 		await this._startJob({ widthMm: jobW, heightMm })
 		const ox = offsetX
 		for (let i = 0; i < lines.length; i++) {
-			lpapi.drawText({ text: lines[i], x: 2 + ox, y: 2 + i * (fontH + 1), width: widthMm - 4, height: fontH, fontHeight: fontH })
+			lpapi.drawText({ text: lines[i], x: 2 + ox, y: 2 + offsetY + i * (fontH + 1), width: widthMm - 4, height: fontH, fontHeight: fontH })
 		}
 		const ret = safeRet(await lpapi.commitJob(buildCommitOpts(opts)))
 		throwIfPrintFailed(ret, '打印文本')
@@ -435,7 +503,8 @@ export class LpapiAdapter extends PrinterAdapter {
 		// LPAPI 将整张 job 画布贴在打印头最左端下发，而标签通常比打印头窄且居中贴在介质上，
 		// 故 job 画布要铺满打印头可打印宽度，并把内容右移 offsetX 才能对准物理标签。
 		const printableMm = printableMmOf(this.printerWidth, this.printerDpi)
-		const offsetX = computeOffsetX(this.printerWidth, this.printerDpi, widthMm, tpl, this.paperWidth)
+		const offsetX = computeOffsetX(this.printerWidth, this.printerDpi, widthMm, tpl, this.paperWidth, this.printerAlignment)
+		const offsetY = computeOffsetY(tpl)
 		const jobW = printableMm > 0 ? Math.max(printableMm, widthMm) : widthMm
 		console.log(TAG, 'printTemplate', widthMm + 'x' + heightMm + 'mm, printableMm:', printableMm.toFixed(1),
 			'offsetX(mm):', offsetX.toFixed(2), 'jobW(mm):', jobW.toFixed(1), 'elements:', (tpl && tpl.elements ? tpl.elements.length : 0))
@@ -445,7 +514,7 @@ export class LpapiAdapter extends PrinterAdapter {
 		// 变量填充 + 元素映射交给统一渲染器（与 buildZpl 一一对应：anchor 基点换算、变量填充）。
 		// 传入打印机实测 dpi，使模板点值缺省时按真实分辨率（300）还原 mm，而不是写死的 203。
 		// offsetXMm：把内容整体右移，补偿打印头比标签宽导致的左偏。
-		const report = renderTemplateToLpapi(lpapi, tpl, data, this.printerDpi, { offsetXMm: offsetX })
+		const report = renderTemplateToLpapi(lpapi, tpl, data, this.printerDpi, { offsetXMm: offsetX, offsetYMm: offsetY })
 		if (report.skipped.length || report.offLabel.length) {
 			const tip = (report.skipped.length ? `跳过 ${report.skipped.length} 个空元素; ` : '') +
 				(report.offLabel.length ? `${report.offLabel.length} 个元素超出标签范围(会被裁掉)` : '')

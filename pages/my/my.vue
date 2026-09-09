@@ -73,6 +73,28 @@
 			</view>
 		</view> -->
 
+		<!-- ════ 关于 ════ -->
+		<view class="block">
+			<view class="block-head">
+				<view class="block-dot" :style="dotStyle"></view>
+				<text>关于</text>
+			</view>
+			<view class="card">
+				<view class="row">
+					<text class="row-label">当前版本</text>
+					<text class="row-hint">v{{ version || '-' }}</text>
+				</view>
+				<view class="sep"></view>
+				<view class="row arrow" @click="handleUpdateApp">
+					<view class="row-l">
+						<text class="row-label">更新应用</text>
+						<text class="row-hint">从服务器下载并安装最新版本</text>
+					</view>
+					<text class="arrow-icon">›</text>
+				</view>
+			</view>
+		</view>
+
 		<!-- ════ 数据 ════ -->
 		<view class="block">
 			<view class="block-head">
@@ -101,12 +123,25 @@
 		<!-- ════ 退出 ════ -->
 		<view class="logout" @click="handleLogout"><text>退出登录</text></view>
 		<view class="safe-bottom"></view>
+
+		<!-- ════ 更新进度遮罩 ════ -->
+		<view v-if="updating" class="upd-mask">
+			<view class="upd-box">
+				<text class="upd-title">更新应用</text>
+				<view class="upd-bar">
+					<view class="upd-fill" :class="{ indeterminate: updateProgress < 0 }"
+						:style="{ width: updateProgress < 0 ? '40%' : updateProgress + '%' }"></view>
+				</view>
+				<text class="upd-text">{{ updateText }}</text>
+			</view>
+		</view>
 	</view>
 </template>
 
 <script>
 import appSettings from '@/common/appSettings.js';
 import settingsMixin from '@/common/settingsMixin.js';
+import { downloadApk, canRequestInstall, openInstallSetting, installApk } from '@/utils/appUpdate.js';
 
 export default {
 	mixins: [settingsMixin],
@@ -118,7 +153,11 @@ export default {
 				realname: '',
 				username: '',
 			version: '',
-			defaultAvatar: '/static/my_s.png'
+			defaultAvatar: '/static/my_s.png',
+			// 更新进度遮罩
+			updating: false,
+			updateProgress: 0,
+			updateText: ''
 			};
 		},
 
@@ -210,6 +249,54 @@ export default {
 			// #endif
 		},
 
+		handleUpdateApp() {
+			// #ifndef APP-PLUS
+			uni.showToast({ title: '仅 App 端支持更新', icon: 'none' });
+			return;
+			// #endif
+			uni.showModal({
+				title: '更新应用',
+				content: '将从服务器下载 snApp.apk 并安装，是否继续？',
+				success: (r) => { if (r.confirm) this.doUpdateApp(); }
+			});
+		},
+
+		async doUpdateApp() {
+			try {
+				this.updating = true
+				this.updateProgress = 0
+				this.updateText = '准备下载...'
+				const file = await downloadApk((p) => {
+					this.updateProgress = p.progress
+					this.updateText = p.text
+				})
+				this.updateText = '下载完成，正在安装...'
+				this.updateProgress = 100
+
+				// Android 8+ 未授权「安装未知应用」时引导去设置页
+				//（该权限是特殊权限，运行时弹窗申请无效，只能由用户手动开启）
+				if (!canRequestInstall()) {
+					this.updating = false
+					uni.showModal({
+						title: '需要授权',
+						content: '请先允许「安装未知应用」权限，然后重新点击更新。',
+						confirmText: '去设置',
+						success: (r) => { if (r.confirm) openInstallSetting(); }
+					})
+					return
+				}
+				await installApk(file)
+				this.updating = false
+			} catch (e) {
+				this.updating = false
+				uni.showModal({
+					title: '更新失败',
+					content: (e && e.message) || String(e),
+					showCancel: false
+				})
+			}
+		},
+
 		handleLogout() {
 			uni.showModal({
 				title: '确认退出',
@@ -290,6 +377,16 @@ $line: var(--color-border);
 .logout { margin-top: 12rpx; padding: 28rpx; border-radius: 16rpx; text-align: center; font-size: var(--font-lg); font-weight: 600; color: #ef4444; @include p-card; &:active { background: #fef2f2; } }
 .safe-bottom { height: 60rpx; }
 
+/* ── 更新进度遮罩 ──── */
+.upd-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+.upd-box { width: 76%; max-width: 520rpx; background: #fff; border-radius: 16rpx; padding: 40rpx 36rpx; box-shadow: 0 8rpx 30rpx rgba(0,0,0,.2); }
+.upd-title { display: block; font-size: 32rpx; font-weight: 600; color: #1f2937; text-align: center; margin-bottom: 24rpx; }
+.upd-bar { height: 16rpx; background: #eef2f7; border-radius: 999rpx; overflow: hidden; }
+.upd-fill { height: 100%; background: #3b82f6; border-radius: 999rpx; transition: width .2s ease; }
+.upd-fill.indeterminate { animation: upd-slide 1.1s infinite ease-in-out; }
+@keyframes upd-slide { 0% { margin-left: -40%; } 100% { margin-left: 100%; } }
+.upd-text { display: block; margin-top: 18rpx; font-size: 24rpx; color: #6b7280; text-align: center; }
+
 /* ═══════════════════════ 尺寸 / 深色 ═══════════════════════ */
 
 .size-small {
@@ -359,5 +456,10 @@ $line: var(--color-border);
 	.row.arrow:active { background: #22223a; }
 	.sz-btn { background: #252540; color: #888; }
 	.logout { background: var(--color-bg-card); box-shadow: 0 2rpx 16rpx rgba(0,0,0,.25); &:active { background: #2a1a2e; } }
+	.upd-mask { background: rgba(0,0,0,.6); }
+	.upd-box { background: #1c1c2e; box-shadow: 0 8rpx 30rpx rgba(0,0,0,.5); }
+	.upd-title { color: #e0e0e0; }
+	.upd-bar { background: #303050; }
+	.upd-text { color: #999; }
 }
 </style>

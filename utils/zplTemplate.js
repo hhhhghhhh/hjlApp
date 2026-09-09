@@ -8,6 +8,7 @@
 // 而是通过 opts 传入；未传入时默认从 storage 读取 force_ttf_font 作为降级。
 
 import { renderTextToGfa, isBitmapSupported } from './cjkBitmap.js'
+import { builtinTemplates } from './labTemplate.js'
 
 const TEMPLATE_KEY = 'zebra_templates'
 const BITMAP_QUALITY_KEY = 'zebra_bitmap_quality'
@@ -459,7 +460,7 @@ export function buildTextLabel(text, cjkFont, opts = {}) {
 
 export function newElement(type) {
 	const base = {
-		text: { type: 'text', x: 3, y: 3, fontH: 4, fontW: 4, rotation: 'N', text: '文本内容' },
+		text: { type: 'text', x: 3, y: 3, fontH: 4, fontW: 4, rotation: 'N', text: '文本内容', bold: false, italic: false, valign: 0, charSpace: 0, lineSpace: 0, wordWrap: true, fitToFrame: false },
 		qrcode: { type: 'qrcode', x: 3, y: 14, rotation: 'N', moduleWidthMm: 0.51, ecc: 'M', width: 15, height: 15, data: '{{sn}}' },
 		barcode: {
 			type: 'barcode', x: 25, y: 14, rotation: 'N', codeType: 'code128',
@@ -479,8 +480,8 @@ export function defaultTemplate() {
 		print: { darkness: 15, speed: 4, copies: 1, invert180: false, mode: 'T' },
 		cjkFont: 'E:HANS.TTF',
 		elements: [
-			{ type: 'text', x: 3, y: 3, fontH: 4, fontW: 4, rotation: 'N', text: '{{name}}' },
-			{ type: 'text', x: 3, y: 9, fontH: 3, fontW: 3, rotation: 'N', text: 'SN: {{sn}}' },
+			{ type: 'text', x: 3, y: 3, fontH: 4, fontW: 4, rotation: 'N', text: '{{name}}', bold: false, italic: false, valign: 0, charSpace: 0, lineSpace: 0, wordWrap: true, fitToFrame: false },
+			{ type: 'text', x: 3, y: 9, fontH: 3, fontW: 3, rotation: 'N', text: 'SN: {{sn}}', bold: false, italic: false, valign: 0, charSpace: 0, lineSpace: 0, wordWrap: true, fitToFrame: false },
 			{ type: 'qrcode', x: 3, y: 15, rotation: 'N', moduleWidthMm: 0.51, ecc: 'M', width: 20, height: 20, data: '{{sn}}' },
 			{
 				type: 'barcode', x: 28, y: 16, rotation: 'N', codeType: 'code128',
@@ -489,6 +490,11 @@ export function defaultTemplate() {
 		]
 	}
 }
+
+// 随 App 下载即自带的内置默认模板：派生自 itemLotSn.Lab 的 CodeSoft 设计，
+// 只是把绑定变量按业务分流。形态与 labTemplate.convertDetail 的产出完全一致
+// 内置默认模板（默认批次号/关键件/产品）已移至 labTemplate.js 的 builtinTemplates()，
+// 由 convertDetail 以真实 CodeSoft 导入路径生成，保证与导入页同构、不漂移。
 
 // 旧模板以"点(dot)"存储字号/线宽并带 page.dpi；新模型统一用毫米存储。
 // 加载时一次性把旧模板点值折算成毫米并删除 page.dpi，保证模型一致、不再依赖写死的 203。
@@ -527,11 +533,34 @@ function migrateTemplate(tpl) {
 
 export function loadTemplates() {
 	const list = uni.getStorageSync(TEMPLATE_KEY)
-	if (!Array.isArray(list) || list.length === 0) return [defaultTemplate()]
+	const defs = builtinTemplates()
+	if (!Array.isArray(list)) {
+		// 首次启动（storage 还没有任何模板）：写入随 App 自带的内置默认模板
+		saveTemplates(defs)
+		return defs
+	}
+	// 合并（启动不覆盖）：只补回缺失的内置默认模板，绝不删除/覆盖用户已有的模板。
+	// 想用最新内置重置那三张默认模板，请点模板页「覆盖默认模板」按钮（overwriteBuiltinTemplates）。
 	let mutated = false
 	const out = list.map((t) => { if (migrateTemplate(t)) mutated = true; return t })
+	defs.forEach((d) => {
+		if (!out.some((t) => t.id === d.id)) { out.push(d); mutated = true }
+	})
 	if (mutated) saveTemplates(out)
 	return out
+}
+
+// 手动「覆盖生成默认模板」：用最新内置按 id 覆盖那三张默认模板；本地不存在则新建。
+// 用户自建模板（id 不在内置集合）原样保留。仅由模板页按钮触发，不在启动时自动执行。
+export function overwriteBuiltinTemplates() {
+	const defs = builtinTemplates()
+	const defIds = new Set(defs.map((d) => d.id))
+	const list = loadTemplates()
+	// 去掉旧的内置（按 id），保留用户自建；再追加最新内置（已存在的被覆盖、缺失的被新建）
+	const kept = list.filter((t) => !defIds.has(t.id))
+	const merged = kept.concat(defs)
+	saveTemplates(merged)
+	return merged
 }
 
 export function saveTemplates(list) {
