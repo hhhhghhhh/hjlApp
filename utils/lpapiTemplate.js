@@ -105,8 +105,41 @@ function topLeft(el, boxW, boxH) {
 	return { x, y }
 }
 
+// 绘制收集器：与 LPAPI 实例同形（同名 draw* 方法），但不真正绘制，只把 opts 收进 page 数组。
+// 用途——把"逐条 startJob + draw + commitJob"的逐个任务模式，改成"一次任务多页"的合批模式：
+//   var page = createDrawCollector()        // 一页 = 一个 DrawItem 数组
+//   renderTemplateToLpapi(page, tpl, rec1)  // 渲染算法完全复用，只是 draw 变成收集
+//   renderTemplateToLpapi(page, tpl, rec2)
+//   -> drawJob({ jobPages: [page1, page2, ...] })
+//
+// 为什么用"同形代理"而不是改渲染器：渲染器里 drawText/draw2DQRCode/... 的调用点、以及
+// 框尺寸换算、anchor 基点、QR 可扫尺寸自适应等算法，全部原样保留、零漂移。
+// itemType 与 SDK 的 DrawItem.type 取值一致（SDK 内部即按 type 分发）。
+const DRAW_TYPES = {
+	drawText: 'text',
+	draw2DQRCode: '2DQRCode',
+	drawQRCode: '2DQRCode',
+	draw1DBarcode: 'barcode',
+	drawBarcode: 'barcode',
+	drawRectangle: 'rectangle',
+	drawRect: 'rectangle',
+	drawLine: 'line'
+}
+export function createDrawCollector() {
+	const page = []
+	Object.keys(DRAW_TYPES).forEach((fn) => {
+		page[fn] = function (o) {
+			page.push(Object.assign({ type: DRAW_TYPES[fn] }, o || {}))
+		}
+	})
+	// 兼容渲染器里的能力探测（typeof lpapi.draw1DBarcode === 'function' 等）与
+	// splitText（文本换行行数按框宽实算，需真实 SDK 行为）。splitText 由调用方在
+	// 渲染前从真实 lpapi 实例上挂到收集器上（见 lpapiAdapter.printTemplateBatch）。
+	return page
+}
+
 // 主渲染函数：假设调用方已完成 startJob（已建立绘制上下文 ctx），本函数只负责 draw。
-// lpapi: LPAPI 实例；tpl: 中性模板；data: 变量表。
+// lpapi: LPAPI 实例【或 createDrawCollector() 产出的同形收集器】；tpl: 中性模板；data: 变量表。
 // opts.offsetXMm: 整张内容向右补偿的毫米数（打印头比标签宽时把窄标签居中到介质上）。
 // 返回 report: { drawn, skipped[], offLabel[] }，便于上层在 UI 提示"哪些元素没印出来 / 越界"。
 export function renderTemplateToLpapi(lpapi, tpl, data = {}, _printerDpi, opts = {}) {
@@ -241,8 +274,13 @@ function renderQrcode(lpapi, el, data, report, idx, ox, oy, labelW, labelH, dpi)
 	if (byteLen > 0) {
 		const minMm = qrMinScannableMm(byteLen, String(el.ecc || 'M').toUpperCase(), num(dpi, 300))
 		if (minMm > frameMm) {
+			// 规则：二维码比模板框大 -> 按二维码实际大小打印；比框小 -> 按框大小打印。
+			// 不卡控、不阻断，照常出纸。放大是"保扫"的正常行为，不是异常，
+			// 故只记 debug 级日志（默认不刷屏），避免合批时每条都占一行。
 			sizeMm = minMm
-			console.warn('[lpapiTemplate] 二维码内容过长，已从 ' + round1(frameMm) + 'mm 放大到 ' + round1(sizeMm) + 'mm 以保证可扫（' + byteLen + '字节, ecc=' + (el.ecc || 'M') + '）')
+			if (typeof console !== 'undefined' && console.debug) {
+				console.debug('[lpapiTemplate] 二维码按可扫尺寸放大 ' + round1(frameMm) + 'mm -> ' + round1(sizeMm) + 'mm（' + byteLen + '字节, ecc=' + (el.ecc || 'M') + '）')
+			}
 		}
 	}
 	// 放大后可能越界，钳制在标签范围内

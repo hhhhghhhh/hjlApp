@@ -113,7 +113,7 @@
 	// 选择分录（原载具条码）模式对应的单据类型：先选明细分录再扫
 	const CONTAINER_DOC_TYPES = ['DJ02', 'DJ05', 'DJ11', 'DJ03'];
 	// 两种模式：进入后由用户在「选择分录 / 扫码输入」间手动选择
-	const MANUAL_DOC_TYPES = ['DJ06'];
+	const MANUAL_DOC_TYPES = ['DJ06', 'DJ04'];
 
 	export default {
 		mixins: [settingsMixin],

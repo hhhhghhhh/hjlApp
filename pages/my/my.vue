@@ -80,10 +80,10 @@
 				<text>关于</text>
 			</view>
 			<view class="card">
-				<view class="row">
+				<!-- <view class="row">
 					<text class="row-label">当前版本</text>
 					<text class="row-hint">v{{ version || '-' }}</text>
-				</view>
+				</view> -->
 				<view class="sep"></view>
 				<view class="row arrow" @click="handleUpdateApp">
 					<view class="row-l">
@@ -157,7 +157,9 @@ export default {
 			// 更新进度遮罩
 			updating: false,
 			updateProgress: 0,
-			updateText: ''
+			updateText: '',
+			// 用户点了更新但缺「安装未知应用」权限 → 记下，授权返回后自动继续
+			pendingUpdate: false
 			};
 		},
 
@@ -178,6 +180,15 @@ export default {
 		onShow() {
 			// 通知自定义 TabBar 高亮当前项
 			uni.$emit('customTabSelect', 1);
+			// 从「安装未知应用」设置页返回：若刚才因缺权限中断且现已授权，自动继续更新
+			if (this.pendingUpdate) {
+				this.pendingUpdate = false
+				if (canRequestInstall()) {
+					this.doUpdateApp()
+				} else {
+					uni.showToast({ title: '尚未开启安装权限，可再次点击更新', icon: 'none' });
+				}
+			}
 		},
 
 	methods: {
@@ -254,6 +265,18 @@ export default {
 			uni.showToast({ title: '仅 App 端支持更新', icon: 'none' });
 			return;
 			// #endif
+			// 先检查「安装未知应用」权限：没权限就直接引导授权，避免白下载 15MB+ 的包
+			// 才发现装不了（原来是在下载完成后才检查）。
+			if (!canRequestInstall()) {
+				this.pendingUpdate = true // 授权后返回本页自动继续
+				uni.showModal({
+					title: '需要授权',
+					content: '安装应用需要「允许安装未知应用」权限。请点「去设置」开启后返回，将自动继续更新。',
+					confirmText: '去设置',
+					success: (r) => { if (r.confirm) openInstallSetting(); }
+				});
+				return;
+			}
 			uni.showModal({
 				title: '更新应用',
 				content: '将从服务器下载 snApp.apk 并安装，是否继续？',

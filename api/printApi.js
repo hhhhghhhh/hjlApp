@@ -38,9 +38,18 @@ export function updateProductSnPrinted(data) {
 
 // ---------- 单据（按单号筛选 SN 用） ----------
 
-// 生产领料单，docType 固定 DJ11
+// 生产领料单（docType 默认 DJ11）。传 docType 可查其他出库类型，如 DJ14。
+// 注意：docType 必须放在 ...data 之前，否则会被 data 里的同名字段覆盖。
 export function getPickDocList(data) {
 	return request({ url: '/wms/wmsOutstockDoc/list', method: 'GET', data: { docType: 'DJ11', ...data } })
+}
+
+// 其他出库单，docType 固定 DJ14。
+// 后端 /wms/wmsOutstockDoc/list 的 docType 是必填参数、对类型不做校验，
+// 而关键件列表 /mes/keySn/list 的 pickDoc 只是拿单号查 WmsOutstockDetail，
+// 对单据类型无感 —— 所以这里前端传 DJ14 单号即可，后端零改动。
+export function getOtherOutDocList(data) {
+	return request({ url: '/wms/wmsOutstockDoc/list', method: 'GET', data: { docType: 'DJ14', ...data } })
 }
 
 // 完工入库单，docType 固定 DJ05

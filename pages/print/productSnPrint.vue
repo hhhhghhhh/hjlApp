@@ -15,7 +15,7 @@
 		},
 		// 列表交给页面滚动，触底只有页面收得到，转发给组件
 		onReachBottom() {
-			this.$refs.listRef.loadMore()
+			this.$refs.listRef.onReachBottom()
 		},
 		data() {
 			return {

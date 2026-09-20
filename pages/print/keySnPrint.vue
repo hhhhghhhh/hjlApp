@@ -4,7 +4,7 @@
 
 <script>
 	import snPrintList from '@/components/mes/print/snPrintList.vue'
-	import { getKeySnList, updateKeySnPrinted, getPickDocList } from '@/api/printApi.js'
+	import { getKeySnList, updateKeySnPrinted, getPickDocList, getOtherOutDocList } from '@/api/printApi.js'
 
 	export default {
 		components: { snPrintList },
@@ -14,7 +14,7 @@
 			}
 		},
 		onReachBottom() {
-			this.$refs.listRef.loadMore()
+			this.$refs.listRef.onReachBottom()
 		},
 		data() {
 			return {
@@ -30,14 +30,27 @@
 						{ key: 'keySn', label: '关键件', type: 'input' },
 						{ key: 'barcodeStatus', label: '打印状态', type: 'dict', dictCode: 'BARCODE_PRINT_STATUS' }
 					],
-					docFilter: {
-						title: '生产领料单',
-						label: '按生产领料查询',
-						paramKey: 'pickDoc',
-						api: getPickDocList,
-						dateField: 'planOutstockDate',
-						dateLabel: '计划出库'
-					},
+					// 单据搜索：生产领料单(DJ11) 与 其他出库单(DJ14) 两个入口并排。
+					// 后端 /mes/keySn/list 的 pickDoc 只按单号查 WmsOutstockDetail，不区分单据类型，
+					// 故两者都用 paramKey='pickDoc'；选中哪个就按哪个单号筛选。
+					docFilters: [
+						{
+							title: '生产领料单',
+							label: '按生产领料查询',
+							paramKey: 'pickDoc',
+							api: getPickDocList,
+							dateField: 'planOutstockDate',
+							dateLabel: '计划出库'
+						},
+						{
+							title: '其他出库单',
+							label: '按其他出库查询',
+							paramKey: 'pickDoc',
+							api: getOtherOutDocList,
+							dateField: 'planOutstockDate',
+							dateLabel: '计划出库'
+						}
+					],
 					cardFields: [
 						{ key: 'itemName', label: '名称' },
 						{ key: 'itemCode', label: '料号' },

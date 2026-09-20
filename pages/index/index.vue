@@ -1,7 +1,7 @@
 <template>
 	<view class="page" :class="[sizeClass, darkClass, themeClass]">
 		<!-- ════ 出入库 ════ -->
-		<view class="card" v-if="hasAnyPermission(['DJ02', 'DJ11', 'DJ05', 'DJ12', 'DJ03'])">
+		<view class="card" v-if="hasAnyPermission(['DJ02', 'DJ11', 'DJ05', 'DJ12', 'DJ03', 'DJ04'])">
 			<view class="card-header">
 				<text class="card-title">出入库</text>
 			</view>
@@ -40,6 +40,13 @@
 						<uni-icons type="shop" size="32" color="#fff"></uni-icons>
 					</view>
 					<text class="func-name">销售出货</text>
+				</view>
+				<!-- 销售退货 - DJ04（成品客退，退货入库） -->
+				<view class="func-item" v-if="hasPermission('DJ04')" @click="goToDocOpt('salesReturn')">
+					<view class="func-icon" style="background: #D9726A;">
+						<uni-icons type="undo" size="32" color="#fff"></uni-icons>
+					</view>
+					<text class="func-name">销售退货</text>
 				</view>
 			</view>
 		</view>
@@ -165,7 +172,7 @@
 
 		<!-- 无权限提示（已同步加入打印权限判断） -->
 		<view class="no-permission"
-			v-if="!hasAnyPermission(['DJ02', 'DJ11', 'DJ05', 'DJ12', 'DJ03', 'DJ06', 'DJ14', 'packagBind', 'packagUnBind', 'keyUnBind', 'productSnQuery', 'keySnQuery', 'productRepair', 'partReplace', 'printBluetooth', 'printKeySn', 'printPackageSn', 'printProductSn'])">
+			v-if="!hasAnyPermission(['DJ02', 'DJ11', 'DJ05', 'DJ12', 'DJ03', 'DJ04', 'DJ06', 'DJ14', 'packagBind', 'packagUnBind', 'keyUnBind', 'productSnQuery', 'keySnQuery', 'productRepair', 'partReplace', 'printBluetooth', 'printKeySn', 'printPackageSn', 'printProductSn'])">
 			<uni-icons type="info" size="48" color="#999"></uni-icons>
 			<text class="no-permission-text">暂无任何功能权限，请联系管理员</text>
 		</view>
@@ -186,7 +193,7 @@
 				// 选择分录（原载具条码）：先选明细分录再扫
 				containerDocTypes: ['DJ02', 'DJ05', 'DJ11', 'DJ14'],
 				// 两种模式：进入后由用户在「选择分录 / 扫码输入」间手动选择
-				manualDocTypes: ['DJ12','DJ06', 'DJ03'],
+				manualDocTypes: ['DJ12','DJ06', 'DJ03', 'DJ04'],
 				docTypeMap: {
 					purchaseReceipt: {
 						typeSn: 'DJ02',
@@ -225,6 +232,14 @@
 						typeSn: 'DJ14',
 						operateType: '2',
 						typeName: '其他出库单'
+					},
+					// 销售退货（成品客退）：退货入库，走入库单接口 pdaReceiveDoc。
+					// 后端 PdaReceiveDocController 的 receiveDocTypeList 已含 DJ04，
+					// ReceiveDocTypeEnum.CPKT_TYPE('DJ04','成品客退') → operateType 用 '1'(入库)。
+					salesReturn: {
+						typeSn: 'DJ04',
+						operateType: '1',
+						typeName: '销售退货单'
 					}
 				}
 			};

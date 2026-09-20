@@ -357,6 +357,10 @@
 						.docType === 'DJ12')) {
 					return true;
 				}
+				// 销售退货（DJ04）：需支持「选择分录」模式，无论后端指令分类归属都显示分录选择框
+				if (this.docData && this.docData.docType === 'DJ04') {
+					return true;
+				}
 				return false;
 			},
 
@@ -1498,7 +1502,7 @@
 						this.showMessage(message, 'success');
 
 						// WMSKN005 = 回传ERP，成功后跳转打印页面
-						if (this.formData.cmdOpt === 'WMSKN005') {
+						if (this.formData.cmdOpt === 'WMSKN005' || this.formData.cmdOpt === 'YJCLHC001') {
 							const jumped = this.navigateToPrint();
 							if (jumped) return;
 						}
@@ -1528,7 +1532,7 @@
 				const docType = this.docData.docType;
 				const docNo = this.docData.docNo;
 				let url = '';
-				if (docType === 'DJ11') {
+				if (docType === 'DJ11' || docType === 'DJ14') {
 					url = `/pages/print/keySnPrint?docNo=${encodeURIComponent(docNo)}`;
 				} else if (docType === 'DJ05') {
 					url = `/pages/print/productSnPrint?docNo=${encodeURIComponent(docNo)}`;

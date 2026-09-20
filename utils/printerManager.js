@@ -179,6 +179,37 @@ export default {
 		return adapter.printTemplate(tpl, data)
 	},
 
+	// 合批打印：同一模板 + 多条记录 -> 一次任务多页下发。
+	// 支持合批的适配器（目前 LPAPI）走原生多页提交；不支持的（如 Zebra ZPL）自动回退成逐条，
+	// 保证调用方在任意机型上语义一致，且 Zebra 行为完全不变。
+	// hooks.onPage(done, total, record) 用于上报页级进度（回退逐条时也会逐条回调）。
+	async printTemplateBatch(tpl, records, hooks = {}) {
+		await this._ensureConnected()
+		const list = Array.isArray(records) ? records : []
+		if (typeof adapter.printTemplateBatch === 'function') {
+			return adapter.printTemplateBatch(tpl, list, hooks)
+		}
+		// 回退：逐条打印（Zebra 等）。保持原语义，并在每条完成后回报进度。
+		// 同样支持取消：hooks.shouldCancel() 为真则停止后续记录。
+		let ok = 0
+		const fails = []
+		let canceled = false
+		for (let i = 0; i < list.length; i++) {
+			if (typeof hooks.shouldCancel === 'function' && hooks.shouldCancel()) {
+				canceled = true
+				break
+			}
+			try {
+				await adapter.printTemplate(tpl, list[i])
+				ok++
+				if (hooks.onPage) hooks.onPage(ok, list.length, list[i])
+			} catch (e) {
+				fails.push({ record: list[i], message: e && e.message ? e.message : String(e) })
+			}
+		}
+		return { okCount: ok, total: list.length, fails, canceled }
+	},
+
 	// 写入页面尺寸 / 介质校准：按当前协议分派。
 	// ZPL：发送 ^LL/^JU（连续纸定长 / 间隙纸 ~JC 校准）。
 	// LPAPI：打印一张按模板尺寸的校准标签（LPAPI 无独立校准指令，尺寸在每次 startJob 时传入）。
@@ -201,8 +232,11 @@ export default {
 		if (!saved || !saved.address) {
 			throw new Error('未设置默认打印机，请先到「蓝牙打印」页面连接并设为默认')
 		}
-		// 用这台打印机记住的指令集自动回连（不再按蓝牙名强制推断）
-		const p = loadProtocolForAddress(saved.address) || this.getProtocol()
+		// 用这台打印机记住的指令集自动回连（不再按蓝牙名强制推断）；
+		// 记录丢失时按蓝牙名推断机型兜底，避免回落到全局默认（ZEBRA）而用错适配器。
+		const p = loadProtocolForAddress(saved.address)
+			|| detectProtocolByName(saved.name)
+			|| this.getProtocol()
 		await this.connect(saved.address, saved.name, p)
 		// connect 返回 {verified} 但不抛错：若实际没连上（如手机关机/不在范围，errCode 10002），
 		// 继续打印会让 SDK 对断开的打印机提交任务，返回 statusCode:3 且出纸空白。

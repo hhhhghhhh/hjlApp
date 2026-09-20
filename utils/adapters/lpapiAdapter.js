@@ -13,7 +13,7 @@
 
 import { PrinterAdapter, DEFAULT_LABEL, PROTOCOLS } from '../printerAdapter.js'
 import lpapiPlugin, { emitCanvasSize } from '../lpapi-uniplugin.js'
-import { renderTemplateToLpapi } from '../lpapiTemplate.js'
+import { renderTemplateToLpapi, createDrawCollector } from '../lpapiTemplate.js'
 
 // 关于两条"看似报错"的日志（实测控制台已确认）：
 //  1) "当前绘制环境不支持函数：getImageData" —— 良性告警，不是 bug。
@@ -79,6 +79,12 @@ async function ensureDrawContext() {
 }
 
 function delay(ms) { return new Promise((r) => setTimeout(r, ms)) }
+
+// 逐条降级打印时，相邻两条之间的缓冲（ms）。
+// 为什么需要：LPAPI 每条都是一个 startJob→draw→commitJob 的完整蓝牙任务，上一任务若还在
+// 收尾（commitJob 落盘 / 走纸未停稳）就立刻发下一任务，容易出现丢页或乱序。给一点喘息时间
+// 换取稳定性；120ms 对整体耗时可忽略（20 条约多 2.3 秒）。
+const BATCH_GAP_MS = 120
 
 // commitJob 参数严格按官方示例：gapType / printDarkness / printSpeed
 //   gapType:     2=不干胶(标签纸，靠传感器量间隙) / 255=随打印机自身设置
@@ -208,6 +214,32 @@ export class LpapiAdapter extends PrinterAdapter {
 		this.label = { widthMm: DEFAULT_LABEL.widthMm, heightMm: DEFAULT_LABEL.heightMm }
 		this.name = ''
 		this.printerName = ''
+		// 首次打印预热标记：见 _primeCanvas。null=未预热，字符串=已预热到的尺寸签名。
+		this._primedSig = null
+	}
+
+	// 首次打印预热绘制上下文 + canvas 尺寸。
+	//
+	// 为什么需要：page 的隐藏 canvas 初始 :style 是写死的 590x354px（50x30mm@300dpi 的假想值），
+	// 而真实任务尺寸是"铺满打印头"算出来的（如 48.8mm@300dpi ≈ 576px 宽）。首次 startJob 会用
+	// 这个错误尺寸的 canvas 建缓冲 → 第一张内容按错误高度落位（表现为**首张上下/整体偏移**），
+	// 第二张起因为 emitCanvasSize 已把 :style 改成真实尺寸、ctx 也被复用，就恢复正常。
+	//
+	// 预热做法：先按本次任务尺寸同步一次 canvas（emitCanvasSize），等它走完响应式+重排
+	// （比常规 120ms 更长，给首次留足时间），再让 _startJob 建上下文。这样"第一次"也等同于
+	// "已经就位"，首张不再偏。尺寸签名相同时不重复预热，避免每张都多等。
+	async _primeCanvas(wMm, hMm) {
+		const pxW = Math.round(wMm * this.printerDpi / 25.4)
+		const pxH = Math.round(hMm * this.printerDpi / 25.4)
+		const sig = pxW + 'x' + pxH
+		if (this._primedSig === sig) return
+		// 先建立/复用绘制上下文，保证首次也有 ctx 可用
+		await ensureDrawContext()
+		emitCanvasSize(pxW, pxH)
+		// 首次同步需要完整的 响应式更新 -> DOM 重排 -> SDK 读节点 链路，多等一拍。
+		await delay(260)
+		this._primedSig = sig
+		console.log(TAG, '_primeCanvas 预热完成 canvas像素:', sig)
 	}
 
 	setLabelSize(widthMm, heightMm) {
@@ -260,7 +292,14 @@ export class LpapiAdapter extends PrinterAdapter {
 
 		const ok = res && res.statusCode === 0
 		if (!ok) {
-			throw new Error('打印机连接失败（未发现设备 / errCode 10002）：请确认打印机已开机、处于蓝牙配对/可连接模式（指示灯闪烁），且在 PDA 蓝牙范围内，然后重试。')
+			// errCode 10002 = createBLEConnection:fail no device：蓝牙扫描不到该设备。
+			// 注意这不是"没去连"——已重试 MAX 轮、每轮 SDK 内 5 次；是打印机侧不可达。
+			const code = res && res.statusCode
+			throw new Error('连接打印机失败（statusCode:' + code + '，蓝牙未发现设备 no device/10002）。'
+				+ '已自动重试 ' + MAX + ' 轮仍失败，请依次确认：'
+				+ '① 打印机已开机且电量充足；② 处于蓝牙可连接/配对模式（指示灯闪烁）；'
+				+ '③ 未被其他手机或 PDA 占用连接（如有请先断开那台设备）；'
+				+ '④ 与 PDA 距离 1~2 米内；⑤ 系统蓝牙中该设备已配对（必要时取消配对后重新配对）。')
 		}
 
 		// ③ 二次确认：openPrinter 返回成功但 BLE 未必真正建立，用 isPrinterOpened 兜底
@@ -309,6 +348,8 @@ export class LpapiAdapter extends PrinterAdapter {
 				this.printerAlignment === 0 ? '(R0 右对齐)' : this.printerAlignment === 4 ? '(L4 左对齐)' : '(C2 居中)',
 				' [softwareFlags=0x' + sf.toString(16) + ']')
 		}
+		// 换了打印机/介质后 dpi、打印头宽、对齐方式都可能变，之前的预热作废，下次打印重新预热。
+		this._primedSig = null
 		} catch (e) {
 			console.log(TAG, '读取打印机介质信息失败，沿用上次值:', e.message)
 		}
@@ -509,6 +550,8 @@ export class LpapiAdapter extends PrinterAdapter {
 		console.log(TAG, 'printTemplate', widthMm + 'x' + heightMm + 'mm, printableMm:', printableMm.toFixed(1),
 			'offsetX(mm):', offsetX.toFixed(2), 'jobW(mm):', jobW.toFixed(1), 'elements:', (tpl && tpl.elements ? tpl.elements.length : 0))
 		this.setLabelSize(widthMm, heightMm)
+		// 首次打印预热：把 canvas 尺寸同步成任务尺寸并等它就位，避免第一张因 canvas 未就位而偏移。
+		await this._primeCanvas(jobW, heightMm)
 		await this._startJob({ widthMm: jobW, heightMm })
 
 		// 变量填充 + 元素映射交给统一渲染器（与 buildZpl 一一对应：anchor 基点换算、变量填充）。
@@ -532,6 +575,131 @@ export class LpapiAdapter extends PrinterAdapter {
 		ret.skipped = report.skipped.length
 		ret.offLabel = report.offLabel.length
 		return ret
+	}
+
+	// 合批打印：多条记录（同一模板、不同变量）合成一次打印请求。
+	//
+	// 能力说明：理想情况应使用 SDK 的 drawJob({ jobPages }) 实现"一次任务多页"，把 N 条记录的
+	// N 次蓝牙往返压成 1 次入口。但当前 dothan-lpapi-ble 插件实例（lpapiPlugin.getLPAPI()）只暴露
+	// startJob/draw*/commitJob，未暴露 drawJob；SDK 内部 drawJob 依赖的 Context.drawJob 在当前
+	// 版本也未实现（真机实测 lpapi.drawJob is not a function）。故默认走"连续逐条打印"降级路径，
+	// 复用已验证的 printTemplate 单页路径——外部语义仍是"整体打印"：一次入口触发、统一进度回调、
+	// 不插入人为延迟。若未来插件升级暴露了 lpapi.drawJob，下方分支会自动启用真正的一次任务多页。
+	async printTemplateBatch(tpl, records, hooks = {}) {
+		const lpapi = loadLpapi()
+		const list = Array.isArray(records) ? records : []
+		const total = list.length
+		if (total === 0) return { okCount: 0, total: 0 }
+		// 单条时直接复用单条路径，避免多一层批处理开销与行为差异
+		if (total === 1) {
+			await this.printTemplate(tpl, list[0])
+			if (hooks.onPage) hooks.onPage(1, 1, list[0])
+			return { okCount: 1, total: 1 }
+		}
+
+		// 能力探测：SDK 升级后若暴露 drawJob，自动启用真正的一次任务多页合批
+		if (typeof lpapi.drawJob === 'function') {
+			return await this._printTemplateBatchDrawJob(lpapi, tpl, list, hooks)
+		}
+
+		// —— 降级：连续逐条打印（复用单条已验证路径）——
+		// 每条之间给蓝牙留一点喘息时间（BATCH_GAP_MS），避免上一任务的 commitJob 还没
+		// 完全落盘就连发下一任务，导致丢页/乱序。单条失败收集到 fails 不中断后续记录。
+		// 取消：每轮开始检查 hooks.shouldCancel()，为真则立即停止（已发出的任务无法撤回，
+		// 但后续未发的记录不会再打）。
+		let ok = 0
+		const fails = []
+		let canceled = false
+		for (let i = 0; i < total; i++) {
+			if (typeof hooks.shouldCancel === 'function' && hooks.shouldCancel()) {
+				canceled = true
+				console.log(TAG, 'printTemplateBatch 被用户取消，已打印', ok, '/', total)
+				break
+			}
+			const rec = list[i]
+			if (i > 0) await delay(BATCH_GAP_MS)
+			try {
+				await this.printTemplate(tpl, rec)
+				ok++
+				if (hooks.onPage) hooks.onPage(ok, total, rec)
+			} catch (e) {
+				fails.push({ record: rec, message: (e && e.message) ? e.message : String(e) })
+			}
+		}
+		console.log(TAG, 'printTemplateBatch 逐条降级完成', ok + '/' + total, 'fails:', fails.length, canceled ? '(已取消)' : '')
+		return { okCount: ok, total, fails, canceled }
+	}
+
+	// 真正的一次任务多页合批（需 SDK 暴露 lpapi.drawJob）。当前版本未启用，保留以备查/升级。
+	async _printTemplateBatchDrawJob(lpapi, tpl, list, hooks = {}) {
+		const widthMm = tpl && tpl.page ? tpl.page.widthMm : this.label.widthMm
+		const heightMm = tpl && tpl.page ? tpl.page.heightMm : this.label.heightMm
+		const printableMm = printableMmOf(this.printerWidth, this.printerDpi)
+		const offsetX = computeOffsetX(this.printerWidth, this.printerDpi, widthMm, tpl, this.paperWidth, this.printerAlignment)
+		const offsetY = computeOffsetY(tpl)
+		const jobW = printableMm > 0 ? Math.max(printableMm, widthMm) : widthMm
+		const copies = Math.max(1, Math.round(Number((tpl && tpl.print && tpl.print.copies)) || 1))
+		console.log(TAG, 'printTemplateBatch 合批(drawJob)', list.length, '页,', widthMm + 'x' + heightMm + 'mm, jobW:',
+			jobW.toFixed(1), 'offsetX:', offsetX.toFixed(2), 'copies:', copies)
+
+		this.setLabelSize(widthMm, heightMm)
+
+		// 逐条渲染成"页"（每页 = DrawItem 数组）。渲染期间不触碰打印机，纯计算。
+		const jobPages = []
+		let drawnTotal = 0
+		for (let i = 0; i < list.length; i++) {
+			const page = createDrawCollector()
+			// splitText 决定文本换行行数，需真实 SDK 行为；挂到收集器上供渲染器探测。
+			if (typeof lpapi.splitText === 'function') page.splitText = lpapi.splitText.bind(lpapi)
+			const report = renderTemplateToLpapi(page, tpl, list[i], this.printerDpi,
+				{ offsetXMm: offsetX, offsetYMm: offsetY })
+			drawnTotal += report.drawn
+			if (report.skipped.length || report.offLabel.length) {
+				const tip = (report.skipped.length ? `跳过 ${report.skipped.length} 个空元素; ` : '') +
+					(report.offLabel.length ? `${report.offLabel.length} 个元素超出标签范围(会被裁掉)` : '')
+				console.warn(TAG, '_printTemplateBatchDrawJob 第', i + 1, '页诊断:', tip)
+			}
+			jobPages.push(page)
+		}
+
+		// 绘制上下文与 canvas 尺寸同步：合批仍是"一次任务"，用 jobW x heightMm 起一次任务即可。
+		// 注意顺序——drawJob 内部会自己 startJob/commitJob，故这里先建立 context 与 canvas 尺寸，
+		// 但不再调用 _startJob（否则会与 drawJob 内部的任务冲突）。
+		await this._prepareCanvas(jobW, heightMm)
+
+		let done = 0
+		const ret = await lpapi.drawJob({
+			jobPages,
+			jobInfo: {
+				width: jobW,
+				height: heightMm,
+				printCopies: copies,
+				// 与单条一致的二值化设置，避免合批出来的标签发虚
+				colorMode: 2
+			},
+			onPageComplete: (info) => {
+				done++
+				const rec = list[Math.min(done - 1, list.length - 1)]
+				if (hooks.onPage) hooks.onPage(Math.min(done, list.length), list.length, rec)
+			}
+		})
+		const safe = safeRet(ret)
+		throwIfPrintFailed(safe, '合批打印')
+		return { okCount: list.length, total: list.length, drawn: drawnTotal, statusCode: safe.statusCode }
+	}
+
+	// 只建立绘制上下文并把隐藏 canvas 的 :style 同步成任务像素尺寸，不启动任务本身。
+	// 供 printTemplateBatch 使用：任务生命周期由 SDK 的 drawJob 内部管理，这里仅保证
+	// 上下文存在、canvas 显示尺寸与任务像素一致（与 _startJob 的前半段等价）。
+	async _prepareCanvas(wMm, hMm) {
+		await ensureDrawContext()
+		const pxW = Math.round(wMm * this.printerDpi / 25.4)
+		const pxH = Math.round(hMm * this.printerDpi / 25.4)
+		// 走统一的预热逻辑：首次多等一拍确保 canvas 真正就位（避免首张偏移），
+		// 尺寸相同则跳过，不产生额外等待。
+		await this._primeCanvas(wMm, hMm)
+		await this._resizeCanvas(pxW, pxH)
+		return { pxW, pxH }
 	}
 }
 

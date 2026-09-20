@@ -26,10 +26,10 @@
 						</picker>
 					</view>
 
-					<view class="frow" v-if="config.docFilter">
-						<text class="flabel">{{ config.docFilter.label }}</text>
-						<text class="fpicker" @click="openDoc">{{ doc ? doc.docNo : '选择' + config.docFilter.title }}
-							▾</text>
+					<view class="frow" v-for="(df, di) in docFilterList" :key="'df' + di">
+						<text class="flabel">{{ df.label }}</text>
+						<text class="fpicker" @click="openDoc(df)">
+							{{ docOf(df) ? docOf(df).docNo : '选择' + df.title }} ▾</text>
 					</view>
 
 					<view class="fbtns">
@@ -41,9 +41,9 @@
 				</view>
 			</view>
 
-			<view class="chip-row" v-if="doc">
-				<text class="chip">{{ config.docFilter.title }}：{{ doc.docNo }}</text>
-				<text class="chip-x" @click="clearDoc">清除</text>
+			<view class="chip-row" v-for="(df, di) in docFilterList" :key="'chip' + di" v-if="docOf(df)">
+				<text class="chip">{{ df.title }}：{{ docOf(df).docNo }}</text>
+				<text class="chip-x" @click="clearDoc(df)">清除</text>
 			</view>
 
 			<!-- ===== 选择工具条 ===== -->
@@ -59,7 +59,7 @@
 
 		<!-- ===== 列表 ===== -->
 		<view class="list">
-			<view v-for="item in list" :key="rowKey(item)" class="item" :class="{ on: isSel(item) }"
+			<view v-for="item in renderList" :key="rowKey(item)" class="item" :class="{ on: isSel(item) }"
 				@click="toggle(item)">
 				<view class="check">
 					<uni-icons :type="isSel(item) ? 'checkbox-filled' : 'circle'" size="22"
@@ -91,7 +91,11 @@
 
 			<view v-if="loading" class="tip">加载中...</view>
 			<view v-if="!loading && list.length === 0" class="tip">没有数据，换个条件试试</view>
-			<view v-if="!loading && !hasMore && list.length > 0" class="tip">没有更多了</view>
+			<!-- 分批渲染：还有未显示的记录时，滚到底自动追加；也可手动点 -->
+			<view v-if="!loading && hasMoreRender" class="tip tip-more" @click="onReachBottom">
+				已显示 {{ renderList.length }} / {{ list.length }} 条，点击加载更多
+			</view>
+			<view v-if="!loading && !hasMoreRender && !hasMore && list.length > 0" class="tip">没有更多了</view>
 			<view class="bottom-spacer"></view>
 		</view>
 
@@ -185,9 +189,9 @@
 			</view>
 		</uni-popup>
 
-		<docSelectPopup v-if="config.docFilter" ref="docPopup" :title="config.docFilter.title"
-			:api="config.docFilter.api" :date-field="config.docFilter.dateField"
-			:date-label="config.docFilter.dateLabel" :selected-id="doc ? doc.id : ''" @select="onDocSelect" />
+		<docSelectPopup v-for="(df, di) in docFilterList" :key="'pop' + di" :ref="'docPopup' + di"
+			:title="df.title" :api="df.api" :date-field="df.dateField" :date-label="df.dateLabel"
+			:selected-id="docOf(df) && docOf(df).id ? docOf(df).id : ''" @select="onDocSelect(df, $event)" />
 	</view>
 </template>
 
@@ -226,12 +230,21 @@ export default {
 				ALL_LIMIT: 1000,
 				filterOpen: true,
 				form: {},
-				doc: null,
+				docs: {},
 				dicts: {},
 
 				list: [],
 				selected: [],
-				expanded: [],
+				// 与 selected 同步的 Set，用于 O(1) 判断某条是否已勾选（大列表性能关键）。
+				// selected 数组保留是为了打印/批次归并需要有序遍历。
+				selSet: new Set(),
+				// 与 expanded 同步的 Set，O(1) 判断某条详情是否展开
+				expSet: new Set(),
+				// ---- 分批渲染（大列表性能核心）----
+				// 无论 list 里有多少条（"查询全部"可能 1000 条），DOM 只渲染前 renderLimit 条，
+				// 滚到底部再 +RENDER_STEP 条。550 条时 DOM 从 5500+ 降到 ~800，勾选/滚动才跟手。
+				renderLimit: 0,
+				RENDER_STEP: 80,
 				allMode: false,
 				loading: false,
 				hasMore: true,
@@ -266,6 +279,25 @@ export default {
 		}
 	},
 		computed: {
+			// 实际渲染的子集（分批渲染）。模板 v-for 用这个而不是 list，
+			// 保证 DOM 数量与已加载条数解耦。
+			renderList() {
+				if (this.renderLimit <= 0 || this.renderLimit >= this.list.length) return this.list
+				return this.list.slice(0, this.renderLimit)
+			},
+			// 还有未渲染的记录（滚动到底继续追加）
+			hasMoreRender() {
+				return this.renderLimit < this.list.length
+			},
+			// 单据搜索入口，兼容两种配置形式：
+			//   config.docFilters = [ {title,label,paramKey,api,...} ]  （多个，并排按钮）
+			//   config.docFilter  = { ... }                             （单个，历史写法）
+			docFilterList() {
+				if (Array.isArray(this.config.docFilters) && this.config.docFilters.length > 0) {
+					return this.config.docFilters
+				}
+				return this.config.docFilter ? [this.config.docFilter] : []
+			},
 			templateNames() {
 				return this.templates.map((t) => t.name || '未命名')
 			},
@@ -334,7 +366,10 @@ export default {
 					if (v === undefined || v === null || v === '') return
 					parts.push(f.type === 'input' ? v : this.dictText(f))
 				})
-				if (this.doc) parts.push(this.doc.docNo)
+				this.docFilterList.forEach((df) => {
+					const d = this.docOf(df)
+					if (d) parts.push(d.docNo)
+				})
 				return parts.length === 0 ? '未设置' : parts.join(' / ')
 			}
 		},
@@ -343,7 +378,9 @@ export default {
 			this.restoreTemplate()
 			this.loadDicts()
 			if (this.initDocNo) {
-				this.doc = { docNo: this.initDocNo }
+				// 从单据页跳入时按单号预筛选：默认第一个单据入口（生产领料/关键件的 pickDoc）
+				const first = this.docFilterList[0]
+				if (first) this.$set(this.docs, this.docKey(first), { docNo: this.initDocNo })
 				this.allMode = true
 				this.autoSelectAll = true
 			}
@@ -488,14 +525,15 @@ export default {
 			},
 
 			isExp(item) {
-				return this.expanded.indexOf(this.rowKey(item)) !== -1
+				return this.expSet.has(this.rowKey(item))
 			},
 
 			toggleExpand(item) {
 				const k = this.rowKey(item)
-				const i = this.expanded.indexOf(k)
-				if (i === -1) this.expanded.push(k)
-				else this.expanded.splice(i, 1)
+				if (this.expSet.has(k)) this.expSet.delete(k)
+				else this.expSet.add(k)
+				// 同 selSet：Set 内部增删不被 Vue 追踪，换新引用触发刷新
+				this.expSet = new Set(this.expSet)
 			},
 
 			badgeText(b, item) {
@@ -507,19 +545,31 @@ export default {
 				return (b.tone && b.tone[item[b.key]]) || 'grey'
 			},
 
-			openDoc() {
-				this.$refs.docPopup.open()
+			// 每个单据入口在 docs 里的键（按 paramKey + title，避免多个入口共用 pickDoc 时冲突）
+			docKey(df) {
+				return (df.paramKey || 'doc') + '|' + (df.title || '')
 			},
 
-			onDocSelect(row) {
-				this.doc = row
+			docOf(df) {
+				return this.docs[this.docKey(df)] || null
+			},
+
+			openDoc(df) {
+				const i = this.docFilterList.indexOf(df)
+				const refs = this.$refs['docPopup' + i]
+				const popup = Array.isArray(refs) ? refs[0] : refs
+				if (popup) popup.open()
+			},
+
+			onDocSelect(df, row) {
+				this.$set(this.docs, this.docKey(df), row)
 				this.allMode = true
 				this.autoSelectAll = true
 				this.query()
 			},
 
-			clearDoc() {
-				this.doc = null
+			clearDoc(df) {
+				this.$set(this.docs, this.docKey(df), null)
 				this.allMode = false
 				this.autoSelectAll = false
 				this.query()
@@ -528,7 +578,9 @@ export default {
 			query() {
 				this.list = []
 				this.selected = []
-				this.expanded = []
+				this.selSet = new Set()
+				this.expSet = new Set()
+				this.renderLimit = 0
 				this.current = 1
 				this.pages = 0
 				this.total = 0
@@ -552,11 +604,28 @@ export default {
 
 			reset() {
 				this.form = {}
-				this.doc = null
+				this.docs = {}
 				this.allMode = false
 				this.autoSelectAll = false
 				this.query()
 				this.filterOpen = true
+			},
+
+			// ---- 分批渲染控制 ----
+			// list 变化后（首次加载/追加）把渲染上限收敛到"已加载条数"与"起步批量"的较小值，
+			// 即：一次加载 20 条就渲染 20 条；"查询全部"一次 550 条也只先渲染 RENDER_STEP 条。
+			syncRenderLimit() {
+				const want = Math.min(this.list.length, Math.max(this.RENDER_STEP, this.renderLimit))
+				this.renderLimit = want
+			},
+
+			// 滚动到底：先追加渲染未显示的部分；若渲染完了但服务端还有更多，再拉下一页。
+			onReachBottom() {
+				if (this.hasMoreRender) {
+					this.renderLimit = Math.min(this.list.length, this.renderLimit + this.RENDER_STEP)
+					return
+				}
+				this.loadMore()
 			},
 
 			async loadMore() {
@@ -571,16 +640,25 @@ export default {
 						const v = this.form[k]
 						if (v !== undefined && v !== null && v !== '') params[k] = v
 					})
-					if (this.doc && this.config.docFilter) params[this.config.docFilter.paramKey] = this.doc.docNo
+					// 每个已选单据入口都按各自的 paramKey 传参（关键件的多个单据入口共用 pickDoc）
+					this.docFilterList.forEach((df) => {
+						const d = this.docOf(df)
+						if (d && d.docNo) params[df.paramKey] = d.docNo
+					})
 
 					const res = await this.config.listApi(params)
 					if (res && res.data && res.data.code === 200) {
 						const result = res.data.result || {}
-						this.list = this.list.concat(result.records || [])
+						// 大列表性能关键：记录是纯展示数据，打印时只读不改。
+						// Object.freeze 让 Vue 跳过为每个字段安装 getter/setter（550条×20+字段≈上万次
+						// defineProperty），首屏渲染与内存占用都大幅改善。
+						const records = (result.records || []).map((r) => Object.freeze(r))
+						this.list = this.list.concat(records)
 						this.pages = result.pages || 0
 						this.total = result.total || this.list.length
 						this.current = (result.current || 1) + 1
 						this.hasMore = (result.current || 1) < this.pages
+						this.syncRenderLimit()
 						if (this.allMode) {
 							this.hasMore = false
 							if (this.total > this.list.length) {
@@ -590,6 +668,7 @@ export default {
 
 						if (!this.hasMore && this.autoSelectAll) {
 							this.selected = this.list.slice()
+							this.selSet = new Set(this.selected.map((r) => this._selKey(r)))
 							this.autoSelectAll = false
 						}
 					} else {
@@ -604,22 +683,43 @@ export default {
 				}
 			},
 
+			// ---- 大列表性能：勾选/展开一律走 Set 做 O(1) 判重 ----
+			// 原来用数组 indexOf 线性查找，模板里每个 item 又要调用 3 次 isSel，
+			// 550 条时单次渲染≈90 万次比较，勾选一下全列表重算 → 严重卡顿。
+			// Set.has 是 O(1)，550 条整体降到 O(n)。
+			// 注：Set 改动后必须用 $forceUpdate/重新赋值触发视图更新，故统一走 _syncSelFlag 打平到 item 上。
+			_selKey(item) {
+				return this.rowKey(item)
+			},
+
 			isSel(item) {
-				return this.selected.indexOf(item) !== -1
+				return this.selSet.has(this._selKey(item))
 			},
 
 			toggle(item) {
-				const i = this.selected.indexOf(item)
-				if (i === -1) this.selected.push(item)
-				else this.selected.splice(i, 1)
+				const k = this._selKey(item)
+				if (this.selSet.has(k)) {
+					this.selSet.delete(k)
+					// 同步维护 selected 数组（打印逻辑依赖它，且需要保持顺序）
+					const i = this.selected.findIndex((r) => this._selKey(r) === k)
+					if (i !== -1) this.selected.splice(i, 1)
+				} else {
+					this.selSet.add(k)
+					this.selected.push(item)
+				}
+				// Set 是引用类型，Vue 2 不追踪其内部增删，需手动触发刷新。
+				// 用 $set 换一个新 Set 引用，保证依赖 selSet 的渲染重新计算。
+				this.selSet = new Set(this.selSet)
 			},
 
 			selectAll() {
 				this.selected = this.list.slice()
+				this.selSet = new Set(this.selected.map((r) => this._selKey(r)))
 			},
 
 			clearSel() {
 				this.selected = []
+				this.selSet = new Set()
 			},
 
 			openPrint(lotMode) {
@@ -651,7 +751,20 @@ export default {
 					if (!saved || !saved.address) {
 						throw new Error('未设置默认打印机，请先到「蓝牙打印」页面连接并设为默认')
 					}
-					await printer.connect(saved.address, saved.name)
+					// 显式按"这台打印机记住的指令集"连接；记录丢失时按蓝牙名推断机型兜底。
+					// 不传协议会让 manager 回落到全局默认（ZEBRA），若默认机是 LPAPI 就会用错
+					// 适配器去连（表现为连不上/报错与实际情况不符）。
+					const proto = printer.getProtocolForAddress(saved.address)
+						|| printer.detectProtocolByName(saved.name)
+						|| undefined
+					console.log('[snPrintList] preflight 回连默认打印机:', saved.address, saved.name, 'protocol:', proto)
+					try {
+						await printer.connect(saved.address, saved.name, proto)
+					} catch (e) {
+						// 连接失败给出可操作的排查清单，而不是只有一句 errCode
+						throw new Error('连接默认打印机失败：' + (e && e.message ? e.message : '')
+							+ '。请依次确认：① 打印机已开机且有电；② 处于蓝牙可连接模式；③ 未被其他设备占用；④ 在范围内（1~2米）；⑤ 系统蓝牙里该设备已配对。')
+					}
 				}
 				let st
 				try {
@@ -701,37 +814,83 @@ export default {
 					}
 				}
 
-				this.printState = 'running'
-				this.done = 0
-				this.okList = []
-				this.failList = []
-				this.canceled = false
-				this.writebackMsg = ''
+			this.printState = 'running'
+			this.done = 0
+			this.okList = []
+			this.failList = []
+			this.canceled = false
+			this.writebackMsg = ''
 
-				for (const record of this.jobs) {
-					if (this.canceled) break
-					this.currentSn = record[this.config.snKey] || ''
-					try {
-						await printer.printTemplate(job, record)
-						this.okList.push(record)
-					} catch (e) {
-						this.failList.push({
-							record,
-							sn: this.currentSn,
-							message: e.message
-						})
+			// 合批路径：非批次模式下，把选中记录交给适配器"一次任务多页"下发。
+			// 支持合批的机型（LPAPI）省掉 N 次蓝牙往返与每条 300ms 硬等待；
+			// 不支持的机型（Zebra）由 printerManager 自动回退逐条，行为与从前一致。
+			// 取消：通过 hooks.shouldCancel 把"停止"信号传进适配器逐条循环，让其中途 break。
+			if (!this.lotMode) {
+				try {
+					const ret = await printer.printTemplateBatch(job, this.jobs, {
+						onPage: (done, total, record) => {
+							this.done = done
+							this.currentSn = (record && record[this.config.snKey]) || ''
+						},
+						shouldCancel: () => this.canceled
+					})
+					const fails = (ret && ret.fails) || []
+					// 成功条数以适配器回报的 okCount 为准（取消时 okCount < 总数）。
+					// 未被打的记录不算失败，只算"未打印"。
+					if (fails.length === 0) {
+						this.okList = this.jobs.slice(0, ret && ret.okCount !== undefined ? ret.okCount : this.jobs.length)
+					} else {
+						const failRecs = fails.map((f) => f.record)
+						this.okList = this.jobs.filter((r) => failRecs.indexOf(r) === -1)
+						this.failList = fails.map((f) => ({
+							record: f.record,
+							sn: (f.record && f.record[this.config.snKey]) || '',
+							message: f.message
+						}))
 					}
-					this.done++
-					await new Promise((r) => setTimeout(r, 300))
+					if (ret && ret.canceled) this.canceled = true
+					this.done = this.okList.length
+				} catch (e) {
+					this.failList = this.jobs.map((record) => ({
+						record,
+						sn: record[this.config.snKey] || '',
+						message: (e && e.message) || String(e)
+					}))
+					this.done = this.jobs.length
 				}
-
 				this.printState = 'done'
 				this.currentSn = ''
 				await this.writeback()
-			},
+				return
+			}
+
+			// 批次模式：标签不带 SN，每条都要换变量（批次号），不适合合批，保持逐条。
+			for (const record of this.jobs) {
+				if (this.canceled) break
+				this.currentSn = record[this.config.snKey] || ''
+				try {
+					await printer.printTemplate(job, record)
+					this.okList.push(record)
+				} catch (e) {
+					this.failList.push({
+						record,
+						sn: this.currentSn,
+						message: e.message
+					})
+				}
+				this.done++
+			}
+
+			this.printState = 'done'
+			this.currentSn = ''
+			await this.writeback()
+		},
 
 			cancelPrint() {
+				if (this.canceled) return
 				this.canceled = true
+				// 立即反馈：当前正在发的那一条无法撤回（已发给打印机），但后续未发的会停下。
+				this.toast('正在停止，已发出的标签仍会印出')
 			},
 
 			async writeback() {
@@ -1075,6 +1234,12 @@ export default {
 		padding: 50rpx 0;
 		text-align: center;
 		color: #9c9c9c;
+		font-size: var(--font-md);
+	}
+
+	.tip-more {
+		padding: 30rpx 0;
+		color: var(--color-primary);
 		font-size: var(--font-md);
 	}
 

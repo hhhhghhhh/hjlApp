@@ -14,6 +14,14 @@
 				</view>
 			</view>
 
+			<!-- 时间快捷筛选：今天 / 近三天 / 本周 / 本月。后端按 planOutstockDate 的 from~to 过滤。 -->
+			<view class="range-bar">
+				<view v-for="r in ranges" :key="r.key" class="range-chip"
+					:class="{ active: rangeKey === r.key }" @click="pickRange(r.key)">
+					<text>{{ r.label }}</text>
+				</view>
+			</view>
+
 			<scroll-view class="doc-scroll" scroll-y @scrolltolower="loadList">
 				<view v-for="(item, index) in list" :key="item.id || index" class="doc-item"
 					:class="{ selected: selectedId === item.id }" @click="handleSelect(item)">
@@ -70,59 +78,108 @@
 			}
 		},
 
-		data() {
-			return {
-				list: [],
-				loading: false,
-				hasMore: true,
-				search: '',
-				searchTimer: null,
-				current: 1,
-				size: 20,
-				pages: 0
-			}
+	data() {
+		return {
+			list: [],
+			loading: false,
+			hasMore: true,
+			search: '',
+			searchTimer: null,
+			current: 1,
+			size: 20,
+			pages: 0,
+			// 时间快捷段：'' 表示不限。选中后按 from/to（yyyy-MM-dd）传给后端。
+			rangeKey: '',
+			ranges: [
+				{ key: 'today', label: '今天' },
+				{ key: '3d', label: '近三天' },
+				{ key: 'week', label: '本周' },
+				{ key: 'month', label: '本月' }
+			]
+		}
+	},
+
+	methods: {
+		open() {
+			this.$refs.popup.open()
+			this.reload()
 		},
 
-		methods: {
-			open() {
-				this.$refs.popup.open()
-				this.reload()
-			},
+		close() {
+			this.$refs.popup.close()
+		},
 
-			close() {
-				this.$refs.popup.close()
-			},
+		// yyyy-MM-dd（本地时区，避免 toISOString 的 UTC 偏移串天）
+		fmtDate(d) {
+			const y = d.getFullYear()
+			const m = String(d.getMonth() + 1).padStart(2, '0')
+			const day = String(d.getDate()).padStart(2, '0')
+			return y + '-' + m + '-' + day
+		},
 
-			handleSearch() {
-				clearTimeout(this.searchTimer)
-				this.searchTimer = setTimeout(() => this.reload(), 500)
-			},
+		// 快捷段 -> { from, to }。本周按周一为一周之始；本月为当月 1 号至今天。
+		rangeDates(key) {
+			const now = new Date()
+			const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+			if (key === 'today') return { from: this.fmtDate(today), to: this.fmtDate(today) }
+			if (key === '3d') {
+				const s = new Date(today)
+				s.setDate(s.getDate() - 2) // 含今天共 3 天
+				return { from: this.fmtDate(s), to: this.fmtDate(today) }
+			}
+			if (key === 'week') {
+				const dow = (today.getDay() + 6) % 7 // 周一=0
+				const s = new Date(today)
+				s.setDate(s.getDate() - dow)
+				return { from: this.fmtDate(s), to: this.fmtDate(today) }
+			}
+			if (key === 'month') {
+				const s = new Date(today.getFullYear(), today.getMonth(), 1)
+				return { from: this.fmtDate(s), to: this.fmtDate(today) }
+			}
+			return { from: '', to: '' }
+		},
 
-			handleClearSearch() {
-				this.search = ''
-				this.reload()
-			},
+		// 再点一次当前段 = 取消时间筛选
+		pickRange(key) {
+			this.rangeKey = (this.rangeKey === key) ? '' : key
+			this.reload()
+		},
 
-			reload() {
-				this.list = []
-				this.current = 1
-				this.pages = 0
-				this.hasMore = true
-				this.loadList()
-			},
+		handleSearch() {
+			clearTimeout(this.searchTimer)
+			this.searchTimer = setTimeout(() => this.reload(), 500)
+		},
 
-			async loadList() {
-				if (this.loading || !this.hasMore) return
-				this.loading = true
-				try {
-					const params = {
-						pageNo: this.current,
-						pageSize: this.size,
-						docStatus: this.docStatus
-					}
-					if (this.search) params.docNo = this.search
+		handleClearSearch() {
+			this.search = ''
+			this.reload()
+		},
 
-					const res = await this.api(params)
+		reload() {
+			this.list = []
+			this.current = 1
+			this.pages = 0
+			this.hasMore = true
+			this.loadList()
+		},
+
+		async loadList() {
+			if (this.loading || !this.hasMore) return
+			this.loading = true
+			try {
+				const params = {
+					pageNo: this.current,
+					pageSize: this.size,
+					docStatus: this.docStatus
+				}
+				if (this.search) params.docNo = this.search
+				// 时间快捷段：后端按 planOutstockDate >= from(00:00:00) 且 <= to(23:59:59) 过滤
+				const rg = this.rangeKey ? this.rangeDates(this.rangeKey) : null
+				if (rg && rg.from) params.from = rg.from
+				if (rg && rg.to) params.to = rg.to
+
+				const res = await this.api(params)
 					if (res && res.data && res.data.code === 200) {
 						const result = res.data.result || {}
 						this.list = this.list.concat(result.records || [])
@@ -192,6 +249,33 @@
 		font-size: var(--font-lg);
 		color: var(--color-text-secondary);
 		font-weight: 500;
+	}
+
+	.range-bar {
+		display: flex;
+		align-items: center;
+		gap: 16rpx;
+		padding: 16rpx 24rpx;
+		border-bottom: 1rpx solid var(--color-border);
+		background: var(--color-bg-card);
+	}
+
+	.range-chip {
+		flex: 1;
+		text-align: center;
+		padding: 12rpx 0;
+		font-size: var(--font-sm);
+		color: var(--color-text-secondary);
+		background: var(--color-bg-page);
+		border-radius: 8rpx;
+		border: 1rpx solid var(--color-border);
+
+		&.active {
+			color: var(--color-primary);
+			border-color: var(--color-primary);
+			background: rgba(22, 119, 255, 0.08);
+			font-weight: 500;
+		}
 	}
 
 	.doc-scroll {
